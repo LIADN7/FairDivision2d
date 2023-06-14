@@ -14,7 +14,7 @@ public class PointOfState : MonoBehaviour
 
     void OnMouseEnter()
     {
-
+        //Debug.LogError(myKey);
         if (GameManager.inst.getStatus() == 1)
         {
             // Red

@@ -1,3 +1,4 @@
+using Photon.Pun;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -6,7 +7,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 
-public class GameManager : MonoBehaviour
+public class GameManager : MonoBehaviourPunCallbacks
 {
     /*    private int NUM_OF_STATE = 9;
         [SerializeField] protected int numPlayers;
@@ -26,24 +27,35 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] protected Text redValueText;
     [SerializeField] protected Text greenValueText;
-
+    [SerializeField] protected Text payername;
     public static GameManager inst;
     private int status;
     //private GameObject[] squares;
-    private Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
+    public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
     private float sum;
 
     private Dictionary<int, int> player1 = new Dictionary<int, int>();
     private Dictionary<int, int> player2 = new Dictionary<int, int>();
+    private int cutNum = 0;
+
+    private void Awake()
+    {
+        //if (PhotonNetwork.IsMasterClient)
+        {
+            inst = this;
+        //Debug.LogError(PhotonNetwork.NickName);
+
+        }
+    }
     void Start()
     {
-        inst = this;
         this.status = 0;
         GameObject[] tempSquares = GameObject.FindGameObjectsWithTag("SquarePoint");
 
         StartCoroutine(withSec(2f, tempSquares));
+        statusChange();
 
-        redValueText.text = "Value: " +100+"%";
+
 
     }
 
@@ -89,41 +101,38 @@ public class GameManager : MonoBehaviour
 
     }
 
-
-    public void Cut(int i)
+    public void Cut(Dictionary<int, int> player)
     {
 
-/*        for (int i = 0; i < squares.Length; i++)
+/*      for (int i = 0; i < squares.Length; i++)
         {
             PointOfState temp = this.squares[i].GetComponent<PointOfState>();
             player1.Add(temp.getMyKey(), temp.getSpriteStatus());
             
         }*/
-
-
-        if(i == 0)
+        if(cutNum == 0)
         {
-            foreach (var it in this.squares)
-            {
-                PointOfState p = it.Value.GetComponent<PointOfState>();
-                player1.Add(p.getMyKey(), p.getSpriteStatus());
-                p.setSpriteStatus(1);
-            }
+            this.player1= player;
+            cutNum++;
         }
         else
         {
-            foreach (var it in this.squares)
+            this.player2 = player;
+            cutNum++;
+            foreach (var kvp in player2)
             {
-                PointOfState p = it.Value.GetComponent<PointOfState>();
-                player2.Add(p.getMyKey(), p.getSpriteStatus());
-                p.setSpriteStatus(1);
+                Debug.LogError("Key: " + kvp.Key + ", Value: " + kvp.Value);
             }
         }
 
 
 
 
-        this.statusChange();
+        //this.statusChange();
+
+
+            
+        
 
 
 
