@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 
-public class GameManager : MonoBehaviourPunCallbacks
+public class Manager : MonoBehaviourPunCallbacks
 {
     /*    private int NUM_OF_STATE = 9;
         [SerializeField] protected int numPlayers;
@@ -18,8 +18,8 @@ public class GameManager : MonoBehaviourPunCallbacks
         private bool[,] cutAndChooce;
         private Color playerChooce;
         */
-    [SerializeField] protected int numOfStatus=2;
-    
+    [SerializeField] protected int numOfStatus = 2;
+
     [SerializeField] protected SpriteRenderer backgraundStatus;
     [SerializeField] protected KeyCode normalKey;
     [SerializeField] protected KeyCode redKey;
@@ -27,8 +27,8 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     [SerializeField] protected Text redValueText;
     [SerializeField] protected Text greenValueText;
-    [SerializeField] protected Text payername;
-    public static GameManager inst;
+    [SerializeField] protected Text palyerName;
+    public static Manager inst;
     private int status;
     //private GameObject[] squares;
     public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
@@ -43,7 +43,7 @@ public class GameManager : MonoBehaviourPunCallbacks
         //if (PhotonNetwork.IsMasterClient)
         {
             inst = this;
-        //Debug.LogError(PhotonNetwork.NickName);
+            //Debug.LogError(PhotonNetwork.NickName);
 
         }
     }
@@ -67,7 +67,7 @@ public class GameManager : MonoBehaviourPunCallbacks
         {
 
             PointOfState temp = tempSquares[i].GetComponent<PointOfState>();
-           // if (!this.squares.ContainsKey(temp.getMyKey()))
+            // if (!this.squares.ContainsKey(temp.getMyKey()))
             {
                 this.squares.Add(temp.getMyKey(), tempSquares[i]);
                 int j = PhotonNetwork.IsMasterClient ? 1 : 2;
@@ -86,7 +86,7 @@ public class GameManager : MonoBehaviourPunCallbacks
             backgraundStatus.color = Color.white;
 
         }
-        if (Input.GetKeyDown(this.redKey) )
+        if (Input.GetKeyDown(this.redKey))
         {
             this.status = 1;
             backgraundStatus.color = Color.red;
@@ -102,28 +102,28 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     }
 
-    public void Cut(Dictionary<int, int> player,int i)
+    public void Cut(Dictionary<int, int> player, int i)
     {
 
-/*      for (int i = 0; i < squares.Length; i++)
+        /*      for (int i = 0; i < squares.Length; i++)
+                {
+                    PointOfState temp = this.squares[i].GetComponent<PointOfState>();
+                    player1.Add(temp.getMyKey(), temp.getSpriteStatus());
+
+                }*/
+        if (i == 1)
         {
-            PointOfState temp = this.squares[i].GetComponent<PointOfState>();
-            player1.Add(temp.getMyKey(), temp.getSpriteStatus());
-            
-        }*/
-        if(i == 1)
-        {
-            this.player1= player;
+            this.player1 = player;
             cutNum++;
         }
         else
         {
             this.player2 = player;
             cutNum++;
-  /*          foreach (var kvp in player2)
-            {
-                Debug.LogError("Key: " + kvp.Key + ", Value: " + kvp.Value);
-            }*/
+            /*          foreach (var kvp in player2)
+                      {
+                          Debug.LogError("Key: " + kvp.Key + ", Value: " + kvp.Value);
+                      }*/
         }
 
 
@@ -132,8 +132,8 @@ public class GameManager : MonoBehaviourPunCallbacks
         //this.statusChange();
 
 
-            
-        
+
+
 
 
 
@@ -160,44 +160,44 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     public void Choose(Color choose)
     {
-/*        double sum = 0;
-        for (int j = 0; j < NUM_OF_STATE; j++)
-        {
-            this.playersValues[1, j] = valuesText[j].text == "" ? 0 : Convert.ToDouble(valuesText[j].text);
-            sum += this.playersValues[1, j];
+        /*        double sum = 0;
+                for (int j = 0; j < NUM_OF_STATE; j++)
+                {
+                    this.playersValues[1, j] = valuesText[j].text == "" ? 0 : Convert.ToDouble(valuesText[j].text);
+                    sum += this.playersValues[1, j];
 
-        }
-        for (int j = 0; j < NUM_OF_STATE; j++)
-        {
-            this.playersValues[1, j] = this.playersValues[1, j] / sum;
-        }
-        status++;
-        playerChooce = choose;
-        double cutVal = 0;
-        double chooseVal = 0;
+                }
+                for (int j = 0; j < NUM_OF_STATE; j++)
+                {
+                    this.playersValues[1, j] = this.playersValues[1, j] / sum;
+                }
+                status++;
+                playerChooce = choose;
+                double cutVal = 0;
+                double chooseVal = 0;
 
-        for (int i = 0; i < NUM_OF_STATE; i++)
-        {
-            bool temp = this.states[i].GetComponent<StateObj>().getIsOn();
-            if ((choose==Color.green && temp) || (!temp && choose == Color.white))
-            {
-                this.cutAndChooce[1, i] = true;
-                chooseVal += playersValues[1, i];
-            }
-            else 
-            {
-                this.cutAndChooce[0, i] = true;
-                cutVal += playersValues[0, i];
-            }
-            this.inputObj.SetActive(false);
-            
+                for (int i = 0; i < NUM_OF_STATE; i++)
+                {
+                    bool temp = this.states[i].GetComponent<StateObj>().getIsOn();
+                    if ((choose==Color.green && temp) || (!temp && choose == Color.white))
+                    {
+                        this.cutAndChooce[1, i] = true;
+                        chooseVal += playersValues[1, i];
+                    }
+                    else 
+                    {
+                        this.cutAndChooce[0, i] = true;
+                        cutVal += playersValues[0, i];
+                    }
+                    this.inputObj.SetActive(false);
 
-        }
-        this.chooseButtons.SetActive(false);
-        print("sum of Cut player values: "+ cutVal);
-        print("sum of Choose player values: "+ chooseVal);
 
-*/
+                }
+                this.chooseButtons.SetActive(false);
+                print("sum of Cut player values: "+ cutVal);
+                print("sum of Choose player values: "+ chooseVal);
+
+        */
 
 
     }
@@ -206,7 +206,8 @@ public class GameManager : MonoBehaviourPunCallbacks
     public int getStatus() { return status; }
 
 
-    public void statusChange() {
+    public void statusChange()
+    {
         float sumG = 0;
 
 
@@ -226,9 +227,9 @@ public class GameManager : MonoBehaviourPunCallbacks
 
 
         float greenVal = (sumG / this.sum);
-        greenValueText.text = "Value: " + (greenVal*100) + "%";
-        redValueText.text = "Value: " + ((1-greenVal) * 100) + "%";
-       
+        greenValueText.text = "Value: " + (greenVal * 100) + "%";
+        redValueText.text = "Value: " + ((1 - greenVal) * 100) + "%";
+
     }
 
 }

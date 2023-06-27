@@ -42,7 +42,6 @@ public class Player : MonoBehaviourPunCallbacks
         if(isSet < 2)
         {
         view.RPC("Cut", RpcTarget.All);
-
         }
     }
 
@@ -50,13 +49,14 @@ public class Player : MonoBehaviourPunCallbacks
     public void Cut()
     {
         Dictionary<int, int> player = new Dictionary<int, int>();
-        foreach (var it in GameManager.inst.squares)
+        foreach (var it in Manager.inst.squares)
         {
             PointOfState p = it.Value.GetComponent<PointOfState>();
             player.Add(p.getMyKey(), p.getSpriteStatus());
-            p.setSpriteStatus(1);
+            //p.setSpriteStatus(1);
         }
-        GameManager.inst.Cut(player);
+        int i = PhotonNetwork.IsMasterClient ? 1 : 2;
+        Manager.inst.Cut(player,i);
         isSet++;
         /*        double sum=0;
                 for (int j = 0; j < NUM_OF_STATE; j++)
