@@ -38,6 +38,10 @@ MonoBehaviour:
   - DestroyRpc
   - Cut
   - Cutiiii
+  - InitSquares
+  - setAllState
+  - Choose
+  - GetValues
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 0

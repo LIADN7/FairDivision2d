@@ -21,14 +21,14 @@ public class PointOfState : MonoBehaviour
             // Red
             this.squareSprite.color = new Color(0.555f, 0.012f, 0.012f, 0.59f);
             spriteStatus = 1;
-            Manager.inst.statusChange();
+            Player.inst.statusChange();
         }
         if (Manager.inst.getStatus()==2)
         {
             // Green
             this.squareSprite.color = new Color(0.014f, 0.525f, 0.053f, 0.59f);
             spriteStatus = 2;
-            Manager.inst.statusChange();
+            Player.inst.statusChange();
         }
 
 
@@ -41,14 +41,14 @@ public class PointOfState : MonoBehaviour
             // Red
             this.squareSprite.color = new Color(0.555f, 0.012f, 0.012f, 0.59f);
             spriteStatus = 1;
-            Manager.inst.statusChange();
+            Player.inst.statusChange();
         }
         if (Manager.inst.getStatus() == 2)
         {
             // Green
             this.squareSprite.color = new Color(0.014f, 0.525f, 0.053f, 0.59f);
             spriteStatus = 2;
-            Manager.inst.statusChange();
+            Player.inst.statusChange();
             
         }
 
@@ -62,6 +62,8 @@ public class PointOfState : MonoBehaviour
         // spriteStatus = 0;
         this.squareSprite = this.GetComponent<SpriteRenderer>();
         this.squareSprite.color = new Color(0.555f, 0.012f, 0.012f, 0.59f);
+
+
         spriteStatus = 1;
         this.myKey = key++;
     }
@@ -90,6 +92,7 @@ public class PointOfState : MonoBehaviour
         {
             // Red
             this.squareSprite.color = new Color(0.555f, 0.012f, 0.012f, 0.59f);
+            
             spriteStatus = 1;
             
         }
@@ -98,6 +101,20 @@ public class PointOfState : MonoBehaviour
             // Green
             this.squareSprite.color = new Color(0.014f, 0.525f, 0.053f, 0.59f);
             spriteStatus = 2;
+
+        }
+        if (i == 3)
+        {
+            // Yellow
+            this.squareSprite.color = new Color(0.9f, 0.9f, 0f, 0.79f);
+            spriteStatus = 3;
+
+        }
+        if (i == 4)
+        {
+            // Blue
+            this.squareSprite.color = new Color(0f, 0f, 0.4f, 0.59f);
+            spriteStatus = 4;
 
         }
     }
