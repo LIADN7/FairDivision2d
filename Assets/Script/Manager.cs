@@ -12,6 +12,9 @@ public class Manager : MonoBehaviour
 
     [SerializeField] protected int numOfStatus = 2;
     [SerializeField] protected GameObject viewAfterCut;
+    [SerializeField] protected GameObject viewEndGame;
+    [SerializeField] protected Text textEndGame;
+
 
     [SerializeField] protected SpriteRenderer backgraundStatus;
     [SerializeField] protected KeyCode normalKey;
@@ -40,8 +43,8 @@ public class Manager : MonoBehaviour
     void Start()
     {
         this.status = 0;
-        viewAfterCut.SetActive(false);
-
+        this.viewAfterCut.SetActive(false);
+        this.viewEndGame.SetActive(false);
 
 
     }
@@ -92,7 +95,11 @@ public class Manager : MonoBehaviour
         return 0;
     }
 
-
+    public void setEndGameLayer(float sum)
+    {
+        this.textEndGame.text = "You get: "+sum+"%";
+        this.viewEndGame.SetActive(true);
+    }
 
 
 

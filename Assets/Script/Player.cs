@@ -19,10 +19,11 @@ public class Player : MonoBehaviourPunCallbacks
     [SerializeField] protected Text yellowValueText;
     [SerializeField] protected Text blueValueText;
     [SerializeField] protected Text palyerName;
+
     [SerializeField] protected GameObject[] colorsValueObj; //GREEN, RED, YELLOW, BLUE
 
 
-    private float[] sumPlayer = {0f,0f};
+    private float[] sumPlayer = {0f,0f}; // sum of all the squares for player 1 and 2 -> {1, 2}
     private float[] choosePlayer = { 0f, 0f };
     public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
     private Dictionary<int, int> player1 = new Dictionary<int, int>();
@@ -46,11 +47,8 @@ public class Player : MonoBehaviourPunCallbacks
     {
 
             GameObject[] tempSquares = GameObject.FindGameObjectsWithTag("SquarePoint");
-            StartCoroutine(withSec(2f, tempSquares));
-
-        
-
-
+            StartCoroutine(withSec(0.5f, tempSquares));
+            
     }
 
     private IEnumerator withSec(float sec, GameObject[] tempSquares)
@@ -72,6 +70,16 @@ public class Player : MonoBehaviourPunCallbacks
 
         }
 
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        foreach (var it in squares)
+        {
+            PointOfState p = it.Value.GetComponent<PointOfState>();
+            p.setmyPowerColor(playerNum, this.sumPlayer[playerNum - 1]);
+            p.setSpriteStatus(1);
+        }
+
+        greenValueText.text = "Value: " + (0) + "%";
+        redValueText.text = "Value: " + (100) + "%";
     }
 
     // Update is called once per frame
@@ -83,7 +91,7 @@ public class Player : MonoBehaviourPunCallbacks
 
     public void CutView()
     {
-        int i = PhotonNetwork.IsMasterClient ? 1 : 2;
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
         foreach (var it in this.squares)
         {
@@ -93,7 +101,7 @@ public class Player : MonoBehaviourPunCallbacks
             tempPlayer.Add(key, status);
             //p.setSpriteStatus(1);
         }
-        view.RPC("Cut", RpcTarget.All, tempPlayer, i);
+        view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
         this.cutBt.SetActive(false);
         if (isAllTrue())
         {
@@ -132,12 +140,12 @@ public class Player : MonoBehaviourPunCallbacks
     public void setAllState()
     {
         //GREEN, RED, YELLOW, BLUE
-        int j = PhotonNetwork.IsMasterClient ? 1 : 2;
-        float[] sumRGYB = createSumRGYB(j); 
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        float[] sumRGYB = createSumRGYB(playerNum); 
         for (int k = 0; k < sumRGYB.Length; k++)
         {
-            Debug.LogError(sumRGYB[k] + "   " + this.sumPlayer[j - 1]);
-            sumRGYB[k] = (sumRGYB[k] / this.sumPlayer[j - 1]) * 100;
+            Debug.LogError(sumRGYB[k] + "   " + this.sumPlayer[playerNum - 1]);
+            sumRGYB[k] = (sumRGYB[k] / this.sumPlayer[playerNum - 1]) * 100;
 
         }
 
@@ -156,20 +164,20 @@ public class Player : MonoBehaviourPunCallbacks
     {
         if (isAllTrue()&&(i >= 0 && i < 4))
         {
-            int j = PhotonNetwork.IsMasterClient ? 1 : 2;
-            if (j == 1 && chooseNum < 1)
+            int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+            if (playerNum == 1 && chooseNum < 1)
             {
-                choosePlayer[j - 1] = +Manager.inst.getSumRGYB(i);
+                choosePlayer[playerNum - 1] = +Manager.inst.getSumRGYB(i);
                 view.RPC("Choose", RpcTarget.All, i);
             }
-            else if (j == 2 && chooseNum ==1)
+            else if (playerNum == 2 && chooseNum ==1)
             {
-                choosePlayer[j - 1] += Manager.inst.getSumRGYB(i);
+                choosePlayer[playerNum - 1] += Manager.inst.getSumRGYB(i);
                 view.RPC("Choose", RpcTarget.All, i);
             }
-            else if (j == 2 && chooseNum == 2)
+            else if (playerNum == 2 && chooseNum == 2)
             {
-                choosePlayer[j - 1] += Manager.inst.getSumRGYB(i);
+                choosePlayer[playerNum - 1] += Manager.inst.getSumRGYB(i);
                 view.RPC("Choose", RpcTarget.All, i);
                 view.RPC("GetValues", RpcTarget.All);
             }
@@ -189,16 +197,16 @@ public class Player : MonoBehaviourPunCallbacks
     [PunRPC]
     private void GetValues()
     {
-        int j = PhotonNetwork.IsMasterClient ? 1 : 2;
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         int last = GetLast();
         if (PhotonNetwork.IsMasterClient)
         {
-            choosePlayer[j - 1] += Manager.inst.getSumRGYB(last);
+            choosePlayer[playerNum - 1] += Manager.inst.getSumRGYB(last);
             chooseNum++;
         }
         colorsValueObj[last].SetActive(false);
-        
-        Debug.LogError("I get: " + choosePlayer[j - 1]);
+        Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
+        //Debug.LogError("I get: " );
     }
 
     //[PunRPC]
@@ -262,21 +270,21 @@ public class Player : MonoBehaviourPunCallbacks
     public void statusChange()
     {
         float sumG = 0;
-        int j = PhotonNetwork.IsMasterClient ? 1 : 2;
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
 
         foreach (var it in squares)
         {
             PointOfState p = it.Value.GetComponent<PointOfState>();
             if (p.getSpriteStatus() == 2)
             {
-                sumG += p.getMyVal(j);
+                sumG += p.getMyVal(playerNum);
             }
 
         }
 
 
 
-        float greenVal = (sumG / this.sumPlayer[j-1]);
+        float greenVal = (sumG / this.sumPlayer[playerNum - 1]);
         greenValueText.text = "Value: " + (greenVal * 100) + "%";
         redValueText.text = "Value: " + ((1 - greenVal) * 100) + "%";
 
