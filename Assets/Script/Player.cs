@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Photon.Realtime;
 using Photon.Pun;
+using System;
 //using static UnityEditor.Experimental.GraphView.GraphView;
 
 
@@ -28,7 +29,13 @@ public class Player : MonoBehaviourPunCallbacks
     public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
     private Dictionary<int, int> player1 = new Dictionary<int, int>();
     private Dictionary<int, int> player2 = new Dictionary<int, int>();
+
+    // Saves the player's state
+    private Dictionary<int, int> savePlayer1 = new Dictionary<int, int>();
+    private Dictionary<int, int> savePlayer2 = new Dictionary<int, int>();
     private int chooseNum = 0;
+
+
 
 
     void Start()
@@ -37,8 +44,10 @@ public class Player : MonoBehaviourPunCallbacks
         view = GetComponent<PhotonView>();
         inst = this;
         palyerName.text = PhotonNetwork.NickName + ", ID: ";
-        if(PhotonNetwork.IsMasterClient)
+        if (PhotonNetwork.IsMasterClient)
             view.RPC("InitSquares", RpcTarget.AllBufferedViaServer);
+
+
 
     }
 
@@ -91,23 +100,31 @@ public class Player : MonoBehaviourPunCallbacks
 
     public void CutView()
     {
-        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
-        Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
-        foreach (var it in this.squares)
-        {
-            PointOfState p = it.Value.GetComponent<PointOfState>();
-            int status = p.getSpriteStatus();
-            int key = p.getMyKey();
-            tempPlayer.Add(key, status);
-            //p.setSpriteStatus(1);
+        float cutSum = this.statusChange();
+        //Debug.Log(cutSum);
+        if (cutSum == 50) { 
+            int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+            Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
+            foreach (var it in this.squares)
+            {
+                PointOfState p = it.Value.GetComponent<PointOfState>();
+                int status = p.getSpriteStatus();
+                int key = p.getMyKey();
+                tempPlayer.Add(key, status);
+                //p.setSpriteStatus(1);
+            }
+            view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
+            this.cutBt.SetActive(false);
         }
-        view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
-        this.cutBt.SetActive(false);
-        if (isAllTrue())
+        else
         {
-            view.RPC("setAllState", RpcTarget.All);
-            //setAllState();
+            Manager.inst.setNote(7f,"Youneed to set 50% for for both values!!!", true);
         }
+            if (isAllTrue())
+            {
+                view.RPC("setAllState", RpcTarget.All);
+                //setAllState();
+            }
 
     }
 
@@ -188,7 +205,6 @@ public class Player : MonoBehaviourPunCallbacks
     [PunRPC]
     private void Choose(int i)
     {
-        //chooseObj
         colorsValueObj[i].SetActive(false);
         chooseNum++;
 
@@ -206,10 +222,8 @@ public class Player : MonoBehaviourPunCallbacks
         }
         colorsValueObj[last].SetActive(false);
         Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
-        //Debug.LogError("I get: " );
     }
 
-    //[PunRPC]
     private int GetLast()
     {
         //chooseObj
@@ -267,31 +281,107 @@ public class Player : MonoBehaviourPunCallbacks
 
 
 
-    public void statusChange()
+    public float statusChange()
     {
-        float sumG = 0;
-        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        lock (this) { 
+            float sumG = 0;
+            int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
 
-        foreach (var it in squares)
-        {
-            PointOfState p = it.Value.GetComponent<PointOfState>();
-            if (p.getSpriteStatus() == 2)
+            foreach (var it in squares)
             {
-                sumG += p.getMyVal(playerNum);
+                PointOfState p = it.Value.GetComponent<PointOfState>();
+                if (p.getSpriteStatus() == 2)
+                {
+                    sumG += p.getMyVal(playerNum);
+                }
+
             }
 
+
+            float greenVal = (sumG / this.sumPlayer[playerNum - 1]);
+            greenValueText.text = "Value: " + (greenVal * 100) + "%";
+            redValueText.text = "Value: " + ((1 - greenVal) * 100) + "%";
+            return (greenVal * 100);
         }
+    }
 
 
+    public void getOtherView()
+    {
+            int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        if (Manager.inst.getIsShowView()) 
+        {
+            SetMap(playerNum==1?this.savePlayer1: this.savePlayer2);
+        }
+        else
+        {
 
-        float greenVal = (sumG / this.sumPlayer[playerNum - 1]);
-        greenValueText.text = "Value: " + (greenVal * 100) + "%";
-        redValueText.text = "Value: " + ((1 - greenVal) * 100) + "%";
+            Dictionary<int, int> tempPlayer = getTempPlayer();
+            if(playerNum==1) savePlayer1=tempPlayer;
+            else savePlayer2 = tempPlayer;
+
+            view.RPC("GetOtherPlayer", RpcTarget.Others);
+        }
+        Manager.inst.changeSeeOtherPlayerBT();
 
     }
 
 
+    // Player 2 return his map
+    [PunRPC]
+    private void GetOtherPlayer()
+    {
+        if (Manager.inst.getIsShowView())
+        {
+            view.RPC("SetOtherPlayer", RpcTarget.Others, PhotonNetwork.IsMasterClient ? this.savePlayer1 : this.savePlayer2);
+        }
+        else
+        {
 
+            Dictionary<int, int> tempPlayer =getTempPlayer();
+            view.RPC("SetOtherPlayer", RpcTarget.Others, tempPlayer);
+        }
+    }
 
+    // Set map to Player 1
+    [PunRPC]
+    private void SetOtherPlayer(Dictionary<int, int> tempPlayer)
+    {
+        SetMap(tempPlayer);
 
+    }
+
+    private void SetMap(Dictionary<int, int> tempPlayer)
+    {
+        if(tempPlayer==null) return;
+
+        float[] sumRGYB = { 0, 0 }; //GREEN, RED, YELLOW, BLUE
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        foreach (var it in this.squares)
+        {
+            PointOfState p = it.Value.GetComponent<PointOfState>();
+            float val = p.getMyVal(playerNum);
+            int tempKey = p.getMyKey();
+            int spriteStatus = tempPlayer[tempKey] == 1 ? 1 : 2; // Green or RED
+
+            sumRGYB[spriteStatus - 1] += val;
+            p.setSpriteStatus(spriteStatus);
+
+        }
+
+    }
+
+    private Dictionary<int, int> getTempPlayer()
+    {
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
+        foreach (var it in this.squares)
+        {
+            PointOfState p = it.Value.GetComponent<PointOfState>();
+            int status = p.getSpriteStatus();
+            int key = p.getMyKey();
+            tempPlayer.Add(key, status);
+        }
+        return tempPlayer;
+    }
 }

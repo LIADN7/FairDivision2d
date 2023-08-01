@@ -13,8 +13,9 @@ public class Manager : MonoBehaviour
     [SerializeField] protected int numOfStatus = 2;
     [SerializeField] protected GameObject viewAfterCut;
     [SerializeField] protected GameObject viewEndGame;
+    [SerializeField] protected GameObject SeeOtherPlayerBT;
     [SerializeField] protected Text textEndGame;
-
+    [SerializeField] protected Text textNote;
 
     [SerializeField] protected SpriteRenderer backgraundStatus;
     [SerializeField] protected KeyCode normalKey;
@@ -25,6 +26,7 @@ public class Manager : MonoBehaviour
     public static Manager inst;
     private int status;
     private bool isCut=false;
+    private bool isShowView = false;
     //private GameObject[] squares;
     //public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
 
@@ -45,14 +47,14 @@ public class Manager : MonoBehaviour
         this.status = 0;
         this.viewAfterCut.SetActive(false);
         this.viewEndGame.SetActive(false);
-
+        this.SeeOtherPlayerBT.SetActive(true);
 
     }
 
     // Update is called once per frame
     void Update()
     {
-        if(!isCut) { 
+        if(!isCut && !isShowView) { 
             if (Input.GetKeyDown(this.normalKey))
             {
                 this.status = 0;
@@ -101,9 +103,40 @@ public class Manager : MonoBehaviour
         this.viewEndGame.SetActive(true);
     }
 
+    public void setNote(float sec, string massage, bool isError)
+    {
+        StartCoroutine(withSec(sec, massage, isError));
+
+    }
 
 
+    private IEnumerator withSec(float sec, string massage, bool isError)
+    {
+        this.textNote.color = isError ? Color.red: Color.black;
+        this.textNote.text = massage;
+        yield return new WaitForSeconds(sec);
+        this.textNote.text = "";
+    }
+    public void changeSeeOtherPlayerBT()
+    {
+        this.status = 0;
+        backgraundStatus.color = Color.white;
+        Image tempSprit = this.SeeOtherPlayerBT.GetComponent<Image>();
+        if (this.isShowView)
+        {
+            tempSprit.color = Color.white;
+        }
+        else
+        {
+            tempSprit.color = Color.red;
+        }
+        this.isShowView = !this.isShowView;
+
+    }
 
 
-
+    public bool getIsShowView()
+    {
+        return this.isShowView;
+    }
 }

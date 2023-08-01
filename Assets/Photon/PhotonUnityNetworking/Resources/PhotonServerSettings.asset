@@ -42,6 +42,10 @@ MonoBehaviour:
   - setAllState
   - Choose
   - GetValues
+  - getOtherViewRPC
+  - GetOtherPlayer
+  - setOtherPlayer
+  - SetOtherPlayer
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 0

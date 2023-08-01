@@ -6,8 +6,8 @@ using UnityEngine;
 public class PointOfState : MonoBehaviour
 {
 
-    [SerializeField] protected float myVal1 = 1;
-    [SerializeField] protected float myVal2 = 2;
+    [SerializeField] protected float myVal1 = 2;
+    [SerializeField] protected float myVal2 = 4;
     private float myPowerColor = 1;
     private SpriteRenderer squareSprite;
     private int spriteStatus;
