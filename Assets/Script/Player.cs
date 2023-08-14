@@ -5,12 +5,13 @@ using UnityEngine.UI;
 using Photon.Realtime;
 using Photon.Pun;
 using System;
+using System.Linq;
 //using static UnityEditor.Experimental.GraphView.GraphView;
 
 
 public class Player : MonoBehaviourPunCallbacks
 {
-    [SerializeField] public GameObject cutBt;
+    //[SerializeField] public GameObject cutBt;
     private PhotonView view;
     public static Player inst;
     //private Dictionary<int, int> player1 = new Dictionary<int, int>();
@@ -20,7 +21,8 @@ public class Player : MonoBehaviourPunCallbacks
     [SerializeField] protected Text yellowValueText;
     [SerializeField] protected Text blueValueText;
     [SerializeField] protected Text palyerName;
-
+    [SerializeField] protected Text chatText;
+    [SerializeField] protected InputField chatInput;
     [SerializeField] protected GameObject[] colorsValueObj; //GREEN, RED, YELLOW, BLUE
 
 
@@ -29,7 +31,7 @@ public class Player : MonoBehaviourPunCallbacks
     public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
     private Dictionary<int, int> player1 = new Dictionary<int, int>();
     private Dictionary<int, int> player2 = new Dictionary<int, int>();
-
+    private List<ChatMessage> chatHistory = new List<ChatMessage>();
     // Saves the player's state
     private Dictionary<int, int> savePlayer1 = new Dictionary<int, int>();
     private Dictionary<int, int> savePlayer2 = new Dictionary<int, int>();
@@ -43,7 +45,8 @@ public class Player : MonoBehaviourPunCallbacks
 
         view = GetComponent<PhotonView>();
         inst = this;
-        palyerName.text = PhotonNetwork.NickName + ", ID: ";
+        string palyerId = PhotonNetwork.IsMasterClient ? "Player 1" : "Player 2";
+        palyerName.text = PhotonNetwork.NickName + ", "+ palyerId;
         if (PhotonNetwork.IsMasterClient)
             view.RPC("InitSquares", RpcTarget.AllBufferedViaServer);
 
@@ -101,7 +104,6 @@ public class Player : MonoBehaviourPunCallbacks
     public void CutView()
     {
         float cutSum = this.statusChange();
-        //Debug.Log(cutSum);
         if (cutSum == 50) { 
             int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
             Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
@@ -114,7 +116,7 @@ public class Player : MonoBehaviourPunCallbacks
                 //p.setSpriteStatus(1);
             }
             view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
-            this.cutBt.SetActive(false);
+            Manager.inst.setViewAfterCut();
         }
         else
         {
@@ -134,19 +136,16 @@ public class Player : MonoBehaviourPunCallbacks
 
         if (i == 1)
         {
-            Debug.LogError("1");
             this.player1 = tempPlayer;
         }
         else if (i == 2)
         {
-            Debug.LogError("2");
             this.player2 = tempPlayer;
         }
         this.playerCut[i - 1] = true;
-        Debug.LogError("1: " + this.playerCut[0] + ", 2: " + this.playerCut[1]);
         if (isAllTrue())
         {
-            Manager.inst.setViewAfterCut();
+            Manager.inst.setViewToChoose();
             //setAllState(player1, player2);
         }
        
@@ -161,7 +160,7 @@ public class Player : MonoBehaviourPunCallbacks
         float[] sumRGYB = createSumRGYB(playerNum); 
         for (int k = 0; k < sumRGYB.Length; k++)
         {
-            Debug.LogError(sumRGYB[k] + "   " + this.sumPlayer[playerNum - 1]);
+            //Debug.LogError(sumRGYB[k] + "   " + this.sumPlayer[playerNum - 1]);
             sumRGYB[k] = (sumRGYB[k] / this.sumPlayer[playerNum - 1]) * 100;
 
         }
@@ -383,5 +382,59 @@ public class Player : MonoBehaviourPunCallbacks
             tempPlayer.Add(key, status);
         }
         return tempPlayer;
+    }
+
+
+    // Send this message
+    public void sendMessage2()
+    {
+        if (this.chatInput.text.Length >= 1)
+        {
+            /*            if (this.chatHistory.Count() >= 11)
+                        {
+                            this.chatHistory.RemoveAt(0);
+                        }*/
+            //ChatMessage temoMessage = new ChatMessage(PhotonNetwork.NickName, this.chatInput.text);
+            //this.chatHistory.Add(newMessage);
+            addMessageToList(PhotonNetwork.NickName, this.chatInput.text);
+            view.RPC("sendMessageToAll", RpcTarget.Others, PhotonNetwork.NickName, this.chatInput.text);
+            this.chatInput.text = "";
+            getAllMessages();
+
+        }
+
+    }
+
+    // Adds a new chat message to the chat history list.
+    // If the chat history has more than 11 messages, it removes the oldest message.
+    private void addMessageToList(string name, string newMessage)
+    {
+        
+        if (this.chatHistory.Count() >= 11)
+        {
+            this.chatHistory.RemoveAt(0);
+        }
+        ChatMessage tempMessage = new ChatMessage(name, newMessage);
+        this.chatHistory.Add(tempMessage);
+    }
+
+    // Updates the chat UI by displaying all chat messages in the chat history list.
+    // Clears the existing text in the chat UI before updating.
+    private void getAllMessages()
+    {
+        this.chatText.text = ""; // Clear the text before updating
+
+        foreach (ChatMessage m in chatHistory)
+        {
+            this.chatText.text += m.ToString() + "\n"; // Add each message followed by a newline
+        }
+    }
+
+    // Sends the message to the other players
+    [PunRPC]
+    private void sendMessageToAll(string name, string newMessage)
+    {
+        addMessageToList(name, newMessage);
+        getAllMessages();
     }
 }

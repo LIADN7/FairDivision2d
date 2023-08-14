@@ -14,6 +14,7 @@ public class Manager : MonoBehaviour
     [SerializeField] protected GameObject viewAfterCut;
     [SerializeField] protected GameObject viewEndGame;
     [SerializeField] protected GameObject SeeOtherPlayerBT;
+    [SerializeField] public GameObject cutBt;
     [SerializeField] protected Text textEndGame;
     [SerializeField] protected Text textNote;
 
@@ -35,12 +36,10 @@ public class Manager : MonoBehaviour
 
     private void Awake()
     {
-        //if (PhotonNetwork.IsMasterClient)
-        {
-            inst = this;
-            //Debug.LogError(PhotonNetwork.NickName);
 
-        }
+            inst = this;
+
+        
     }
     void Start()
     {
@@ -81,12 +80,22 @@ public class Manager : MonoBehaviour
 
     public int getStatus() { return status; }
 
+
     public void setViewAfterCut()
+    {
+
+        this.SeeOtherPlayerBT.SetActive(false);
+        this.cutBt.SetActive(false);
+
+    }
+
+    public void setViewToChoose()
     {
         viewAfterCut.SetActive(true);
         this.status = 0;
         backgraundStatus.color = Color.white;
         this.isCut = true;
+        //this.SeeOtherPlayerBT.SetActive(false);
         //setAllState(player1, player2);
     }
 
@@ -101,6 +110,8 @@ public class Manager : MonoBehaviour
     {
         this.textEndGame.text = "You get: "+sum+"%";
         this.viewEndGame.SetActive(true);
+        this.cutBt.SetActive(false);
+        
     }
 
     public void setNote(float sec, string massage, bool isError)
@@ -125,15 +136,16 @@ public class Manager : MonoBehaviour
         if (this.isShowView)
         {
             tempSprit.color = Color.white;
+            this.cutBt.SetActive(true);
         }
         else
         {
+            this.cutBt.SetActive(false);
             tempSprit.color = Color.red;
         }
         this.isShowView = !this.isShowView;
 
     }
-
 
     public bool getIsShowView()
     {
