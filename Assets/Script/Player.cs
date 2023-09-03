@@ -83,15 +83,16 @@ public class Player : MonoBehaviourPunCallbacks
         }
 
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
         foreach (var it in squares)
         {
             PointOfState p = it.Value.GetComponent<PointOfState>();
             p.setmyPowerColor(playerNum, this.sumPlayer[playerNum - 1]);
-            p.setSpriteStatus(1);
+            p.setOtherPowerColor(otherPlayerNum, this.sumPlayer[otherPlayerNum - 1]);
+            p.setSpriteStatus(1, 1);
         }
-
-        greenValueText.text = "Value: " + (0) + "%";
-        redValueText.text = "Value: " + (100) + "%";
+        greenValueText.text = "All red value: " + (0) + "%";
+        redValueText.text = "All green value: " + (100) + "%";
     }
 
     // Update is called once per frame
@@ -104,7 +105,7 @@ public class Player : MonoBehaviourPunCallbacks
     public void CutView()
     {
         float cutSum = this.statusChange();
-        if (cutSum == 50) { 
+        //if (cutSum == 50) { 
             int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
             Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
             foreach (var it in this.squares)
@@ -116,13 +117,14 @@ public class Player : MonoBehaviourPunCallbacks
                 //p.setSpriteStatus(1);
             }
             view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
-            Manager.inst.setViewAfterCut();
-        }
-        else
-        {
-            Manager.inst.setNote(7f,"Youneed to set 50% for for both values!!!", true);
-        }
-            if (isAllTrue())
+        Manager.inst.setViewAfterCut();
+        Manager.inst.setNote(-1, "Please wait for the other player to cut", false);
+        // }
+        /*        else
+                {
+                    Manager.inst.setNote(7f,"Youneed to set 50% for for both values!!!", true);
+                }*/
+        if (isAllTrue())
             {
                 view.RPC("setAllState", RpcTarget.All);
                 //setAllState();
@@ -143,6 +145,7 @@ public class Player : MonoBehaviourPunCallbacks
             this.player2 = tempPlayer;
         }
         this.playerCut[i - 1] = true;
+        
         if (isAllTrue())
         {
             Manager.inst.setViewToChoose();
@@ -166,11 +169,19 @@ public class Player : MonoBehaviourPunCallbacks
         }
 
         Manager.inst.setSumRGYB(sumRGYB);
-        redValueText.text = "Value: " + (sumRGYB[0]) + "%";
-        greenValueText.text = "Value: " + (sumRGYB[1]) + "%";
-        yellowValueText.text = "Value: " + (sumRGYB[2]) + "%";
-        blueValueText.text = "Value: " + (sumRGYB[3]) + "%";
-
+        redValueText.text = "All red value: " + (sumRGYB[0]) + "%";
+        greenValueText.text = "All green value: " + (sumRGYB[1]) + "%";
+        yellowValueText.text = "All yellow value: " + (sumRGYB[2]) + "%";
+        blueValueText.text = "All blue value: " + (sumRGYB[3]) + "%";
+        Manager.inst.initialSeeOtherPlayerBT();
+        if (playerNum == 1)
+        {
+            Manager.inst.setNote(-1, "Red = 2 players choose red\nGreen = 2 players choose green\nYellow = p1 red, p2 green\nBlue = p1 green, p2 red\nPlease choose one color", false);
+        }
+        else if (playerNum == 2)
+        {
+            Manager.inst.setNote(-1, "Red = 2 players choose red\nGreen = 2 players choose green\nYellow = p1 red, p2 green\nBlue = p1 green, p2 red\nPlease wait player 1 choose one color,\nafter that you choose 2 colors", false);
+        }
     }
 
 
@@ -263,7 +274,7 @@ public class Player : MonoBehaviourPunCallbacks
             }
 
             sumRGYB[spriteStatus - 1] += val;
-            p.setSpriteStatus(spriteStatus);
+            p.setSpriteStatus(spriteStatus,1);
 
         }
         return sumRGYB;
@@ -304,75 +315,62 @@ public class Player : MonoBehaviourPunCallbacks
         }
     }
 
-
+    // This method is used to retrieve the other player's Heatmap.
     public void getOtherView()
     {
-            int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
-        if (Manager.inst.getIsShowView()) 
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        int otherPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        if (Manager.inst.getIsShowView())
         {
-            SetMap(playerNum==1?this.savePlayer1: this.savePlayer2);
+            SetMap(playerNum == 1 ? this.savePlayer1 : this.savePlayer2, playerNum);
+        }
+        else if (isAllTrue())
+        {
+            Dictionary<int, int> tempPlayer = getTempPlayer();
+            if (playerNum == 1) savePlayer1 = tempPlayer;
+            else savePlayer2 = tempPlayer;
+            setOtherCutMap(); // Set other player map after cut
         }
         else
         {
 
             Dictionary<int, int> tempPlayer = getTempPlayer();
-            if(playerNum==1) savePlayer1=tempPlayer;
+            if (playerNum == 1) savePlayer1 = tempPlayer;
             else savePlayer2 = tempPlayer;
-
-            view.RPC("GetOtherPlayer", RpcTarget.Others);
+            setOtherHeatmap(); // Set other player heatmap in green color
         }
         Manager.inst.changeSeeOtherPlayerBT();
 
-    }
-
-
-    // Player 2 return his map
-    [PunRPC]
-    private void GetOtherPlayer()
-    {
-        if (Manager.inst.getIsShowView())
-        {
-            view.RPC("SetOtherPlayer", RpcTarget.Others, PhotonNetwork.IsMasterClient ? this.savePlayer1 : this.savePlayer2);
-        }
-        else
-        {
-
-            Dictionary<int, int> tempPlayer =getTempPlayer();
-            view.RPC("SetOtherPlayer", RpcTarget.Others, tempPlayer);
-        }
-    }
-
-    // Set map to Player 1
-    [PunRPC]
-    private void SetOtherPlayer(Dictionary<int, int> tempPlayer)
-    {
-        SetMap(tempPlayer);
 
     }
 
-    private void SetMap(Dictionary<int, int> tempPlayer)
+
+
+    // Update the map based on the received data.
+    private void SetMap(Dictionary<int, int> tempPlayer, int playerNum)
     {
         if(tempPlayer==null) return;
 
-        float[] sumRGYB = { 0, 0 }; //GREEN, RED, YELLOW, BLUE
-        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        //float[] sumRGYB = { 0, 0 }; //GREEN, RED, YELLOW, BLUE
+        //int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         foreach (var it in this.squares)
         {
             PointOfState p = it.Value.GetComponent<PointOfState>();
             float val = p.getMyVal(playerNum);
             int tempKey = p.getMyKey();
-            int spriteStatus = tempPlayer[tempKey] == 1 ? 1 : 2; // Green or RED
+            int spriteStatus = tempPlayer[tempKey] ; // Red, Green, Yellow or Blue
 
-            sumRGYB[spriteStatus - 1] += val;
-            p.setSpriteStatus(spriteStatus);
+            //sumRGYB[spriteStatus - 1] += val;
+            p.setSpriteStatus(spriteStatus, 1);
 
         }
 
     }
 
+    // Get temporary player data for sending.
     private Dictionary<int, int> getTempPlayer()
     {
-        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        //int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
         foreach (var it in this.squares)
         {
@@ -385,17 +383,31 @@ public class Player : MonoBehaviourPunCallbacks
     }
 
 
+    // Set the heatmap of the other player
+    private void setOtherHeatmap()
+    {
+        foreach (var it in this.squares)
+        {
+            PointOfState p = it.Value.GetComponent<PointOfState>();
+            p.setSpriteStatus(2, 2); //set green and pther val power
+        }
+    }
+
+
+    private void setOtherCutMap()
+    {
+        foreach (var it in this.squares)
+        {
+            PointOfState p = it.Value.GetComponent<PointOfState>();
+            p.setSpriteStatus(p.getSpriteStatus(), 2); //set green and pther val power
+        }
+    }
+
     // Send this message
     public void sendMessage2()
     {
         if (this.chatInput.text.Length >= 1)
         {
-            /*            if (this.chatHistory.Count() >= 11)
-                        {
-                            this.chatHistory.RemoveAt(0);
-                        }*/
-            //ChatMessage temoMessage = new ChatMessage(PhotonNetwork.NickName, this.chatInput.text);
-            //this.chatHistory.Add(newMessage);
             addMessageToList(PhotonNetwork.NickName, this.chatInput.text);
             view.RPC("sendMessageToAll", RpcTarget.Others, PhotonNetwork.NickName, this.chatInput.text);
             this.chatInput.text = "";
@@ -434,6 +446,7 @@ public class Player : MonoBehaviourPunCallbacks
     [PunRPC]
     private void sendMessageToAll(string name, string newMessage)
     {
+        Manager.inst.setNewMessage();
         addMessageToList(name, newMessage);
         getAllMessages();
     }

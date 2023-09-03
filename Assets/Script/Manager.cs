@@ -1,7 +1,7 @@
 using Photon.Pun;
 using System;
 using System.Collections;
-using System.Collections.Generic;
+
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -17,7 +17,7 @@ public class Manager : MonoBehaviour
     [SerializeField] public GameObject cutBt;
     [SerializeField] protected Text textEndGame;
     [SerializeField] protected Text textNote;
-
+    [SerializeField] protected Text textChatAlert;
     [SerializeField] protected SpriteRenderer backgraundStatus;
     [SerializeField] protected KeyCode normalKey;
     [SerializeField] protected KeyCode redKey;
@@ -47,32 +47,27 @@ public class Manager : MonoBehaviour
         this.viewAfterCut.SetActive(false);
         this.viewEndGame.SetActive(false);
         this.SeeOtherPlayerBT.SetActive(true);
+        this.textChatAlert.enabled = false;
 
     }
 
     // Update is called once per frame
     void Update()
     {
-        if(!isCut && !isShowView) { 
+
             if (Input.GetKeyDown(this.normalKey))
             {
-                this.status = 0;
-                backgraundStatus.color = Color.white;
-
+                setStatusClick(0);
             }
             if (Input.GetKeyDown(this.redKey))
             {
-                this.status = 1;
-                backgraundStatus.color = Color.red;
-
+                setStatusClick(1);
             }
             if (Input.GetKeyDown(this.greenKey))
             {
-                this.status = 2;
-                backgraundStatus.color = Color.green;
-
+                setStatusClick(2);
             }
-        }
+        
 
     }
 
@@ -86,16 +81,19 @@ public class Manager : MonoBehaviour
 
         this.SeeOtherPlayerBT.SetActive(false);
         this.cutBt.SetActive(false);
+        this.status = 0;
+        backgraundStatus.color = Color.white;
+        this.isCut = true;
 
     }
 
     public void setViewToChoose()
     {
         viewAfterCut.SetActive(true);
-        this.status = 0;
-        backgraundStatus.color = Color.white;
-        this.isCut = true;
-        //this.SeeOtherPlayerBT.SetActive(false);
+        //this.status = 0;
+        //backgraundStatus.color = Color.white;
+        //this.isCut = true;
+        //this.SeeOtherPlayerBT.SetActive(true);
         //setAllState(player1, player2);
     }
 
@@ -108,7 +106,7 @@ public class Manager : MonoBehaviour
 
     public void setEndGameLayer(float sum)
     {
-        this.textEndGame.text = "You get: "+sum+"%";
+        this.textEndGame.text = "You get total: "+sum+"%";
         this.viewEndGame.SetActive(true);
         this.cutBt.SetActive(false);
         
@@ -123,11 +121,37 @@ public class Manager : MonoBehaviour
 
     private IEnumerator withSec(float sec, string massage, bool isError)
     {
-        this.textNote.color = isError ? Color.red: Color.black;
-        this.textNote.text = massage;
-        yield return new WaitForSeconds(sec);
-        this.textNote.text = "";
+            this.textNote.color = isError ? Color.red : Color.black;
+            this.textNote.text = massage;
+        if (sec < 0)
+        {
+            yield return new WaitForSeconds(1);
+        }
+        else
+        {
+            yield return new WaitForSeconds(sec);
+            this.textNote.text = "";
+
+        }
     }
+
+
+    public void setNewMessage()
+    {
+        StartCoroutine(messageAlert(5f));
+
+    }
+
+
+    private IEnumerator messageAlert(float sec)
+    {
+        this.textChatAlert.enabled = true;
+
+        yield return new WaitForSeconds(sec);
+        this.textChatAlert.enabled = false;
+
+    }
+
     public void changeSeeOtherPlayerBT()
     {
         this.status = 0;
@@ -136,16 +160,53 @@ public class Manager : MonoBehaviour
         if (this.isShowView)
         {
             tempSprit.color = Color.white;
-            this.cutBt.SetActive(true);
+            this.cutBt.SetActive(true&&!this.isCut); // not after cut!
         }
         else
         {
-            this.cutBt.SetActive(false);
             tempSprit.color = Color.red;
+            this.cutBt.SetActive(false && !this.isCut); // not after cut!
         }
         this.isShowView = !this.isShowView;
 
     }
+
+
+    public void initialSeeOtherPlayerBT()
+    {
+        this.SeeOtherPlayerBT.SetActive(true);
+        backgraundStatus.color = Color.white;
+        this.isShowView = false;
+        Image tempSprit = this.SeeOtherPlayerBT.GetComponent<Image>();
+        tempSprit.color = Color.white;
+    }
+
+
+    public void setStatusClick(int color)
+    {
+        if (!isCut && !isShowView)
+        {
+            if (color == 0)
+            {
+                this.status = 0;
+                backgraundStatus.color = Color.white;
+
+            }
+            if (color == 1)
+            {
+                this.status = 1;
+                backgraundStatus.color = Color.red;
+
+            }
+            if (color == 2)
+            {
+                this.status = 2;
+                backgraundStatus.color = Color.green;
+
+            }
+        }
+    }
+
 
     public bool getIsShowView()
     {

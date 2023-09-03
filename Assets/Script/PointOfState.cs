@@ -9,6 +9,7 @@ public class PointOfState : MonoBehaviour
     [SerializeField] protected float myVal1 = 2;
     [SerializeField] protected float myVal2 = 4;
     private float myPowerColor = 1;
+    private float otherPowerColor = 1;
     private SpriteRenderer squareSprite;
     private int spriteStatus;
     private int myKey ;
@@ -80,12 +81,15 @@ public class PointOfState : MonoBehaviour
         return this.spriteStatus;
     }
 
-    public void setSpriteStatus(int i)
+
+    // i is the color number, iPower =1 is my power and 2 for power of the other player
+    public void setSpriteStatus(int i, int iPower)
     {
+        float colorPower = iPower == 1 ? myPowerColor : otherPowerColor;
         if (i == 1)
         {
             // Red
-            this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 0.59f);
+            this.squareSprite.color = new Color(colorPower * 0.555f, 0.012f, 0.012f, 0.59f);
             
             spriteStatus = 1;
             
@@ -93,21 +97,21 @@ public class PointOfState : MonoBehaviour
         if (i == 2)
         {
             // Green
-            this.squareSprite.color = new Color(0.014f, myPowerColor * 0.525f, 0.053f, 0.59f);
+            this.squareSprite.color = new Color(0.014f, colorPower * 0.525f, 0.053f, 0.59f);
             spriteStatus = 2;
 
         }
         if (i == 3)
         {
             // Yellow
-            this.squareSprite.color = new Color(myPowerColor * 0.9f, myPowerColor * 0.9f, 0f,  0.79f);
+            this.squareSprite.color = new Color(colorPower * 0.9f, colorPower * 0.9f, 0f,  0.79f);
             spriteStatus = 3;
 
         }
         if (i == 4)
         {
             // Blue
-            this.squareSprite.color = new Color(0f, 0f, myPowerColor * 0.4f,  0.59f);
+            this.squareSprite.color = new Color(0f, 0f, colorPower * 0.4f,  0.59f);
             spriteStatus = 4;
 
         }
@@ -130,4 +134,10 @@ public class PointOfState : MonoBehaviour
     {
         this.myPowerColor= (getMyVal(i)/sum)*500;
     }
+
+    public void setOtherPowerColor(int i, float sum)
+    {
+        this.otherPowerColor = (getMyVal(i) / sum) * 500;
+    }
+
 }
