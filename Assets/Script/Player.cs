@@ -32,11 +32,11 @@ public class Player : MonoBehaviourPunCallbacks
     private Dictionary<int, int> player1 = new Dictionary<int, int>();
     private Dictionary<int, int> player2 = new Dictionary<int, int>();
     private List<ChatMessage> chatHistory = new List<ChatMessage>();
+    private HashValues HelpHashValue;
     // Saves the player's state
     private Dictionary<int, int> savePlayer1 = new Dictionary<int, int>();
     private Dictionary<int, int> savePlayer2 = new Dictionary<int, int>();
     private int chooseNum = 0;
-
 
 
 
@@ -91,8 +91,17 @@ public class Player : MonoBehaviourPunCallbacks
             p.setOtherPowerColor(otherPlayerNum, this.sumPlayer[otherPlayerNum - 1]);
             p.setSpriteStatus(1, 1);
         }
-        greenValueText.text = "All red value: " + (0) + "%";
-        redValueText.text = "All green value: " + (100) + "%";
+        greenValueText.text = "All green value: " + (0) + "%";
+        redValueText.text = "All red value: " + (100) + "%";
+
+        // Check for values counter
+        //------------------------
+        this.HelpHashValue = new HashValues();
+        this.HelpHashValue.buildHelp(this.squares);
+        //h.printHelp(1);
+        //h.printHelp(2);
+
+        //--------------------
     }
 
     // Update is called once per frame
@@ -450,4 +459,37 @@ public class Player : MonoBehaviourPunCallbacks
         addMessageToList(name, newMessage);
         getAllMessages();
     }
+
+
+    public void getHelpToCut()
+    {
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        Dictionary<float, int> helpCutPlayer = new Dictionary<float, int>(this.HelpHashValue.getPlayerHelp(playerNum));
+        foreach (var it in this.squares)
+        {
+            PointOfState p = it.Value.GetComponent<PointOfState>();
+            int tempKey = p.getMyKey();
+            float val = p.getMyVal(playerNum);
+            if (helpCutPlayer.ContainsKey(val)&& helpCutPlayer[val]>0)
+            {
+                helpCutPlayer[val]--;
+                p.setSpriteStatus(2, playerNum);
+            }
+            else
+            {
+                p.setSpriteStatus(1, playerNum);
+            }
+            //int spriteStatus = tempPlayer[tempKey]; // Red, Green, Yellow or Blue
+
+            //sumRGYB[spriteStatus - 1] += val;
+            
+
+        }
+        statusChange();
+    }
+
+
 }
+
+
+

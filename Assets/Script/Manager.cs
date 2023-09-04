@@ -15,6 +15,7 @@ public class Manager : MonoBehaviour
     [SerializeField] protected GameObject viewEndGame;
     [SerializeField] protected GameObject SeeOtherPlayerBT;
     [SerializeField] public GameObject cutBt;
+    [SerializeField] public GameObject cutHelperBt;
     [SerializeField] protected Text textEndGame;
     [SerializeField] protected Text textNote;
     [SerializeField] protected Text textChatAlert;
@@ -81,6 +82,7 @@ public class Manager : MonoBehaviour
 
         this.SeeOtherPlayerBT.SetActive(false);
         this.cutBt.SetActive(false);
+        this.cutHelperBt.SetActive(false);
         this.status = 0;
         backgraundStatus.color = Color.white;
         this.isCut = true;
@@ -90,11 +92,7 @@ public class Manager : MonoBehaviour
     public void setViewToChoose()
     {
         viewAfterCut.SetActive(true);
-        //this.status = 0;
-        //backgraundStatus.color = Color.white;
-        //this.isCut = true;
-        //this.SeeOtherPlayerBT.SetActive(true);
-        //setAllState(player1, player2);
+
     }
 
     public void setSumRGYB(float[] sums) { this.sumRGYB = sums; }
