@@ -11,9 +11,48 @@ public class PointOfState : MonoBehaviour
     private float myPowerColor = 1;
     private float otherPowerColor = 1;
     private SpriteRenderer squareSprite;
+    private GameObject childObject;
     private int spriteStatus;
     private int myKey ;
     private static int key=0;
+
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        // spriteStatus = 0;
+        this.squareSprite = this.GetComponent<SpriteRenderer>();
+
+        //this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 1f);
+        setChaildSprite();
+
+
+
+        this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 1f);
+        spriteStatus = 1;
+        this.myKey = key++;
+    }
+
+    private void setChaildSprite()
+    {
+        this.childObject = new GameObject("ChildSquare");
+        Transform parentTransform = this.gameObject.transform;
+        childObject.transform.parent = parentTransform;
+        // Add a SpriteRenderer component to the child GameObject
+        SpriteRenderer spriteRenderer = childObject.AddComponent<SpriteRenderer>();
+
+        // Load a gray square sprite (replace "GraySquareSprite" with your gray square sprite's name)
+        Sprite graySquareSprite = Resources.Load<Sprite>("GraySquareSprite");
+        spriteRenderer.sprite = graySquareSprite;
+        spriteRenderer.color = new Color(0.5f, 0.5f, 0.5f, 0.85f);
+        // Set the scale to 0.8 x 0.8
+        childObject.transform.localScale = new Vector3(0.7f, 0.7f, 1f);
+
+        // You can also set the position and other properties of the child GameObject if needed
+        childObject.transform.localPosition = new Vector3(0, 0, -47);
+    }
+
 
     void OnMouseEnter()
     {
@@ -21,18 +60,20 @@ public class PointOfState : MonoBehaviour
         if (Manager.inst.getStatus() == 1)
         {
             // Red
-            this.squareSprite.color = new Color(myPowerColor*0.555f, 0.012f, 0.012f, 0.59f);
+            //this.squareSprite.color = new Color(myPowerColor*0.555f, 0.012f, 0.012f, 1f);
+            this.squareSprite.color = Color.red;
             spriteStatus = 1;
             Player.inst.statusChange();
         }
         if (Manager.inst.getStatus()==2)
         {
             // Green
-            this.squareSprite.color = new Color(0.014f, myPowerColor * 0.525f, 0.053f, 0.59f);
+            //this.squareSprite.color = new Color(0.014f, myPowerColor * 0.525f, 0.053f, 1f);
+            this.squareSprite.color = Color.green;
             spriteStatus = 2;
             Player.inst.statusChange();
         }
-
+        //this.childObject.GetComponent<SpriteRenderer>().color = new Color(myPowerColor * 0.5f, 0.5f, 0.5f, 0.85f);
 
     }
 
@@ -41,14 +82,16 @@ public class PointOfState : MonoBehaviour
         if (Manager.inst.getStatus() == 1)
         {
             // Red
-            this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 0.59f);
+            //this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 1f);
+            this.squareSprite.color = Color.red;
             spriteStatus = 1;
             Player.inst.statusChange();
         }
         if (Manager.inst.getStatus() == 2)
         {
             // Green
-            this.squareSprite.color = new Color(0.014f, myPowerColor * 0.525f, 0.053f, 0.59f);
+            //this.squareSprite.color = new Color(0.014f, myPowerColor * 0.525f, 0.053f, 1f);
+            this.squareSprite.color = Color.green;
             spriteStatus = 2;
             Player.inst.statusChange();
             
@@ -58,17 +101,6 @@ public class PointOfState : MonoBehaviour
     }
 
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        // spriteStatus = 0;
-        this.squareSprite = this.GetComponent<SpriteRenderer>();
-        this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 0.59f);
-
-
-        spriteStatus = 1;
-        this.myKey = key++;
-    }
 
 
     public float getMyVal(int i)
@@ -89,33 +121,37 @@ public class PointOfState : MonoBehaviour
         if (i == 1)
         {
             // Red
-            this.squareSprite.color = new Color(colorPower * 0.555f, 0.012f, 0.012f, 0.59f);
-            
+            //this.squareSprite.color = new Color(colorPower * 0.555f, 0.012f, 0.012f, 1f);
+            this.squareSprite.color = Color.red;
             spriteStatus = 1;
             
         }
         if (i == 2)
         {
             // Green
-            this.squareSprite.color = new Color(0.014f, colorPower * 0.525f, 0.053f, 0.59f);
+            //this.squareSprite.color = new Color(0.014f, colorPower * 0.525f, 0.053f, 1f);
+            this.squareSprite.color = Color.green;
             spriteStatus = 2;
 
         }
         if (i == 3)
         {
             // Yellow
-            this.squareSprite.color = new Color(colorPower * 0.9f, colorPower * 0.9f, 0f,  0.79f);
+            //this.squareSprite.color = new Color(colorPower * 0.9f, colorPower * 0.9f, 0f,  0.79f);
+            this.squareSprite.color = Color.yellow;
             spriteStatus = 3;
 
         }
         if (i == 4)
         {
             // Blue
-            this.squareSprite.color = new Color(0f, 0f, colorPower * 0.4f,  0.59f);
+            //this.squareSprite.color = new Color(0f, 0f, colorPower * 0.4f,  1f);
+            this.squareSprite.color = Color.blue;
             spriteStatus = 4;
 
         }
-        //Player.inst.statusChange();
+        this.childObject.GetComponent<SpriteRenderer>().color = new Color(colorPower * 0.5f, 0.5f, 0.5f, 0.8f);
+
 
     }
 
@@ -125,10 +161,11 @@ public class PointOfState : MonoBehaviour
     }
 
 
-    public SpriteRenderer getSquareSprite()
+/*    public SpriteRenderer getSquareSprite()
     {
-        return this.squareSprite;
-    }
+        //return this.squareSprite;
+        return this.childObject.GetComponent<SpriteRenderer>();
+    }*/
 
     public void setmyPowerColor(int i, float sum)
     {

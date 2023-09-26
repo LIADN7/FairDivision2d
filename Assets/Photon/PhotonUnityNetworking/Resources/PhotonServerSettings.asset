@@ -49,6 +49,8 @@ MonoBehaviour:
   - sendMassageToAll
   - sendMessageToAll
   - GetOtherPlayerHeatmap
+  - CreatedRoomRPC
+  - CreateGame1WithOthers
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 0

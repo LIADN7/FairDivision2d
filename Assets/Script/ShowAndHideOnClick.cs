@@ -6,7 +6,7 @@ public class ShowAndHideOnClick : MonoBehaviour
 {
     [SerializeField] protected GameObject[] layersToShow;
     [SerializeField] protected GameObject[] layersToHide;
-    private bool isShown;
+    [SerializeField] protected bool isShown=false;
 
 
     void Start()
@@ -16,7 +16,10 @@ public class ShowAndHideOnClick : MonoBehaviour
         {
             layersToShow[i].SetActive(isShown);
         }
-
+        for (int i = 0; i < layersToHide.Length; i++)
+        {
+            layersToHide[i].SetActive(!isShown);
+        }
 
 
     }

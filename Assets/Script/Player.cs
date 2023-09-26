@@ -6,6 +6,7 @@ using Photon.Realtime;
 using Photon.Pun;
 using System;
 using System.Linq;
+using UnityEngine.SceneManagement;
 //using static UnityEditor.Experimental.GraphView.GraphView;
 
 
@@ -37,7 +38,7 @@ public class Player : MonoBehaviourPunCallbacks
     private Dictionary<int, int> savePlayer1 = new Dictionary<int, int>();
     private Dictionary<int, int> savePlayer2 = new Dictionary<int, int>();
     private int chooseNum = 0;
-
+    private string[] endExplanationPlayers = {"You get:\n", "You get:\n" };
 
 
     void Start()
@@ -59,7 +60,7 @@ public class Player : MonoBehaviourPunCallbacks
     {
 
             GameObject[] tempSquares = GameObject.FindGameObjectsWithTag("SquarePoint");
-            StartCoroutine(withSec(0.5f, tempSquares));
+            StartCoroutine(withSec(0.2f, tempSquares));
             
     }
 
@@ -178,18 +179,18 @@ public class Player : MonoBehaviourPunCallbacks
         }
 
         Manager.inst.setSumRGYB(sumRGYB);
-        redValueText.text = "All red value: " + (sumRGYB[0]) + "%";
-        greenValueText.text = "All green value: " + (sumRGYB[1]) + "%";
-        yellowValueText.text = "All yellow value: " + (sumRGYB[2]) + "%";
-        blueValueText.text = "All blue value: " + (sumRGYB[3]) + "%";
+        redValueText.text = "All part 1 value: " + (sumRGYB[0]) + "%";
+        greenValueText.text = "All part 2 value: " + (sumRGYB[1]) + "%";
+        yellowValueText.text = "All part 3 value: " + (sumRGYB[2]) + "%";
+        blueValueText.text = "All part 4 value: " + (sumRGYB[3]) + "%";
         Manager.inst.initialSeeOtherPlayerBT();
         if (playerNum == 1)
         {
-            Manager.inst.setNote(-1, "Red = 2 players choose red\nGreen = 2 players choose green\nYellow = p1 red, p2 green\nBlue = p1 green, p2 red\nPlease choose one color", false);
+            Manager.inst.setNote(-1, "The meaning of the colors:\nRed = 2 players choose red\nGreen = 2 players choose green\nYellow = p1 red, p2 green\nBlue = p1 green, p2 red\n\nPlease choose one color", false);
         }
         else if (playerNum == 2)
         {
-            Manager.inst.setNote(-1, "Red = 2 players choose red\nGreen = 2 players choose green\nYellow = p1 red, p2 green\nBlue = p1 green, p2 red\nPlease wait player 1 choose one color,\nafter that you choose 2 colors", false);
+            Manager.inst.setNote(-1, "The meaning of the colors:\nRed = 2 players choose red\nGreen = 2 players choose green\nYellow = p1 red, p2 green\nBlue = p1 green, p2 red\n\nPlease wait player 1 choose one color,\nafter that you choose 2 colors", false);
         }
     }
 
@@ -201,19 +202,23 @@ public class Player : MonoBehaviourPunCallbacks
         if (isAllTrue()&&(i >= 0 && i < 4))
         {
             int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+            float tempSum = Manager.inst.getSumRGYB(i);
             if (playerNum == 1 && chooseNum < 1)
             {
-                choosePlayer[playerNum - 1] = +Manager.inst.getSumRGYB(i);
+                endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
+                choosePlayer[playerNum - 1] = tempSum;
                 view.RPC("Choose", RpcTarget.All, i);
             }
             else if (playerNum == 2 && chooseNum ==1)
             {
-                choosePlayer[playerNum - 1] += Manager.inst.getSumRGYB(i);
+                endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
+                choosePlayer[playerNum - 1] += tempSum;
                 view.RPC("Choose", RpcTarget.All, i);
             }
             else if (playerNum == 2 && chooseNum == 2)
             {
-                choosePlayer[playerNum - 1] += Manager.inst.getSumRGYB(i);
+                endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
+                choosePlayer[playerNum - 1] += tempSum;
                 view.RPC("Choose", RpcTarget.All, i);
                 view.RPC("GetValues", RpcTarget.All);
             }
@@ -228,6 +233,11 @@ public class Player : MonoBehaviourPunCallbacks
         chooseNum++;
 
     }
+    private string getExplanationPlayer(int color, float value)
+    {
+        string[] strColors = {"Red","Green","Yellow","Blue" };
+        return "" + strColors[color]+" with value: "+ value+"\n";
+    }
 
     [PunRPC]
     private void GetValues()
@@ -236,13 +246,17 @@ public class Player : MonoBehaviourPunCallbacks
         int last = GetLast();
         if (PhotonNetwork.IsMasterClient)
         {
-            choosePlayer[playerNum - 1] += Manager.inst.getSumRGYB(last);
+            float tempSum = Manager.inst.getSumRGYB(last);
+            endExplanationPlayers[playerNum - 1] += getExplanationPlayer(last, tempSum);
+            choosePlayer[playerNum - 1] += tempSum;
             chooseNum++;
         }
         colorsValueObj[last].SetActive(false);
+        Manager.inst.setNote(-1, endExplanationPlayers[playerNum - 1], false);
         Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
     }
 
+    // Get the last number of the remaining color
     private int GetLast()
     {
         //chooseObj
@@ -318,8 +332,8 @@ public class Player : MonoBehaviourPunCallbacks
 
 
             float greenVal = (sumG / this.sumPlayer[playerNum - 1]);
-            greenValueText.text = "Value: " + (greenVal * 100) + "%";
-            redValueText.text = "Value: " + ((1 - greenVal) * 100) + "%";
+            greenValueText.text = "Part 1 value: " + (greenVal * 100) + "%";
+            redValueText.text = "Part 2 value: " + ((1 - greenVal) * 100) + "%";
             return (greenVal * 100);
         }
     }
@@ -346,7 +360,8 @@ public class Player : MonoBehaviourPunCallbacks
             Dictionary<int, int> tempPlayer = getTempPlayer();
             if (playerNum == 1) savePlayer1 = tempPlayer;
             else savePlayer2 = tempPlayer;
-            setOtherHeatmap(); // Set other player heatmap in green color
+            //setOtherHeatmap(); // Set other player heatmap in green color
+            setOtherCutMap();
         }
         Manager.inst.changeSeeOtherPlayerBT();
 
@@ -412,6 +427,21 @@ public class Player : MonoBehaviourPunCallbacks
         }
     }
 
+
+    // Send message from the Game Manger
+    public void sendMangerMessage(string message)
+    {
+        if (this.chatInput.text.Length >= 1)
+        {
+            addMessageToList("Manager", message);
+            view.RPC("sendMessageToAll", RpcTarget.Others, "Manager", message);
+            this.chatInput.text = "";
+            getAllMessages();
+
+        }
+
+    }
+
     // Send this message
     public void sendMessage2()
     {
@@ -455,7 +485,7 @@ public class Player : MonoBehaviourPunCallbacks
     [PunRPC]
     private void sendMessageToAll(string name, string newMessage)
     {
-        Manager.inst.setNewMessage();
+        //Manager.inst.setNewMessage();
         addMessageToList(name, newMessage);
         getAllMessages();
     }
@@ -488,7 +518,16 @@ public class Player : MonoBehaviourPunCallbacks
         statusChange();
     }
 
+    public void ExitGame(string sceneName)
+    {
+        Manager.inst.setNote(-1,"Other player left the game...", false); // need to send in RPC!
+        if (PhotonNetwork.InRoom)
+        {
+            PhotonNetwork.LeaveRoom(); // seems its need to wait?
+            SceneManager.LoadScene(sceneName);
 
+        }
+    }
 }
 
 

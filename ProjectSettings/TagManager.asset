@@ -8,6 +8,8 @@ TagManager:
   - White
   - SquarePoint
   - Manager
+  - Config
+  - Launcher
   layers:
   - Default
   - TransparentFX

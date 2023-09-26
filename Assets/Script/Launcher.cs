@@ -21,18 +21,23 @@ public class Launcher : MonoBehaviourPunCallbacks
 
 
     private string[] roomNames = { "CutScene", "Room2", "Room3" };
-    public Room[] rooms = {null, null, null };
+    //public Room[] rooms = {null, null, null };
     // Start is called before the first frame update
 
     private void Awake()
     {
-        if (LauncherInst == null)
-        {
+/*            GameObject[] objs = GameObject.FindGameObjectsWithTag("Launcher");
+            if (objs.Length > 1)
+            {
+                Destroy(this.gameObject); // Destroy duplicate GameManager instances
+            }
+            DontDestroyOnLoad(this.gameObject); // Don't destroy this instance when loading new scenes*/
+
             LauncherInst = this;
             if (!PhotonNetwork.IsConnected)
                 PhotonNetwork.AutomaticallySyncScene = true;
             PhotonNetwork.GameVersion = "0.0.1";
-        }
+        
 
 
     }
@@ -40,12 +45,16 @@ public class Launcher : MonoBehaviourPunCallbacks
     void Start()
     {
         //LauncherInst = this;
-        this.menu.SetActive(false);
+        if (!PhotonNetwork.IsConnected)
+        {
+
+            this.menu.SetActive(false);
         this.loadingScreen.SetActive(true);
         
         this.loadingText.text = "Connecting to network...";
         //PhotonNetwork.AutomaticallySyncScene = true;
         PhotonNetwork.ConnectUsingSettings();
+        }
     }
 
 
@@ -68,7 +77,7 @@ public class Launcher : MonoBehaviourPunCallbacks
     public override void OnCreatedRoom()
     {
         this.loadingScreen.SetActive(false);
-        rooms[0] = PhotonNetwork.CurrentRoom;
+        //rooms[0] = PhotonNetwork.CurrentRoom;
         PhotonNetwork.LoadLevel(roomNames[0]);
     }
 
@@ -79,36 +88,42 @@ public class Launcher : MonoBehaviourPunCallbacks
     }*/
 
 
-    public void CreateGame1()
+    public void CreateGame1(int scenarioNumber)
     {
         if (playerName.text != "")
         {
+            bool isSeeOtherEnable = scenarioNumber == 2 || scenarioNumber == 4;
+            bool isChetEnable = scenarioNumber == 3|| scenarioNumber == 4;
+            int timer = -1;
 
-                PhotonNetwork.NickName= playerName.text;
-            if (rooms[0] == null)
-            {
+             PhotonNetwork.NickName= playerName.text;
+            createConfig(isChetEnable, isSeeOtherEnable, timer);
+ //           if (rooms[0] == null)
+   //         {
                 RoomOptions opt = new RoomOptions();
                 opt.MaxPlayers= 2;
 
                 this.menu.SetActive(false);
                 this.loadingScreen.SetActive(true); 
                 this.loadingText.text = "Create room...";
+                Debug.Log(PhotonNetwork.JoinOrCreateRoom(roomNames[0], opt, PhotonNetwork.CurrentLobby));
                 
-                PhotonNetwork.JoinOrCreateRoom(roomNames[0], opt, PhotonNetwork.CurrentLobby);
-            }
+/*            }
             else
             {
                 
                 this.loadingText.text = "Joining room...";
                 this.loadingScreen.SetActive(true);
+                
                 PhotonNetwork.JoinRoom(roomNames[0]);
-            }
+            }*/
           /*       
            PhotonNetwork.CreateRoom(roomNames[0], opt);
                         this.menu.SetActive(false);
                         this.loadingText.text = "Create room...";*/
             print(PhotonNetwork.CurrentLobby);
             print(PhotonNetwork.CurrentRoom);
+
             //loadingScreen.SetActive(true);
             //PhotonNetwork.LoadLevel(roomNames[0]);
             //SceneManager.LoadScene(roomNames[0]);
@@ -116,6 +131,14 @@ public class Launcher : MonoBehaviourPunCallbacks
 
         
     }
+
+    private void createConfig(bool isChetEnable, bool isSeeOtherEnable, int timer)
+    {
+        Config.inst.setChetEnable(isChetEnable);
+        Config.inst.setSeeOtherEnable(isSeeOtherEnable);
+        Config.inst.setTimeForHelpPage(timer);
+    }
+
     // Update is called once per frame
     void Update()
     {

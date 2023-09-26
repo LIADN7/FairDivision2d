@@ -1,9 +1,6 @@
-using Photon.Pun;
-using System;
-using System.Collections;
 
+using System.Collections;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 
@@ -12,14 +9,18 @@ public class Manager : MonoBehaviour
 
     [SerializeField] protected int numOfStatus = 2;
     [SerializeField] protected GameObject viewAfterCut;
-    [SerializeField] protected GameObject viewEndGame;
+    [SerializeField] protected GameObject viewTotalValueEndGame;
     [SerializeField] protected GameObject SeeOtherPlayerBT;
     [SerializeField] public GameObject cutBt;
-    [SerializeField] public GameObject cutHelperBt;
-    [SerializeField] protected Text textEndGame;
+    [SerializeField] public GameObject chatView;
+    [SerializeField] protected GameObject HomeButton;
+    [SerializeField] protected Text textEndGameStatus;
     [SerializeField] protected Text textNote;
-    [SerializeField] protected Text textChatAlert;
-    [SerializeField] protected SpriteRenderer backgraundStatus;
+    //[SerializeField] protected Text textChatAlert;
+    //[SerializeField] protected SpriteRenderer backgraundStatus;
+    [SerializeField] protected Image buttonNormalKey;
+    [SerializeField] protected Image buttonRedKey;
+    [SerializeField] protected Image buttonGreenKey;
     [SerializeField] protected KeyCode normalKey;
     [SerializeField] protected KeyCode redKey;
     [SerializeField] protected KeyCode greenKey;
@@ -46,9 +47,17 @@ public class Manager : MonoBehaviour
     {
         this.status = 0;
         this.viewAfterCut.SetActive(false);
-        this.viewEndGame.SetActive(false);
-        this.SeeOtherPlayerBT.SetActive(true);
-        this.textChatAlert.enabled = false;
+        this.viewTotalValueEndGame.SetActive(false);
+        if (!Config.inst.getSeeOtherEnable())
+        {
+            setAllChildFalse(this.SeeOtherPlayerBT);
+        }
+        this.SeeOtherPlayerBT.SetActive(Config.inst.getSeeOtherEnable());
+        this.chatView.SetActive(Config.inst.getChetEnable());
+        buttonNormalKey.color=Color.white;
+        buttonRedKey.color = Color.red;
+        buttonGreenKey.color = Color.green;
+
 
     }
 
@@ -56,9 +65,11 @@ public class Manager : MonoBehaviour
     void Update()
     {
 
-            if (Input.GetKeyDown(this.normalKey))
+        if (Input.GetKeyDown(this.normalKey))
             {
-                setStatusClick(0);
+            buttonNormalKey.color= Color.grey;
+            //buttonNormalKey.transition = Selectable.Transition.Animation;
+            setStatusClick(0);
             }
             if (Input.GetKeyDown(this.redKey))
             {
@@ -82,9 +93,9 @@ public class Manager : MonoBehaviour
 
         this.SeeOtherPlayerBT.SetActive(false);
         this.cutBt.SetActive(false);
-        this.cutHelperBt.SetActive(false);
         this.status = 0;
-        backgraundStatus.color = Color.white;
+        resetAllKeyButtons();
+        //backgraundStatus.color = Color.white;
         this.isCut = true;
 
     }
@@ -104,8 +115,8 @@ public class Manager : MonoBehaviour
 
     public void setEndGameLayer(float sum)
     {
-        this.textEndGame.text = "You get total: "+sum+"%";
-        this.viewEndGame.SetActive(true);
+        this.textEndGameStatus.text = "You get total: "+sum+"%";
+        this.viewTotalValueEndGame.SetActive(true);
         this.cutBt.SetActive(false);
         
     }
@@ -134,46 +145,34 @@ public class Manager : MonoBehaviour
     }
 
 
-    public void setNewMessage()
-    {
-        StartCoroutine(messageAlert(5f));
-
-    }
-
-
-    private IEnumerator messageAlert(float sec)
-    {
-        this.textChatAlert.enabled = true;
-
-        yield return new WaitForSeconds(sec);
-        this.textChatAlert.enabled = false;
-
-    }
-
     public void changeSeeOtherPlayerBT()
     {
-        this.status = 0;
-        backgraundStatus.color = Color.white;
-        Image tempSprit = this.SeeOtherPlayerBT.GetComponent<Image>();
-        if (this.isShowView)
+        if (Config.inst.getSeeOtherEnable())
         {
-            tempSprit.color = Color.white;
-            this.cutBt.SetActive(true&&!this.isCut); // not after cut!
+            this.status = 0;
+            resetAllKeyButtons();
+            //backgraundStatus.color = Color.white;
+            Image tempSprit = this.SeeOtherPlayerBT.GetComponent<Image>();
+            if (this.isShowView)
+            {
+                tempSprit.color = Color.white;
+                this.cutBt.SetActive(true && !this.isCut); // not after cut!
+            }
+            else
+            {
+                tempSprit.color = Color.red;
+                this.cutBt.SetActive(false && !this.isCut); // not after cut!
+            }
+            this.isShowView = !this.isShowView;
         }
-        else
-        {
-            tempSprit.color = Color.red;
-            this.cutBt.SetActive(false && !this.isCut); // not after cut!
-        }
-        this.isShowView = !this.isShowView;
-
     }
 
 
     public void initialSeeOtherPlayerBT()
     {
-        this.SeeOtherPlayerBT.SetActive(true);
-        backgraundStatus.color = Color.white;
+        this.SeeOtherPlayerBT.SetActive(true&& Config.inst.getSeeOtherEnable());
+        //backgraundStatus.color = Color.white;
+        resetAllKeyButtons();
         this.isShowView = false;
         Image tempSprit = this.SeeOtherPlayerBT.GetComponent<Image>();
         tempSprit.color = Color.white;
@@ -184,22 +183,26 @@ public class Manager : MonoBehaviour
     {
         if (!isCut && !isShowView)
         {
+            resetAllKeyButtons();
             if (color == 0)
             {
                 this.status = 0;
-                backgraundStatus.color = Color.white;
+                buttonNormalKey.color = Color.grey;
+                //backgraundStatus.color = Color.white;
 
             }
             if (color == 1)
             {
                 this.status = 1;
-                backgraundStatus.color = Color.red;
+                buttonRedKey.color = Color.grey;
+                //backgraundStatus.color = Color.red;
 
             }
             if (color == 2)
             {
                 this.status = 2;
-                backgraundStatus.color = Color.green;
+                buttonGreenKey.color = Color.grey;
+                //backgraundStatus.color = Color.green;
 
             }
         }
@@ -210,4 +213,33 @@ public class Manager : MonoBehaviour
     {
         return this.isShowView;
     }
+
+    public void resetAllKeyButtons()
+    {
+        buttonNormalKey.color = Color.white;
+        buttonRedKey.color = Color.red;
+        buttonGreenKey.color = Color.green;
+    }
+
+
+    public void setAllChildFalse(GameObject obj)
+    {
+
+        Image im = obj.GetComponent<Image>();
+        if (im != null)
+        {
+            im.enabled = false;
+        }
+        Transform parentTransform = obj.transform; // Assuming this script is attached to the parent GameObject
+
+        // Loop through all child objects
+        for (int i = 0; i < parentTransform.childCount; i++)
+        {
+            // Get the child GameObject at index 'i' and set active to false
+            parentTransform.GetChild(i).gameObject.SetActive(false);
+        }
+    }
+
+
+
 }
