@@ -57,6 +57,7 @@ public class HashValues
     // need key 2 to be even!
     // do a quick help but not true all the time....
     // need key that is even when its divide 2 (6/2=3 is not good for example)
+    // return 
     private Dictionary<float, int> buildHelpCutPlayer(Dictionary<float, int> mapPlayer)
     {
         Dictionary<float, int> helpCutPlayer = new Dictionary<float, int>();

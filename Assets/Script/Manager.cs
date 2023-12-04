@@ -14,6 +14,7 @@ public class Manager : MonoBehaviour
     [SerializeField] public GameObject cutBt;
     [SerializeField] public GameObject chatView;
     [SerializeField] protected GameObject HomeButton;
+    [SerializeField] protected GameObject NextButton;
     [SerializeField] protected Text textEndGameStatus;
     [SerializeField] protected Text textNote;
     //[SerializeField] protected Text textChatAlert;
@@ -30,6 +31,8 @@ public class Manager : MonoBehaviour
     private int status;
     private bool isCut=false;
     private bool isShowView = false;
+    private bool isGameOver = false;
+
     //private GameObject[] squares;
     //public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
 
@@ -54,6 +57,7 @@ public class Manager : MonoBehaviour
         }
         this.SeeOtherPlayerBT.SetActive(Config.inst.getSeeOtherEnable());
         this.chatView.SetActive(Config.inst.getChetEnable());
+        NextButton.SetActive(false);
         buttonNormalKey.color=Color.white;
         buttonRedKey.color = Color.red;
         buttonGreenKey.color = Color.green;
@@ -113,10 +117,30 @@ public class Manager : MonoBehaviour
         return 0;
     }
 
+    public int getIndexOfMaxSumRGYB()
+    {
+
+        int maxIndex = 0;
+        float locMax = sumRGYB[maxIndex];
+        for (int i = 0; i < sumRGYB.Length; i++)
+        {
+            
+            if (sumRGYB[i] == 50) return -1*i; // Dont have somting that is more then 50 and it's dosent metter what he choose
+            else if (sumRGYB[maxIndex] > sumRGYB[i])
+            {
+                maxIndex = i;
+            }
+        }
+
+        return maxIndex;
+    }
+
+
     public void setEndGameLayer(float sum)
     {
         this.textEndGameStatus.text = "You get total: "+sum+"%";
         this.viewTotalValueEndGame.SetActive(true);
+        NextButton.SetActive(true);
         this.cutBt.SetActive(false);
         
     }
@@ -240,6 +264,8 @@ public class Manager : MonoBehaviour
         }
     }
 
-
-
+    public void NextSceneClick()
+    {
+        NextButton.SetActive(false);
+    }
 }

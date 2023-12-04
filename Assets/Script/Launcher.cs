@@ -92,12 +92,11 @@ public class Launcher : MonoBehaviourPunCallbacks
     {
         if (playerName.text != "")
         {
-            bool isSeeOtherEnable = scenarioNumber == 2 || scenarioNumber == 4;
-            bool isChetEnable = scenarioNumber == 3|| scenarioNumber == 4;
-            int timer = -1;
+
 
              PhotonNetwork.NickName= playerName.text;
-            createConfig(isChetEnable, isSeeOtherEnable, timer);
+
+             Config.inst.createConfig(scenarioNumber);
  //           if (rooms[0] == null)
    //         {
                 RoomOptions opt = new RoomOptions();
@@ -132,12 +131,22 @@ public class Launcher : MonoBehaviourPunCallbacks
         
     }
 
-    private void createConfig(bool isChetEnable, bool isSeeOtherEnable, int timer)
+
+    public override void OnJoinRoomFailed(short returnCode, string message)
     {
-        Config.inst.setChetEnable(isChetEnable);
-        Config.inst.setSeeOtherEnable(isSeeOtherEnable);
-        Config.inst.setTimeForHelpPage(timer);
+
+            // Display a message to the user indicating that the room is full
+            Debug.Log("Room is full. Cannot join.");
+            this.menu.SetActive(true);
+            this.loadingScreen.SetActive(false);
+            // You can also display this message on your UI if needed.
+        
+
     }
+
+
+
+
 
     // Update is called once per frame
     void Update()

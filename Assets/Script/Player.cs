@@ -6,7 +6,6 @@ using Photon.Realtime;
 using Photon.Pun;
 using System;
 using System.Linq;
-using UnityEngine.SceneManagement;
 //using static UnityEditor.Experimental.GraphView.GraphView;
 
 
@@ -16,7 +15,6 @@ public class Player : MonoBehaviourPunCallbacks
     private PhotonView view;
     public static Player inst;
     //private Dictionary<int, int> player1 = new Dictionary<int, int>();
-    private bool[] playerCut = { false, false };
     [SerializeField] protected Text redValueText;
     [SerializeField] protected Text greenValueText;
     [SerializeField] protected Text yellowValueText;
@@ -28,7 +26,7 @@ public class Player : MonoBehaviourPunCallbacks
 
 
     private float[] sumPlayer = {0f,0f}; // sum of all the squares for player 1 and 2 -> {1, 2}
-    private float[] choosePlayer = { 0f, 0f };
+    private float[] choosePlayer = { 0f, 0f }; // sum of all the squares thatthe player choose (1 and 2) -> {1, 2}
     public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
     private Dictionary<int, int> player1 = new Dictionary<int, int>();
     private Dictionary<int, int> player2 = new Dictionary<int, int>();
@@ -39,6 +37,8 @@ public class Player : MonoBehaviourPunCallbacks
     private Dictionary<int, int> savePlayer2 = new Dictionary<int, int>();
     private int chooseNum = 0;
     private string[] endExplanationPlayers = {"You get:\n", "You get:\n" };
+    private bool[] playerCut = { false, false };
+    private bool[] palyersGameOver = {false,false};
 
 
     void Start()
@@ -60,7 +60,8 @@ public class Player : MonoBehaviourPunCallbacks
     {
 
             GameObject[] tempSquares = GameObject.FindGameObjectsWithTag("SquarePoint");
-            StartCoroutine(withSec(0.2f, tempSquares));
+        Debug.Log(Config.inst.getRoundNumber()) ;
+        StartCoroutine(withSec(0.2f, tempSquares));
             
     }
 
@@ -97,8 +98,8 @@ public class Player : MonoBehaviourPunCallbacks
 
         // Check for values counter
         //------------------------
-        this.HelpHashValue = new HashValues();
-        this.HelpHashValue.buildHelp(this.squares);
+        // this.HelpHashValue = new HashValues();
+        // this.HelpHashValue.buildHelp(this.squares);
         //h.printHelp(1);
         //h.printHelp(2);
 
@@ -106,11 +107,11 @@ public class Player : MonoBehaviourPunCallbacks
     }
 
     // Update is called once per frame
-    void Update()
+/*    void Update()
     {
         
         //myNameText.text = "Player: " + Launcher.LauncherInst.rooms[0];
-    }
+    }*/
 
     public void CutView()
     {
@@ -184,6 +185,13 @@ public class Player : MonoBehaviourPunCallbacks
         yellowValueText.text = "All part 3 value: " + (sumRGYB[2]) + "%";
         blueValueText.text = "All part 4 value: " + (sumRGYB[3]) + "%";
         Manager.inst.initialSeeOtherPlayerBT();
+        if (isIntuitive(sumRGYB))
+        {
+            //if(Manager.inst.getIndexOfMaxSumRGYB()) // need to do a intuitive choose
+        }
+        else
+        {
+
         if (playerNum == 1)
         {
             Manager.inst.setNote(-1, "The meaning of the colors:\nRed = 2 players choose red\nGreen = 2 players choose green\nYellow = p1 red, p2 green\nBlue = p1 green, p2 red\n\nPlease choose one color", false);
@@ -192,10 +200,16 @@ public class Player : MonoBehaviourPunCallbacks
         {
             Manager.inst.setNote(-1, "The meaning of the colors:\nRed = 2 players choose red\nGreen = 2 players choose green\nYellow = p1 red, p2 green\nBlue = p1 green, p2 red\n\nPlease wait player 1 choose one color,\nafter that you choose 2 colors", false);
         }
+        }
     }
 
 
 
+    private bool isIntuitive(float[] sumRGYB)
+    {
+        bool flag = sumRGYB[2] + sumRGYB[3] == 0 || sumRGYB[0] + sumRGYB[1]==0;
+        return false;
+    }
 
     public void ChooseView(int i)
     {
@@ -517,16 +531,66 @@ public class Player : MonoBehaviourPunCallbacks
         }
         statusChange();
     }
-
-    public void ExitGame(string sceneName)
+    [PunRPC]
+    public void NextGame(string sceneName)
     {
-        Manager.inst.setNote(-1,"Other player left the game...", false); // need to send in RPC!
-        if (PhotonNetwork.InRoom)
-        {
-            PhotonNetwork.LeaveRoom(); // seems its need to wait?
-            SceneManager.LoadScene(sceneName);
+        //Manager.inst.setNote(-1,"Other player left the game...", false); // need to send in RPC!
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        this.palyersGameOver[playerNum - 1] = true;
+        Manager.inst.NextSceneClick();
 
+        if (this.palyersGameOver[0]&& this.palyersGameOver[1])
+        {
+
+                photonView.RPC("MasterNextGame", RpcTarget.All, sceneName);
         }
+        else
+        {
+            photonView.RPC("GameOverClicked", RpcTarget.Others, playerNum);
+        }
+    }
+
+    [PunRPC]
+    private void GameOverClicked(int playerNum)
+    {
+        // Master client loads the scene on behalf of non-master clients
+        this.palyersGameOver[playerNum - 1] = true;
+        Manager.inst.setNote(-1, "Other player continue the game...", false); // need to send in RPC!
+    }
+
+    [PunRPC]
+    private void MasterNextGame(string sceneName)
+    {
+        // Master client loads the scene on behalf of non-master clients
+        if (PhotonNetwork.IsMasterClient)
+        {
+            int roundNumberConfig = Config.inst.addRoundNumber();
+            //Debug.LogError("scenarioNum= " + roundNumberConfig);
+            if (roundNumberConfig == 2)
+            {
+
+                int scenarioNum = UnityEngine.Random.Range(2, 5); // Create next 2 scenarios for round 3 and 4
+                
+                //Config.inst.createConfig(scenarioNum);
+                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, scenarioNum);
+            }
+            else
+            {
+
+                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName,-1);
+            }
+        }
+    }
+    [PunRPC]
+    private void RequestSceneLoad(string sceneName,int scenarioNum)
+    {
+        if (scenarioNum > 0)
+        {
+
+            Config.inst.createConfig(scenarioNum);
+        }
+        // Master client loads the scene on behalf of non-master clients
+        PhotonNetwork.LoadLevel(sceneName);
     }
 }
 

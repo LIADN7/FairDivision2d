@@ -51,6 +51,11 @@ MonoBehaviour:
   - GetOtherPlayerHeatmap
   - CreatedRoomRPC
   - CreateGame1WithOthers
+  - RequestSceneLoad
+  - GameOverClicked
+  - MasterExitGame
+  - MasterNextGame
+  - NextGame
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 0
