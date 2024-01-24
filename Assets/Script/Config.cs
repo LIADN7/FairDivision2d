@@ -53,7 +53,7 @@ public class Config : MonoBehaviour
         this.chatEnable = isChetEnable;
         this.seeOtherEnable = isSeeOtherEnable;
         this.timeForHelpPage = timer;
+        this.roundNumber = 0;
     }
-
 
 }

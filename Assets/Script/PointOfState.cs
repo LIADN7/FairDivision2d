@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PointOfState : MonoBehaviour
 {
@@ -12,6 +13,7 @@ public class PointOfState : MonoBehaviour
     private float otherPowerColor = 1;
     private SpriteRenderer squareSprite;
     private GameObject childObject;
+    private GameObject textChildObject;
     private int spriteStatus;
     private int myKey ;
     private static int key=0;
@@ -25,13 +27,33 @@ public class PointOfState : MonoBehaviour
         this.squareSprite = this.GetComponent<SpriteRenderer>();
 
         //this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 1f);
-        setChaildSprite();
-
+        this.setChaildSprite();
+        this.setChaildText();
 
 
         this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 1f);
         spriteStatus = 1;
         this.myKey = key++;
+    }
+
+    private void setChaildText()
+    {
+
+        this.textChildObject = new GameObject("ChildText");
+        Transform parentTransform = this.gameObject.transform;
+        this.textChildObject.transform.parent = parentTransform;
+        Text textRenderer = textChildObject.AddComponent<Text>();
+        Font arielFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        textRenderer.font = arielFont;
+        textRenderer.fontSize = 60;
+        textChildObject.transform.localScale = new Vector3(0.01f, 0.01f, 1f);
+        textRenderer.color = Color.black;
+        textRenderer.alignment = TextAnchor.MiddleCenter;
+        //int randNum = UnityEngine.Random.Range(1, 3);
+        //string s = randNum == 1 ? "X":"O";
+        textRenderer.text = "";
+
+        this.textChildObject.transform.localPosition = new Vector3(0, 0, -5);
     }
 
     private void setChaildSprite()
@@ -50,7 +72,7 @@ public class PointOfState : MonoBehaviour
         childObject.transform.localScale = new Vector3(0.7f, 0.7f, 1f);
 
         // You can also set the position and other properties of the child GameObject if needed
-        childObject.transform.localPosition = new Vector3(0, 0, -47);
+        childObject.transform.localPosition = new Vector3(0, 0, -3);
     }
 
 
@@ -138,7 +160,7 @@ public class PointOfState : MonoBehaviour
         {
             // Yellow
             //this.squareSprite.color = new Color(colorPower * 0.9f, colorPower * 0.9f, 0f,  0.79f);
-            this.squareSprite.color = Color.yellow;
+            this.squareSprite.color = Color.red;
             spriteStatus = 3;
 
         }
@@ -146,7 +168,7 @@ public class PointOfState : MonoBehaviour
         {
             // Blue
             //this.squareSprite.color = new Color(0f, 0f, colorPower * 0.4f,  1f);
-            this.squareSprite.color = Color.blue;
+            this.squareSprite.color = Color.green;
             spriteStatus = 4;
 
         }
@@ -160,12 +182,15 @@ public class PointOfState : MonoBehaviour
         return this.myKey;
     }
 
-
-/*    public SpriteRenderer getSquareSprite()
+    public void setChildText(string x)
     {
-        //return this.squareSprite;
-        return this.childObject.GetComponent<SpriteRenderer>();
-    }*/
+        this.textChildObject.GetComponent<Text>().text = x;
+    }
+    /*    public SpriteRenderer getSquareSprite()
+        {
+            //return this.squareSprite;
+            return this.childObject.GetComponent<SpriteRenderer>();
+        }*/
 
     public void setmyPowerColor(int i, float sum)
     {

@@ -15,14 +15,11 @@ public class Player : MonoBehaviourPunCallbacks
     private PhotonView view;
     public static Player inst;
     //private Dictionary<int, int> player1 = new Dictionary<int, int>();
-    [SerializeField] protected Text redValueText;
-    [SerializeField] protected Text greenValueText;
-    [SerializeField] protected Text yellowValueText;
-    [SerializeField] protected Text blueValueText;
+    [SerializeField] protected Text[] buttonsValueText; // {red, green, yellow, blue}
     [SerializeField] protected Text palyerName;
     [SerializeField] protected Text chatText;
     [SerializeField] protected InputField chatInput;
-    [SerializeField] protected GameObject[] colorsValueObj; //GREEN, RED, YELLOW, BLUE
+    [SerializeField] protected GameObject[] colorsValueObj; // {red, green, yellow, blue}
 
 
     private float[] sumPlayer = {0f,0f}; // sum of all the squares for player 1 and 2 -> {1, 2}
@@ -47,7 +44,7 @@ public class Player : MonoBehaviourPunCallbacks
         view = GetComponent<PhotonView>();
         inst = this;
         string palyerId = PhotonNetwork.IsMasterClient ? "Player 1" : "Player 2";
-        palyerName.text = PhotonNetwork.NickName + ", "+ palyerId;
+        palyerName.text = PhotonNetwork.NickName + ", "+ palyerId+ "\nThis is round number "+ (int)(Config.inst.getRoundNumber())+1;
         if (PhotonNetwork.IsMasterClient)
             view.RPC("InitSquares", RpcTarget.AllBufferedViaServer);
 
@@ -93,9 +90,9 @@ public class Player : MonoBehaviourPunCallbacks
             p.setOtherPowerColor(otherPlayerNum, this.sumPlayer[otherPlayerNum - 1]);
             p.setSpriteStatus(1, 1);
         }
-        greenValueText.text = "All green value: " + (0) + "%";
-        redValueText.text = "All red value: " + (100) + "%";
-
+        /*        greenValueText.text = "All green value: " + (0) + "%";
+                redValueText.text = "All red value: " + (100) + "%";*/
+        this.statusChange();
         // Check for values counter
         //------------------------
         // this.HelpHashValue = new HashValues();
@@ -180,10 +177,10 @@ public class Player : MonoBehaviourPunCallbacks
         }
 
         Manager.inst.setSumRGYB(sumRGYB);
-        redValueText.text = "All part 1 value: " + (sumRGYB[0]) + "%";
-        greenValueText.text = "All part 2 value: " + (sumRGYB[1]) + "%";
-        yellowValueText.text = "All part 3 value: " + (sumRGYB[2]) + "%";
-        blueValueText.text = "All part 4 value: " + (sumRGYB[3]) + "%";
+        buttonsValueText[0].text = "P2 choose X(Red) = (1,1) value: " + (sumRGYB[0]) + "%";
+        buttonsValueText[1].text = "P2 choose O(Green) = (2,2) value: " + (sumRGYB[1]) + "%";
+        buttonsValueText[2].text = "P2 choose O(Green) = (1,2) value: " + (sumRGYB[2]) + "%";
+        buttonsValueText[3].text = "P2 choose X(Red) = (2,1) value: " + (sumRGYB[3]) + "%";
         Manager.inst.initialSeeOtherPlayerBT();
         if (isIntuitive(sumRGYB))
         {
@@ -192,14 +189,14 @@ public class Player : MonoBehaviourPunCallbacks
         else
         {
 
-        if (playerNum == 1)
-        {
-            Manager.inst.setNote(-1, "The meaning of the colors:\nRed = 2 players choose red\nGreen = 2 players choose green\nYellow = p1 red, p2 green\nBlue = p1 green, p2 red\n\nPlease choose one color", false);
-        }
-        else if (playerNum == 2)
-        {
-            Manager.inst.setNote(-1, "The meaning of the colors:\nRed = 2 players choose red\nGreen = 2 players choose green\nYellow = p1 red, p2 green\nBlue = p1 green, p2 red\n\nPlease wait player 1 choose one color,\nafter that you choose 2 colors", false);
-        }
+            if (playerNum == 1)
+            {
+                Manager.inst.setNote(-1, "The meaning:\nO =  player 2 choose green\nX =  player 2 choose red\n\nPlease choose one color", false);
+            }
+            else if (playerNum == 2)
+            {
+                Manager.inst.setNote(-1, "The meaning:\nO =  player 2 choose green\nX =  player 2 choose red\n\nPlease wait player 1 choose one color,\nafter that you choose 2 colors", false);
+            }
         }
     }
 
@@ -221,19 +218,23 @@ public class Player : MonoBehaviourPunCallbacks
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
                 choosePlayer[playerNum - 1] = tempSum;
-                view.RPC("Choose", RpcTarget.All, i);
+                view.RPC("Choose", RpcTarget.All, i, playerNum);
+                buttonsValueText[i].text += " (You)";
+
             }
             else if (playerNum == 2 && chooseNum ==1)
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
                 choosePlayer[playerNum - 1] += tempSum;
-                view.RPC("Choose", RpcTarget.All, i);
+                view.RPC("Choose", RpcTarget.All, i, playerNum);
+                buttonsValueText[i].text += " (You)";
             }
             else if (playerNum == 2 && chooseNum == 2)
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
                 choosePlayer[playerNum - 1] += tempSum;
-                view.RPC("Choose", RpcTarget.All, i);
+                view.RPC("Choose", RpcTarget.All, i, playerNum);
+                buttonsValueText[i].text += " (You)";
                 view.RPC("GetValues", RpcTarget.All);
             }
 
@@ -241,15 +242,17 @@ public class Player : MonoBehaviourPunCallbacks
     }
 
     [PunRPC]
-    private void Choose(int i)
+    private void Choose(int i, int playerNum)
     {
-        colorsValueObj[i].SetActive(false);
+        buttonsValueText[i].text = "Taken By Player " + playerNum;
+        colorsValueObj[i].GetComponent<Button>().interactable= false;
+        //colorsValueObj[i].SetActive(false);
         chooseNum++;
 
     }
     private string getExplanationPlayer(int color, float value)
     {
-        string[] strColors = {"Red","Green","Yellow","Blue" };
+        string[] strColors = { "RED-X", "GREEN-O", "RED-O", "GREEN-X" };
         return "" + strColors[color]+" with value: "+ value+"\n";
     }
 
@@ -258,14 +261,17 @@ public class Player : MonoBehaviourPunCallbacks
     {
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         int last = GetLast();
+        buttonsValueText[last].text = "Taken By Player 1";
         if (PhotonNetwork.IsMasterClient)
         {
             float tempSum = Manager.inst.getSumRGYB(last);
             endExplanationPlayers[playerNum - 1] += getExplanationPlayer(last, tempSum);
             choosePlayer[playerNum - 1] += tempSum;
             chooseNum++;
+            buttonsValueText[last].text += " (You)";
         }
-        colorsValueObj[last].SetActive(false);
+        colorsValueObj[last].GetComponent<Button>().interactable = false;
+        //colorsValueObj[last].SetActive(false);
         Manager.inst.setNote(-1, endExplanationPlayers[playerNum - 1], false);
         Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
     }
@@ -273,15 +279,16 @@ public class Player : MonoBehaviourPunCallbacks
     // Get the last number of the remaining color
     private int GetLast()
     {
+        
         //chooseObj
-        int i = 0;
+        
         for (int j = 0; j < colorsValueObj.Length; j++)
         {
 
-            if (colorsValueObj[j].activeSelf)
-                i = j;
+            if (colorsValueObj[j].GetComponent<Button>().IsInteractable())
+                return j;
         }
-        return i;
+        return -1;
 
     }
 
@@ -295,21 +302,25 @@ public class Player : MonoBehaviourPunCallbacks
             PointOfState p = it.Value.GetComponent<PointOfState>();
             float val = p.getMyVal(j);
             int tempKey = p.getMyKey();
-            int spriteStatus = 1; // RED
-
-            if (this.player1[tempKey] == 2 && this.player2[tempKey] == 2) // GREEN
+            // X mean that player 2 chooce Red, O mean that player 2 chooce Green
+            int spriteStatus = 1; // Red+X = Player 2 choose Red
+            string colorText = "X";
+            if (this.player1[tempKey] == 2 && this.player2[tempKey] == 2) // Green+O = Player 2 choose Green
             {
+                colorText = "O";
                 spriteStatus = 2;
             }
-            else if (this.player1[tempKey] == 1 && this.player2[tempKey] == 2) // YELLOW
+            else if (this.player1[tempKey] == 1 && this.player2[tempKey] == 2) // Red+O = Player 2 choose Green
             {
+                colorText = "O";
                 spriteStatus = 3;
             }
-            else if (this.player1[tempKey] == 2 && this.player2[tempKey] == 1) // BLUE
+            else if (this.player1[tempKey] == 2 && this.player2[tempKey] == 1) // Green+X = Player 2 choose Red
             {
+                colorText = "X";
                 spriteStatus = 4;
             }
-
+            p.setChildText(colorText);
             sumRGYB[spriteStatus - 1] += val;
             p.setSpriteStatus(spriteStatus,1);
 
@@ -346,8 +357,14 @@ public class Player : MonoBehaviourPunCallbacks
 
 
             float greenVal = (sumG / this.sumPlayer[playerNum - 1]);
-            greenValueText.text = "Part 1 value: " + (greenVal * 100) + "%";
-            redValueText.text = "Part 2 value: " + ((1 - greenVal) * 100) + "%";
+            buttonsValueText[0].text = "Part 1 value: " + ((1 - greenVal) * 100) + "%";
+            buttonsValueText[1].text = "Part 2 value: " + (greenVal * 100) + "%";
+            if ((greenVal * 100) == 50)
+            {
+                Manager.inst.setStatusClick(0);
+                Manager.inst.setNote(-1, "The map is divided into 50%\n(if you wish, you can change the division or choose not to divide equally)", false);
+
+            }
             return (greenVal * 100);
         }
     }

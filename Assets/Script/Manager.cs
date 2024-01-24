@@ -211,21 +211,21 @@ public class Manager : MonoBehaviour
             if (color == 0)
             {
                 this.status = 0;
-                buttonNormalKey.color = Color.grey;
+                buttonNormalKey.color = new Color(0.8f, 0.8f, 0.8f);
                 //backgraundStatus.color = Color.white;
 
             }
             if (color == 1)
             {
                 this.status = 1;
-                buttonRedKey.color = Color.grey;
+                buttonRedKey.color = new Color(0.5f, 0, 0);
                 //backgraundStatus.color = Color.red;
 
             }
             if (color == 2)
             {
                 this.status = 2;
-                buttonGreenKey.color = Color.grey;
+                buttonGreenKey.color = new Color(0, 0.5f, 0);
                 //backgraundStatus.color = Color.green;
 
             }

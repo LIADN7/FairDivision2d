@@ -48,12 +48,18 @@ public class Launcher : MonoBehaviourPunCallbacks
         if (!PhotonNetwork.IsConnected)
         {
 
-            this.menu.SetActive(false);
-        this.loadingScreen.SetActive(true);
         
-        this.loadingText.text = "Connecting to network...";
+            this.loadingText.text = "Connecting to network...";
         //PhotonNetwork.AutomaticallySyncScene = true;
+            this.menu.SetActive(false);
+            this.loadingScreen.SetActive(true);
         PhotonNetwork.ConnectUsingSettings();
+        }
+        else
+        {
+            this.menu.SetActive(true);
+            this.loadingScreen.SetActive(false);
+            Debug.Log("Connected");
         }
     }
 

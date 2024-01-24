@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PointOfStateAI : MonoBehaviour
 {
@@ -12,16 +13,17 @@ public class PointOfStateAI : MonoBehaviour
     private float otherPowerColor = 1;
     private SpriteRenderer squareSprite;
     private GameObject childObject;
+    private GameObject textChildObject;
     private int spriteStatus;
     private int myKey;
     private static int key = 0;
-
+    private string[] TEXT_COLOR = {"O","O","X","X" }; // {(RED RED), (GREEN GREEN), (RED GREEN), (GREEN RED)}
 
     void Start()
     {
         this.squareSprite = this.GetComponent<SpriteRenderer>();
         this.setChaildSprite();
-
+        this.setChaildText();
         this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 1f);
         spriteStatus = 1;
         this.myKey = key++;
@@ -43,11 +45,29 @@ public class PointOfStateAI : MonoBehaviour
         childObject.transform.localScale = new Vector3(0.7f, 0.7f, 1f);
 
         // You can also set the position and other properties of the child GameObject if needed
-        childObject.transform.localPosition = new Vector3(0, 0, -47);
+        childObject.transform.localPosition = new Vector3(0, 0, -1);
     }
 
 
+    private void setChaildText()
+    {
 
+        this.textChildObject = new GameObject("ChildText");
+        Transform parentTransform = this.gameObject.transform;
+        this.textChildObject.transform.parent = parentTransform;
+        Text textRenderer = textChildObject.AddComponent<Text>();
+        Font arielFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        textRenderer.font = arielFont;
+        textRenderer.fontSize = 60;
+        textChildObject.transform.localScale = new Vector3(0.01f, 0.01f, 1f);
+        textRenderer.color = Color.black;
+        textRenderer.alignment = TextAnchor.MiddleCenter;
+        //int randNum = UnityEngine.Random.Range(1, 3);
+        //string s = randNum == 1 ? "X":"O";
+        textRenderer.text = "";
+
+        this.textChildObject.transform.localPosition = new Vector3(0, 0, 0);
+    }
     void OnMouseEnter()
     {
         //Debug.LogError(myKey);
@@ -99,37 +119,53 @@ public class PointOfStateAI : MonoBehaviour
         {
             // Red
             //this.squareSprite.color = new Color(colorPower * 0.555f, 0.012f, 0.012f, 1f);
+            //this.textChildObject.GetComponent<Text>().text = "";
             this.squareSprite.color = Color.red;
             spriteStatus = 1;
+            //this.textChildObject.GetComponent<Text>().text = "XX";
 
         }
-        if (i == 2)
+        else if (i == 2)
         {
             // Green
             //this.squareSprite.color = new Color(0.014f, colorPower * 0.525f, 0.053f, 1f);
+            //this.textChildObject.GetComponent<Text>().text = "";
             this.squareSprite.color = Color.green;
             spriteStatus = 2;
+            //this.textChildObject.GetComponent<Text>().text = "OO";
 
         }
-        if (i == 3)
+        else if (i == 3)
         {
             // Yellow
             //this.squareSprite.color = new Color(colorPower * 0.9f, colorPower * 0.9f, 0f,  0.79f);
-            this.squareSprite.color = Color.yellow;
+            //this.squareSprite.color = Color.yellow;
             spriteStatus = 3;
-
+            this.squareSprite.color = Color.red;
+            //this.textChildObject.GetComponent<Text>().text = "X";
+            //this.textChildObject.GetComponent<Text>().text = "XO";
         }
-        if (i == 4)
+        else if (i == 4)
         {
             // Blue
             //this.squareSprite.color = new Color(0f, 0f, colorPower * 0.4f,  1f);
-            this.squareSprite.color = Color.blue;
+            //this.squareSprite.color = Color.blue;
             spriteStatus = 4;
+            this.squareSprite.color = Color.green;
+            //this.textChildObject.GetComponent<Text>().text = "X";
+            //this.textChildObject.GetComponent<Text>().text = "OX";
 
         }
+        //this.textChildObject.GetComponent<Text>().text = this.TEXT_COLOR[i-1];
         this.childObject.GetComponent<SpriteRenderer>().color = new Color(colorPower * 0.5f, 0.5f, 0.5f, 0.8f);
 
 
+    }
+
+
+    public void setChildText(string x)
+    {
+        this.textChildObject.GetComponent<Text>().text = x;
     }
 
     public int getMyKey()
@@ -147,5 +183,9 @@ public class PointOfStateAI : MonoBehaviour
         this.otherPowerColor = (getMyVal(i) / sum) * 500;
     }
 
+    public void setColorTextByValue(int i)
+    {
+        
+    }
 
 }
