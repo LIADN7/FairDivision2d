@@ -175,12 +175,12 @@ public class PointOfStateAI : MonoBehaviour
 
     public void setmyPowerColor(int i, float sum)
     {
-        this.myPowerColor = (getMyVal(i) / sum) * 500;
+        this.myPowerColor = (getMyVal(i) / sum) * 700;
     }
 
     public void setOtherPowerColor(int i, float sum)
     {
-        this.otherPowerColor = (getMyVal(i) / sum) * 500;
+        this.otherPowerColor = (getMyVal(i) / sum) * 700;
     }
 
     public void setColorTextByValue(int i)

@@ -407,5 +407,10 @@ namespace Photon.Pun
                 }
             }
         }
+
+        public void OnPlayerLeftRoom()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

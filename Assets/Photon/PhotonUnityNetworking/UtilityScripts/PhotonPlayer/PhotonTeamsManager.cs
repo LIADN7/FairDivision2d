@@ -485,6 +485,11 @@ namespace Photon.Pun.UtilityScripts
         {
         }
 
+        public void OnPlayerLeftRoom()
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion
     }
 

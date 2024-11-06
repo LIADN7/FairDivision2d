@@ -1,4 +1,6 @@
 
+using System;
+using System.Linq.Expressions;
 using UnityEngine;
 
 public class Config : MonoBehaviour
@@ -7,7 +9,7 @@ public class Config : MonoBehaviour
     [SerializeField] protected bool chatEnable = false;
     [SerializeField] protected bool seeOtherEnable = false;
     [SerializeField] protected int timeForHelpPage = 10;
-    
+
     private int roundNumber = 0;
     private void Awake()
     {
@@ -33,7 +35,8 @@ public class Config : MonoBehaviour
     public void setChetEnable(bool chatEnable) { this.chatEnable = chatEnable; }
     public void setSeeOtherEnable(bool seeOtherEnable) { this.seeOtherEnable = seeOtherEnable; }
     public void setTimeForHelpPage(int timeForHelpPage) { this.timeForHelpPage = timeForHelpPage; }
-    public int addRoundNumber() {
+    public int addRoundNumber()
+    {
         return ++this.roundNumber;
     }
 
@@ -54,6 +57,49 @@ public class Config : MonoBehaviour
         this.seeOtherEnable = isSeeOtherEnable;
         this.timeForHelpPage = timer;
         this.roundNumber = 0;
+    }
+
+    public int getScenarioType()
+    {
+        if (!this.chatEnable && !this.seeOtherEnable)
+        {
+            return 1;
+        }
+        else if (!this.chatEnable && this.seeOtherEnable)
+        {
+            return 2;
+        }
+        else if (this.chatEnable && !this.seeOtherEnable)
+        {
+            return 3;
+        }
+        else if (this.chatEnable && this.seeOtherEnable)
+        {
+            return 4;
+        }
+        return -1;
+    }
+
+    public string getScenarioTypeName()
+    {
+        int typeNum = this.getScenarioType();
+        //1 Normal, 2 Info, 3 Chat, 4 InfoAChat
+        switch (typeNum)
+        {
+            case 2:
+                // code block
+                return "Info";
+            case 3:
+                // code block
+                return "Chat";
+            case 4:
+                // code block
+                return "InfoAChat";
+            default:
+                // code block
+                return "Normal";
+        }
+        return "";
     }
 
 }

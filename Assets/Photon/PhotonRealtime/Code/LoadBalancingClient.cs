@@ -3943,6 +3943,7 @@ namespace Photon.Realtime
         /// The former MasterClient is still in the player list when this method get called.
         /// </remarks>
         void OnMasterClientSwitched(Player newMasterClient);
+        void OnPlayerLeftRoom();
     }
 
 
@@ -4317,6 +4318,11 @@ namespace Photon.Realtime
             {
                 target.OnMasterClientSwitched(newMasterClient);
             }
+        }
+
+        public void OnPlayerLeftRoom()
+        {
+            throw new NotImplementedException();
         }
     }
 

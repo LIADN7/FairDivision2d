@@ -13,6 +13,7 @@ public class Manager : MonoBehaviour
     [SerializeField] protected GameObject SeeOtherPlayerBT;
     [SerializeField] public GameObject cutBt;
     [SerializeField] public GameObject chatView;
+    [SerializeField] private Toggle isAgreedToggle;
     [SerializeField] protected GameObject HomeButton;
     [SerializeField] protected GameObject NextButton;
     [SerializeField] protected Text textEndGameStatus;
@@ -29,7 +30,7 @@ public class Manager : MonoBehaviour
 
     public static Manager inst;
     private int status;
-    private bool isCut=false;
+    private bool isCut = false;
     private bool isShowView = false;
     private bool isGameOver = false;
 
@@ -42,9 +43,9 @@ public class Manager : MonoBehaviour
     private void Awake()
     {
 
-            inst = this;
+        inst = this;
 
-        
+
     }
     void Start()
     {
@@ -58,7 +59,7 @@ public class Manager : MonoBehaviour
         this.SeeOtherPlayerBT.SetActive(Config.inst.getSeeOtherEnable());
         this.chatView.SetActive(Config.inst.getChetEnable());
         NextButton.SetActive(false);
-        buttonNormalKey.color=Color.white;
+        buttonNormalKey.color = Color.white;
         buttonRedKey.color = Color.red;
         buttonGreenKey.color = Color.green;
 
@@ -70,20 +71,20 @@ public class Manager : MonoBehaviour
     {
 
         if (Input.GetKeyDown(this.normalKey))
-            {
-            buttonNormalKey.color= Color.grey;
+        {
+            buttonNormalKey.color = Color.grey;
             //buttonNormalKey.transition = Selectable.Transition.Animation;
             setStatusClick(0);
-            }
-            if (Input.GetKeyDown(this.redKey))
-            {
-                setStatusClick(1);
-            }
-            if (Input.GetKeyDown(this.greenKey))
-            {
-                setStatusClick(2);
-            }
-        
+        }
+        if (Input.GetKeyDown(this.redKey))
+        {
+            setStatusClick(1);
+        }
+        if (Input.GetKeyDown(this.greenKey))
+        {
+            setStatusClick(2);
+        }
+
 
     }
 
@@ -91,7 +92,7 @@ public class Manager : MonoBehaviour
 
     public int getStatus() { return status; }
 
-
+    public bool getIsAgreedMark() { return this.isAgreedToggle.isOn; }
     public void setViewAfterCut()
     {
 
@@ -111,10 +112,16 @@ public class Manager : MonoBehaviour
     }
 
     public void setSumRGYB(float[] sums) { this.sumRGYB = sums; }
-    public float getSumRGYB(int i) {
-        if(i >= 0 && i < this.sumRGYB.Length)
+    public float getSumRGYB(int i)
+    {
+        if (i >= 0 && i < this.sumRGYB.Length)
             return this.sumRGYB[i];
         return 0;
+    }
+
+    public float[] getAllSumRGYB()
+    {
+        return this.sumRGYB;
     }
 
     public int getIndexOfMaxSumRGYB()
@@ -124,8 +131,8 @@ public class Manager : MonoBehaviour
         float locMax = sumRGYB[maxIndex];
         for (int i = 0; i < sumRGYB.Length; i++)
         {
-            
-            if (sumRGYB[i] == 50) return -1*i; // Dont have somting that is more then 50 and it's dosent metter what he choose
+
+            if (sumRGYB[i] == 50) return -1 * i; // Dont have somting that is more then 50 and it's dosent metter what he choose
             else if (sumRGYB[maxIndex] > sumRGYB[i])
             {
                 maxIndex = i;
@@ -138,11 +145,11 @@ public class Manager : MonoBehaviour
 
     public void setEndGameLayer(float sum)
     {
-        this.textEndGameStatus.text = "You get total: "+sum+"%";
+        this.textEndGameStatus.text = "You get total: " + sum + "%";
         this.viewTotalValueEndGame.SetActive(true);
         NextButton.SetActive(true);
         this.cutBt.SetActive(false);
-        
+
     }
 
     public void setNote(float sec, string massage, bool isError)
@@ -154,8 +161,8 @@ public class Manager : MonoBehaviour
 
     private IEnumerator withSec(float sec, string massage, bool isError)
     {
-            this.textNote.color = isError ? Color.red : Color.black;
-            this.textNote.text = massage;
+        this.textNote.color = isError ? Color.red : Color.black;
+        this.textNote.text = massage;
         if (sec < 0)
         {
             yield return new WaitForSeconds(1);
@@ -194,7 +201,7 @@ public class Manager : MonoBehaviour
 
     public void initialSeeOtherPlayerBT()
     {
-        this.SeeOtherPlayerBT.SetActive(true&& Config.inst.getSeeOtherEnable());
+        this.SeeOtherPlayerBT.SetActive(true && Config.inst.getSeeOtherEnable());
         //backgraundStatus.color = Color.white;
         resetAllKeyButtons();
         this.isShowView = false;

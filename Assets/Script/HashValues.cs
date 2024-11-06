@@ -45,6 +45,31 @@ public class HashValues
         return resultMap;
     }
 
+
+
+    public Dictionary<float, int> CountValuesAI(Dictionary<int, GameObject> squares, int playerNum)
+    {
+        Dictionary<float, int> resultMap = new Dictionary<float, int>();
+
+        foreach (var it in squares)
+        {
+            PointOfStateAI p = it.Value.GetComponent<PointOfStateAI>();
+            float value = p.getMyVal(playerNum);
+
+
+            if (resultMap.ContainsKey(value))
+            {
+                resultMap[value]++;
+            }
+            else
+            {
+                resultMap[value] = 1;
+            }
+        }
+
+        return resultMap;
+    }
+
     public void buildHelp(Dictionary<int, GameObject> squares)
     {
         this.mapPlayer1 = CountValues(squares, 1);
@@ -53,6 +78,14 @@ public class HashValues
         this.helpCutPlayer2 = buildHelpCutPlayer(this.mapPlayer2);
     }
 
+
+    public void buildHelpAI(Dictionary<int, GameObject> squares)
+    {
+        this.mapPlayer1 = CountValuesAI(squares, 1);
+        this.mapPlayer2 = CountValuesAI(squares, 2);
+        this.helpCutPlayer1 = buildHelpCutPlayer(this.mapPlayer1);
+        this.helpCutPlayer2 = buildHelpCutPlayer(this.mapPlayer2);
+    }
 
     // need key 2 to be even!
     // do a quick help but not true all the time....

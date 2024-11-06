@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "630834550861",
+    "firebase_url": "https://fairdivision2d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "fairdivision2d",
+    "storage_bucket": "fairdivision2d.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630834550861:android:7b273538e5a538087be404",
+        "android_client_info": {
+          "package_name": "com.DefaultCompany.FairDivision2d"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5cHi49tlpibtw3Xt9EdDztmKz-wIUMSE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

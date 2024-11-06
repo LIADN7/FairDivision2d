@@ -16,6 +16,7 @@ public class PointOfState : MonoBehaviour
     private GameObject textChildObject;
     private int spriteStatus;
     private int myKey ;
+    private string stateName;
     private static int key=0;
 
 
@@ -29,7 +30,7 @@ public class PointOfState : MonoBehaviour
         //this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 1f);
         this.setChaildSprite();
         this.setChaildText();
-
+        this.stateName= this.transform.parent.name;
 
         this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 1f);
         spriteStatus = 1;
@@ -135,6 +136,10 @@ public class PointOfState : MonoBehaviour
         return this.spriteStatus;
     }
 
+    public string getMyStateName()
+    {
+        return this.stateName;
+    }
 
     // i is the color number, iPower =1 is my power and 2 for power of the other player
     public void setSpriteStatus(int i, int iPower)
@@ -194,12 +199,12 @@ public class PointOfState : MonoBehaviour
 
     public void setmyPowerColor(int i, float sum)
     {
-        this.myPowerColor= (getMyVal(i)/sum)*500;
+        this.myPowerColor= (getMyVal(i)/sum)*700;
     }
 
     public void setOtherPowerColor(int i, float sum)
     {
-        this.otherPowerColor = (getMyVal(i) / sum) * 500;
+        this.otherPowerColor = (getMyVal(i) / sum) * 700;
     }
 
 }

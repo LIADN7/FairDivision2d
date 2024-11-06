@@ -10,6 +10,7 @@ TagManager:
   - Manager
   - Config
   - Launcher
+  - DatabaseManager
   layers:
   - Default
   - TransparentFX

@@ -22,22 +22,21 @@ public class Launcher : MonoBehaviourPunCallbacks
 
     private string[] roomNames = { "CutScene", "Room2", "Room3" };
     //public Room[] rooms = {null, null, null };
-    // Start is called before the first frame update
 
     private void Awake()
     {
-/*            GameObject[] objs = GameObject.FindGameObjectsWithTag("Launcher");
-            if (objs.Length > 1)
-            {
-                Destroy(this.gameObject); // Destroy duplicate GameManager instances
-            }
-            DontDestroyOnLoad(this.gameObject); // Don't destroy this instance when loading new scenes*/
+        /*            GameObject[] objs = GameObject.FindGameObjectsWithTag("Launcher");
+                    if (objs.Length > 1)
+                    {
+                        Destroy(this.gameObject); // Destroy duplicate GameManager instances
+                    }
+                    DontDestroyOnLoad(this.gameObject); // Don't destroy this instance when loading new scenes*/
 
-            LauncherInst = this;
-            if (!PhotonNetwork.IsConnected)
-                PhotonNetwork.AutomaticallySyncScene = true;
-            PhotonNetwork.GameVersion = "0.0.1";
-        
+        LauncherInst = this;
+        if (!PhotonNetwork.IsConnected)
+            PhotonNetwork.AutomaticallySyncScene = true;
+        PhotonNetwork.GameVersion = "0.0.1";
+
 
 
     }
@@ -48,12 +47,12 @@ public class Launcher : MonoBehaviourPunCallbacks
         if (!PhotonNetwork.IsConnected)
         {
 
-        
+
             this.loadingText.text = "Connecting to network...";
-        //PhotonNetwork.AutomaticallySyncScene = true;
+            //PhotonNetwork.AutomaticallySyncScene = true;
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
-        PhotonNetwork.ConnectUsingSettings();
+            PhotonNetwork.ConnectUsingSettings();
         }
         else
         {
@@ -87,11 +86,11 @@ public class Launcher : MonoBehaviourPunCallbacks
         PhotonNetwork.LoadLevel(roomNames[0]);
     }
 
-/*    public override void OnJoinedRoom()
-    {
-        this.loadingScreen.SetActive(false);
-        PhotonNetwork.LoadLevel(roomNames[0]);
-    }*/
+    /*    public override void OnJoinedRoom()
+        {
+            this.loadingScreen.SetActive(false);
+            PhotonNetwork.LoadLevel(roomNames[0]);
+        }*/
 
 
     public void CreateGame1(int scenarioNumber)
@@ -100,32 +99,32 @@ public class Launcher : MonoBehaviourPunCallbacks
         {
 
 
-             PhotonNetwork.NickName= playerName.text;
+            PhotonNetwork.NickName = playerName.text;
 
-             Config.inst.createConfig(scenarioNumber);
- //           if (rooms[0] == null)
-   //         {
-                RoomOptions opt = new RoomOptions();
-                opt.MaxPlayers= 2;
+            Config.inst.createConfig(scenarioNumber);
+            //           if (rooms[0] == null)
+            //         {
+            RoomOptions opt = new RoomOptions();
+            opt.MaxPlayers = 2;
 
-                this.menu.SetActive(false);
-                this.loadingScreen.SetActive(true); 
-                this.loadingText.text = "Create room...";
-                Debug.Log(PhotonNetwork.JoinOrCreateRoom(roomNames[0], opt, PhotonNetwork.CurrentLobby));
-                
-/*            }
-            else
-            {
-                
-                this.loadingText.text = "Joining room...";
-                this.loadingScreen.SetActive(true);
-                
-                PhotonNetwork.JoinRoom(roomNames[0]);
-            }*/
-          /*       
-           PhotonNetwork.CreateRoom(roomNames[0], opt);
-                        this.menu.SetActive(false);
-                        this.loadingText.text = "Create room...";*/
+            this.menu.SetActive(false);
+            this.loadingScreen.SetActive(true);
+            this.loadingText.text = "Create room...";
+            Debug.Log(PhotonNetwork.JoinOrCreateRoom(roomNames[0], opt, PhotonNetwork.CurrentLobby));
+
+            /*            }
+                        else
+                        {
+
+                            this.loadingText.text = "Joining room...";
+                            this.loadingScreen.SetActive(true);
+
+                            PhotonNetwork.JoinRoom(roomNames[0]);
+                        }*/
+            /*       
+             PhotonNetwork.CreateRoom(roomNames[0], opt);
+                          this.menu.SetActive(false);
+                          this.loadingText.text = "Create room...";*/
             print(PhotonNetwork.CurrentLobby);
             print(PhotonNetwork.CurrentRoom);
 
@@ -134,22 +133,21 @@ public class Launcher : MonoBehaviourPunCallbacks
             //SceneManager.LoadScene(roomNames[0]);
         }
 
-        
+
     }
 
 
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
 
-            // Display a message to the user indicating that the room is full
-            Debug.Log("Room is full. Cannot join.");
-            this.menu.SetActive(true);
-            this.loadingScreen.SetActive(false);
-            // You can also display this message on your UI if needed.
-        
+        // Display a message to the user indicating that the room is full
+        Debug.Log("Room is full. Cannot join.");
+        this.menu.SetActive(true);
+        this.loadingScreen.SetActive(false);
+        // You can also display this message on your UI if needed.
+
 
     }
-
 
 
 

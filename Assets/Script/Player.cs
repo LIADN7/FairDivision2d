@@ -6,6 +6,11 @@ using Photon.Realtime;
 using Photon.Pun;
 using System;
 using System.Linq;
+using UnityEngine.SceneManagement;
+using System.Threading.Tasks;
+using System.Security.Cryptography;
+using Unity.Services.Authentication;
+using Unity.Services.Core;
 //using static UnityEditor.Experimental.GraphView.GraphView;
 
 
@@ -22,44 +27,76 @@ public class Player : MonoBehaviourPunCallbacks
     [SerializeField] protected GameObject[] colorsValueObj; // {red, green, yellow, blue}
 
 
-    private float[] sumPlayer = {0f,0f}; // sum of all the squares for player 1 and 2 -> {1, 2}
-    private float[] choosePlayer = { 0f, 0f }; // sum of all the squares thatthe player choose (1 and 2) -> {1, 2}
+    private float[] sumPlayer = { 0f, 0f }; // sum of all the squares for player 1 and 2 -> {1, 2}
+    private float[] choosePlayer = { 0f, 0f }; // sum of all the squares that the player choose (1 and 2) -> {1, 2}
     public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
     private Dictionary<int, int> player1 = new Dictionary<int, int>();
     private Dictionary<int, int> player2 = new Dictionary<int, int>();
+    private string[] playerSaveBtTexts = { "", "", "", "" };
     private List<ChatMessage> chatHistory = new List<ChatMessage>();
     private HashValues HelpHashValue;
     // Saves the player's state
     private Dictionary<int, int> savePlayer1 = new Dictionary<int, int>();
     private Dictionary<int, int> savePlayer2 = new Dictionary<int, int>();
+    [SerializeField] protected SumSquares[] stateObjects; // All the state obj with square childs
     private int chooseNum = 0;
-    private string[] endExplanationPlayers = {"You get:\n", "You get:\n" };
+    private string[] endExplanationPlayers = { "You get:\n", "You get:\n" };
     private bool[] playerCut = { false, false };
-    private bool[] palyersGameOver = {false,false};
+    private bool[] palyersGameOver = { false, false };
 
+    private CutAndChoosePlayerDatabase gameDatabase = new CutAndChoosePlayerDatabase();
+    //private Task databaseTask;
 
     void Start()
     {
 
+
         view = GetComponent<PhotonView>();
         inst = this;
         string palyerId = PhotonNetwork.IsMasterClient ? "Player 1" : "Player 2";
-        palyerName.text = PhotonNetwork.NickName + ", "+ palyerId+ "\nThis is round number "+ (int)(Config.inst.getRoundNumber())+1;
+        palyerName.text = PhotonNetwork.NickName + ", " + palyerId + "\nThis is round number " + (int)(Config.inst.getRoundNumber()) + 1;
         if (PhotonNetwork.IsMasterClient)
+        {
             view.RPC("InitSquares", RpcTarget.AllBufferedViaServer);
+        }
 
+        this.InitDatabaseAsync();
+        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)", false);
 
 
     }
+
+
+    public async Task InitDatabaseAsync()
+    {
+        this.gameDatabase.ScenarioNum = Config.inst.getRoundNumber();
+        this.gameDatabase.ScenarioType = Config.inst.getScenarioTypeName();
+        this.gameDatabase.PlayerStartTime = DateTime.Now;
+        this.gameDatabase.PlayerName = PhotonNetwork.NickName;
+        this.gameDatabase.PlayerID = 20548; // Need to add the real id from the user
+        int[] tempChoosen = { -1, -1 };
+        this.gameDatabase.PlayerChoosenColors = tempChoosen;
+/*        await UnityServices.InitializeAsync();
+        await AuthenticationService.Instance.SignInAnonymouslyAsync();
+        Debug.Log($"Init cloud");*/
+        //int palyerId = PhotonNetwork.IsMasterClient ? 0 : 1;
+
+        //this.databaseTask =this.gameDatabase.InitializeCloud();
+    }
+
 
     [PunRPC]
     public void InitSquares()
     {
 
-            GameObject[] tempSquares = GameObject.FindGameObjectsWithTag("SquarePoint");
-        Debug.Log(Config.inst.getRoundNumber()) ;
+        GameObject[] tempSquares = GameObject.FindGameObjectsWithTag("SquarePoint");
+        int palyerId = PhotonNetwork.IsMasterClient ? 0 : 1;
+
+
+        Debug.Log("Round Number - " + Config.inst.getRoundNumber());
         StartCoroutine(withSec(0.2f, tempSquares));
-            
+
+
     }
 
     private IEnumerator withSec(float sec, GameObject[] tempSquares)
@@ -76,8 +113,8 @@ public class Player : MonoBehaviourPunCallbacks
                 this.squares.Add(temp.getMyKey(), tempSquares[i]);
 
             }
-                this.sumPlayer[j1-1] += this.squares[temp.getMyKey()].GetComponent<PointOfState>().getMyVal(j1);
-                this.sumPlayer[j2 - 1] += this.squares[temp.getMyKey()].GetComponent<PointOfState>().getMyVal(j2);
+            this.sumPlayer[j1 - 1] += this.squares[temp.getMyKey()].GetComponent<PointOfState>().getMyVal(j1);
+            this.sumPlayer[j2 - 1] += this.squares[temp.getMyKey()].GetComponent<PointOfState>().getMyVal(j2);
 
         }
 
@@ -93,6 +130,7 @@ public class Player : MonoBehaviourPunCallbacks
         /*        greenValueText.text = "All green value: " + (0) + "%";
                 redValueText.text = "All red value: " + (100) + "%";*/
         this.statusChange();
+        this.setAllStateTitle(playerNum);
         // Check for values counter
         //------------------------
         // this.HelpHashValue = new HashValues();
@@ -103,41 +141,69 @@ public class Player : MonoBehaviourPunCallbacks
         //--------------------
     }
 
-    // Update is called once per frame
-/*    void Update()
+
+    public void setAllStateTitle(int playerNum)
     {
-        
-        //myNameText.text = "Player: " + Launcher.LauncherInst.rooms[0];
-    }*/
+        for (int i = 0; i < this.stateObjects.Length; i++)
+        {
+            this.stateObjects[i].SetMyTitle(playerNum, this.sumPlayer[playerNum - 1]);
+        }
+    }
+    // Update is called once per frame
+    /*    void Update()
+        {
+
+            //myNameText.text = "Player: " + Launcher.LauncherInst.rooms[0];
+        }*/
 
     public void CutView()
     {
         float cutSum = this.statusChange();
-        //if (cutSum == 50) { 
+        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.PlayerCount > 1)
+        {
+            this.gameDatabase.SetPlayerTimeCut();
+            float[] cutVal = { 100 - cutSum, cutSum };
+            this.gameDatabase.SetPlayerCutValues(cutVal);
             int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
             Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
+            Dictionary<int, Dictionary<int, string>> tempPlayerWithParentName = new Dictionary<int, Dictionary<int, string>>();
             foreach (var it in this.squares)
             {
                 PointOfState p = it.Value.GetComponent<PointOfState>();
                 int status = p.getSpriteStatus();
                 int key = p.getMyKey();
+                string stateName = p.getMyStateName();
                 tempPlayer.Add(key, status);
+
+                tempPlayerWithParentName.Add(key, new Dictionary<int, string>() { { status, stateName } });
+
                 //p.setSpriteStatus(1);
             }
+            this.gameDatabase.playerCutSquares = tempPlayerWithParentName;
             view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
-        Manager.inst.setViewAfterCut();
-        Manager.inst.setNote(-1, "Please wait for the other player to cut", false);
-        // }
-        /*        else
-                {
-                    Manager.inst.setNote(7f,"Youneed to set 50% for for both values!!!", true);
-                }*/
+            Manager.inst.setViewAfterCut();
+            Manager.inst.setNote(-1, "Please wait for the other player to cut", false);
+        }
+        else
+        {
+            Manager.inst.setNote(7f, "Waiting for the other player to connect!", true);
+        }
         if (isAllTrue())
-            {
-                view.RPC("setAllState", RpcTarget.All);
-                //setAllState();
-            }
+        {
+            view.RPC("setAllState", RpcTarget.All);
+            float[] tempMySum = Manager.inst.getAllSumRGYB();
+            this.gameDatabase.SetPlayerColorValues(tempMySum);
+            view.RPC("SetForOtherPlayerColorValuesDataBase", RpcTarget.Others, tempMySum);
+            //setAllState();
+        }
 
+    }
+
+    [PunRPC]
+    private void SetForOtherPlayerColorValuesDataBase(float[] tempOtherSum)
+    {
+
+        this.gameDatabase.SetOtherPlayerColorValues(tempOtherSum);
     }
 
     [PunRPC]
@@ -153,13 +219,12 @@ public class Player : MonoBehaviourPunCallbacks
             this.player2 = tempPlayer;
         }
         this.playerCut[i - 1] = true;
-        
         if (isAllTrue())
         {
             Manager.inst.setViewToChoose();
             //setAllState(player1, player2);
         }
-       
+
 
     }
 
@@ -168,7 +233,7 @@ public class Player : MonoBehaviourPunCallbacks
     {
         //GREEN, RED, YELLOW, BLUE
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
-        float[] sumRGYB = createSumRGYB(playerNum); 
+        float[] sumRGYB = createSumRGYB(playerNum);
         for (int k = 0; k < sumRGYB.Length; k++)
         {
             //Debug.LogError(sumRGYB[k] + "   " + this.sumPlayer[playerNum - 1]);
@@ -177,14 +242,14 @@ public class Player : MonoBehaviourPunCallbacks
         }
 
         Manager.inst.setSumRGYB(sumRGYB);
-        buttonsValueText[0].text = "P2 choose X(Red) = (1,1) value: " + (sumRGYB[0]) + "%";
-        buttonsValueText[1].text = "P2 choose O(Green) = (2,2) value: " + (sumRGYB[1]) + "%";
-        buttonsValueText[2].text = "P2 choose O(Green) = (1,2) value: " + (sumRGYB[2]) + "%";
-        buttonsValueText[3].text = "P2 choose X(Red) = (2,1) value: " + (sumRGYB[3]) + "%";
+        buttonsValueText[0].text = "Part 1 (X) value: " + (sumRGYB[0]) + "%";
+        buttonsValueText[1].text = "Part 2 (O) value: " + (sumRGYB[1]) + "%";
+        buttonsValueText[2].text = "Part 3 (O) value: " + (sumRGYB[2]) + "%";
+        buttonsValueText[3].text = "Part 4 (X) value: " + (sumRGYB[3]) + "%";
         Manager.inst.initialSeeOtherPlayerBT();
         if (isIntuitive(sumRGYB))
         {
-            //if(Manager.inst.getIndexOfMaxSumRGYB()) // need to do a intuitive choose
+            //if(Manager.inst.getIndexOfMaxSumRGYB()) // need to do a intuitive choose (Maybe we will create in the future)
         }
         else
         {
@@ -204,13 +269,13 @@ public class Player : MonoBehaviourPunCallbacks
 
     private bool isIntuitive(float[] sumRGYB)
     {
-        bool flag = sumRGYB[2] + sumRGYB[3] == 0 || sumRGYB[0] + sumRGYB[1]==0;
+        bool flag = sumRGYB[2] + sumRGYB[3] == 0 || sumRGYB[0] + sumRGYB[1] == 0;
         return false;
     }
 
     public void ChooseView(int i)
     {
-        if (isAllTrue()&&(i >= 0 && i < 4))
+        if (isAllTrue() && (i >= 0 && i < 4))
         {
             int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
             float tempSum = Manager.inst.getSumRGYB(i);
@@ -218,24 +283,34 @@ public class Player : MonoBehaviourPunCallbacks
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
                 choosePlayer[playerNum - 1] = tempSum;
+                this.gameDatabase.SetPlayerChoosenColors(0, i);
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
+                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 1 choose, please pick 2 parts");
+                Manager.inst.setNote(-1, "Please wait for player 2 to pick 2 parts)", false);
+
 
             }
-            else if (playerNum == 2 && chooseNum ==1)
+            else if (playerNum == 2 && chooseNum == 1)
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
                 choosePlayer[playerNum - 1] += tempSum;
+                this.gameDatabase.SetPlayerChoosenColors(0, i);
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
+                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 2 choose 1 part");
+                Manager.inst.setNote(-1, "Please pick one more part)", false);
             }
             else if (playerNum == 2 && chooseNum == 2)
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
                 choosePlayer[playerNum - 1] += tempSum;
+                this.gameDatabase.SetPlayerChoosenColors(1, i);
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
                 view.RPC("GetValues", RpcTarget.All);
+                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "You got the last remaining part");
+                Manager.inst.setNote(-1, "Player 1 got the last remaining part)", false);
             }
 
         }
@@ -245,15 +320,21 @@ public class Player : MonoBehaviourPunCallbacks
     private void Choose(int i, int playerNum)
     {
         buttonsValueText[i].text = "Taken By Player " + playerNum;
-        colorsValueObj[i].GetComponent<Button>().interactable= false;
+        colorsValueObj[i].GetComponent<Button>().interactable = false;
         //colorsValueObj[i].SetActive(false);
         chooseNum++;
+
+    }
+    [PunRPC]
+    private void SetNoteForOtherPlayer(string message)
+    {
+        Manager.inst.setNote(-1, message, false);
 
     }
     private string getExplanationPlayer(int color, float value)
     {
         string[] strColors = { "RED-X", "GREEN-O", "RED-O", "GREEN-X" };
-        return "" + strColors[color]+" with value: "+ value+"\n";
+        return "" + strColors[color] + " with value: " + value + "\n";
     }
 
     [PunRPC]
@@ -264,6 +345,7 @@ public class Player : MonoBehaviourPunCallbacks
         buttonsValueText[last].text = "Taken By Player 1";
         if (PhotonNetwork.IsMasterClient)
         {
+            this.gameDatabase.SetPlayerChoosenColors(1, last);
             float tempSum = Manager.inst.getSumRGYB(last);
             endExplanationPlayers[playerNum - 1] += getExplanationPlayer(last, tempSum);
             choosePlayer[playerNum - 1] += tempSum;
@@ -274,14 +356,15 @@ public class Player : MonoBehaviourPunCallbacks
         //colorsValueObj[last].SetActive(false);
         Manager.inst.setNote(-1, endExplanationPlayers[playerNum - 1], false);
         Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
+        this.gameDatabase.SumOfMyPart = choosePlayer[playerNum - 1];
     }
 
     // Get the last number of the remaining color
     private int GetLast()
     {
-        
+
         //chooseObj
-        
+
         for (int j = 0; j < colorsValueObj.Length; j++)
         {
 
@@ -296,6 +379,7 @@ public class Player : MonoBehaviourPunCallbacks
     private float[] createSumRGYB(int j)
     {
         float[] sumRGYB = { 0, 0, 0, 0 }; //GREEN, RED, YELLOW, BLUE
+        int[] statusCounter = new int[4];
 
         foreach (var it in this.squares)
         {
@@ -322,9 +406,11 @@ public class Player : MonoBehaviourPunCallbacks
             }
             p.setChildText(colorText);
             sumRGYB[spriteStatus - 1] += val;
-            p.setSpriteStatus(spriteStatus,1);
+            statusCounter[spriteStatus - 1]++;
+            p.setSpriteStatus(spriteStatus, 1);
 
         }
+        this.gameDatabase.SetAmountOfColor(statusCounter);
         return sumRGYB;
     }
 
@@ -341,7 +427,8 @@ public class Player : MonoBehaviourPunCallbacks
 
     public float statusChange()
     {
-        lock (this) { 
+        lock (this)
+        {
             float sumG = 0;
             int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
 
@@ -354,8 +441,6 @@ public class Player : MonoBehaviourPunCallbacks
                 }
 
             }
-
-
             float greenVal = (sumG / this.sumPlayer[playerNum - 1]);
             buttonsValueText[0].text = "Part 1 value: " + ((1 - greenVal) * 100) + "%";
             buttonsValueText[1].text = "Part 2 value: " + (greenVal * 100) + "%";
@@ -373,26 +458,40 @@ public class Player : MonoBehaviourPunCallbacks
     public void getOtherView()
     {
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
-        int otherPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
+        this.gameDatabase.AddCountPlayerSeeOther();
         if (Manager.inst.getIsShowView())
         {
+            Debug.Log("second");
+
             SetMap(playerNum == 1 ? this.savePlayer1 : this.savePlayer2, playerNum);
-        }
-        else if (isAllTrue())
-        {
-            Dictionary<int, int> tempPlayer = getTempPlayer();
-            if (playerNum == 1) savePlayer1 = tempPlayer;
-            else savePlayer2 = tempPlayer;
-            setOtherCutMap(); // Set other player map after cut
+            //this.statusChange();
+            this.setAllStateTitle(playerNum);
+            float[] sumRGYB = setOtherCutMap(playerNum);
+
+            for (int i = 0; i < buttonsValueText.Length; i++)
+            {
+                buttonsValueText[i].text = playerSaveBtTexts[i];
+            }
+
+
         }
         else
         {
-
+            Debug.Log("first");
             Dictionary<int, int> tempPlayer = getTempPlayer();
             if (playerNum == 1) savePlayer1 = tempPlayer;
             else savePlayer2 = tempPlayer;
+            for (int i = 0; i < buttonsValueText.Length; i++)
+            {
+                playerSaveBtTexts[i] = buttonsValueText[i].text;
+            }
             //setOtherHeatmap(); // Set other player heatmap in green color
-            setOtherCutMap();
+            float[] sumRGYB = setOtherCutMap(otherPlayerNum);
+            buttonsValueText[0].text = "Other player val: " + (sumRGYB[0]) + "%";
+            buttonsValueText[1].text = "Other player val: " + (sumRGYB[1]) + "%";
+            buttonsValueText[2].text = "Other player val: " + (sumRGYB[2]) + "%";
+            buttonsValueText[3].text = "Other player val: " + (sumRGYB[3]) + "%";
         }
         Manager.inst.changeSeeOtherPlayerBT();
 
@@ -404,7 +503,7 @@ public class Player : MonoBehaviourPunCallbacks
     // Update the map based on the received data.
     private void SetMap(Dictionary<int, int> tempPlayer, int playerNum)
     {
-        if(tempPlayer==null) return;
+        if (tempPlayer == null) return;
 
         //float[] sumRGYB = { 0, 0 }; //GREEN, RED, YELLOW, BLUE
         //int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
@@ -413,7 +512,7 @@ public class Player : MonoBehaviourPunCallbacks
             PointOfState p = it.Value.GetComponent<PointOfState>();
             float val = p.getMyVal(playerNum);
             int tempKey = p.getMyKey();
-            int spriteStatus = tempPlayer[tempKey] ; // Red, Green, Yellow or Blue
+            int spriteStatus = tempPlayer[tempKey]; // Red, Green, Yellow or Blue
 
             //sumRGYB[spriteStatus - 1] += val;
             p.setSpriteStatus(spriteStatus, 1);
@@ -449,18 +548,52 @@ public class Player : MonoBehaviourPunCallbacks
     }
 
 
-    private void setOtherCutMap()
+    private float[] setOtherCutMap(int otherPlayer)
     {
+        float[] sumRGYB = { 0, 0, 0, 0 };
         foreach (var it in this.squares)
         {
             PointOfState p = it.Value.GetComponent<PointOfState>();
-            p.setSpriteStatus(p.getSpriteStatus(), 2); //set green and pther val power
+            float otherVal = p.getMyVal(otherPlayer);
+            sumRGYB[p.getSpriteStatus() - 1] += otherVal;
+            p.setSpriteStatus(p.getSpriteStatus(), otherPlayer); //set this color and other player val power
         }
+        // Set the other player values on the buttons
+        float sumAll = 0;
+        for (int i = 0; i < sumRGYB.Length; i++)
+        {
+            sumAll += sumRGYB[i];
+        }
+        for (int i = 0; i < sumRGYB.Length; i++)
+        {
+            sumRGYB[i] = (sumRGYB[i] / sumAll) * 100;
+        }
+
+        // Set all the title states
+        this.setAllStateTitle(otherPlayer);
+        return sumRGYB;
     }
+
+    /*    private  void setAllButtonValues(float[] sumRGYB)
+        {
+            float sumAll = 0;
+            for (int i = 0; i < sumRGYB.Length; i++)
+            {
+                sumAll += sumRGYB[i];
+            }
+            for (int i = 0; i < sumRGYB.Length; i++)
+            {
+                sumRGYB[i] = (sumRGYB[i] / sumAll) * 100;
+            }
+            buttonsValueText[0].text = "Other player val: " + (sumRGYB[0]) + "%";
+            buttonsValueText[1].text = "Other player val: " + (sumRGYB[1]) + "%";
+            buttonsValueText[2].text = "Other player val: " + (sumRGYB[2]) + "%";
+            buttonsValueText[3].text = "Other player val: " + (sumRGYB[3]) + "%";
+        }*/
 
 
     // Send message from the Game Manger
-    public void sendMangerMessage(string message)
+    private void sendMangerMessage(string message)
     {
         if (this.chatInput.text.Length >= 1)
         {
@@ -491,13 +624,15 @@ public class Player : MonoBehaviourPunCallbacks
     // If the chat history has more than 11 messages, it removes the oldest message.
     private void addMessageToList(string name, string newMessage)
     {
-        
-        if (this.chatHistory.Count() >= 11)
+        // Save only the last 200 messeges 
+        if (this.chatHistory.Count() >= 200)
         {
             this.chatHistory.RemoveAt(0);
         }
         ChatMessage tempMessage = new ChatMessage(name, newMessage);
         this.chatHistory.Add(tempMessage);
+        this.gameDatabase.ChatHistory = this.chatHistory; // Save chat (this func is called twice)
+
     }
 
     // Updates the chat UI by displaying all chat messages in the chat history list.
@@ -505,11 +640,17 @@ public class Player : MonoBehaviourPunCallbacks
     private void getAllMessages()
     {
         this.chatText.text = ""; // Clear the text before updating
-
+        int i = 0;
         foreach (ChatMessage m in chatHistory)
         {
-            this.chatText.text += m.ToString() + "\n"; // Add each message followed by a newline
+            // Show only the first 10 messeges
+            if (chatHistory.Count - i < 11)
+            {
+                this.chatText.text += m.ToString() + "\n"; // Add each message followed by a newline
+            }
+            i++;
         }
+
     }
 
     // Sends the message to the other players
@@ -518,6 +659,7 @@ public class Player : MonoBehaviourPunCallbacks
     {
         //Manager.inst.setNewMessage();
         addMessageToList(name, newMessage);
+        // save chat for the sender player
         getAllMessages();
     }
 
@@ -531,7 +673,7 @@ public class Player : MonoBehaviourPunCallbacks
             PointOfState p = it.Value.GetComponent<PointOfState>();
             int tempKey = p.getMyKey();
             float val = p.getMyVal(playerNum);
-            if (helpCutPlayer.ContainsKey(val)&& helpCutPlayer[val]>0)
+            if (helpCutPlayer.ContainsKey(val) && helpCutPlayer[val] > 0)
             {
                 helpCutPlayer[val]--;
                 p.setSpriteStatus(2, playerNum);
@@ -543,7 +685,7 @@ public class Player : MonoBehaviourPunCallbacks
             //int spriteStatus = tempPlayer[tempKey]; // Red, Green, Yellow or Blue
 
             //sumRGYB[spriteStatus - 1] += val;
-            
+
 
         }
         statusChange();
@@ -556,10 +698,10 @@ public class Player : MonoBehaviourPunCallbacks
         this.palyersGameOver[playerNum - 1] = true;
         Manager.inst.NextSceneClick();
 
-        if (this.palyersGameOver[0]&& this.palyersGameOver[1])
+        if (this.palyersGameOver[0] && this.palyersGameOver[1])
         {
 
-                photonView.RPC("MasterNextGame", RpcTarget.All, sceneName);
+            photonView.RPC("MasterNextGame", RpcTarget.All, sceneName);
         }
         else
         {
@@ -582,24 +724,29 @@ public class Player : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             int roundNumberConfig = Config.inst.addRoundNumber();
+            roundNumberConfig = 4;
             //Debug.LogError("scenarioNum= " + roundNumberConfig);
             if (roundNumberConfig == 2)
             {
 
                 int scenarioNum = UnityEngine.Random.Range(2, 5); // Create next 2 scenarios for round 3 and 4
-                
+
                 //Config.inst.createConfig(scenarioNum);
                 photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, scenarioNum);
+            }
+            else if (roundNumberConfig == 4)
+            {
+                LeaveGame("MainScene"); //Save data after click on the ending button!!!!
             }
             else
             {
 
-                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName,-1);
+                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, -1);
             }
         }
     }
     [PunRPC]
-    private void RequestSceneLoad(string sceneName,int scenarioNum)
+    private void RequestSceneLoad(string sceneName, int scenarioNum)
     {
         if (scenarioNum > 0)
         {
@@ -609,6 +756,48 @@ public class Player : MonoBehaviourPunCallbacks
         // Master client loads the scene on behalf of non-master clients
         PhotonNetwork.LoadLevel(sceneName);
     }
+
+
+    public void LeaveGame(string sceneName)
+    {
+
+        photonView.RPC("LeaveGameForAll", RpcTarget.All, sceneName);
+    }
+
+
+    [PunRPC]
+    private void LeaveGameForAll(string sceneName)
+    {
+        // Only for test 
+        PhotonNetwork.LeaveRoom();
+        StartCoroutine(DelayAndLoadScene(0.2f, sceneName));
+    }
+    private IEnumerator DelayAndLoadScene(float sec, string sceneName)
+    {
+        yield return new WaitForSeconds(sec);
+        SceneManager.LoadScene(sceneName);
+    }
+
+    // This function save the data of the game
+    public void SaveData()
+    {
+        this.gameDatabase.isAgreed = Manager.inst.getIsAgreedMark();
+        this.gameDatabase.SaveDatabaseAsync("CutAndChhosedatabase");
+    }
+
+    // This function load the data that saved
+    public void LoadDatabaseAsync(string path)
+    {
+        // string loadTestFile = "CutAndChhosedatabase.dat";
+        /*string loadTestFile = "./Assets/DataFiles/CutAndChhosedatabase.dat";
+        CutAndChoosePlayerDatabase newData = CutAndChoosePlayerDatabase.ImportDatabase(loadTestFile);*/
+        this.gameDatabase.LoadData();
+        /*            CutAndChoosePlayerDatabase newData
+                Debug.Log("Saved player name: "+newData.PlayerName);
+                Debug.Log("Num of clicked 'see': " + newData.CountPlayerSeeOther);
+        */
+    }
+
 }
 
 

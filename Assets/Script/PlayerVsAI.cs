@@ -13,7 +13,7 @@ public class PlayerVsAI : MonoBehaviour
         [SerializeField] protected Text blueValueText;*/
     [SerializeField] protected Text palyerName;
     [SerializeField] protected GameObject[] colorsValueObj; // {RED-O, GREEN-O, RED-X, GREEN-X}
-
+    [SerializeField] protected SumSquares[] stateObjects; // All the state obj with square childs
     private float[] sumRGYBPlayer2 = { 0, 0, 0, 0 };
 
     private float[] sumPlayer = { 0f, 0f }; // sum of all the squares for player 1 and 2 -> {1, 2}
@@ -30,7 +30,7 @@ public class PlayerVsAI : MonoBehaviour
     private bool playerCut = false; 
     private bool palyersGameOver = false;
 
-
+    private HashValues HelpHashValue;
 
     // Start is called before the first frame update
     void Start()
@@ -38,6 +38,7 @@ public class PlayerVsAI : MonoBehaviour
         inst = this;
         palyerName.text = "Demo Game, You Are Player 1";
         InitSquares();
+        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)", false);
 
 
 
@@ -80,8 +81,18 @@ public class PlayerVsAI : MonoBehaviour
             p.setSpriteStatus(1, 1);
         }
         this.statusChange();
+        for (int i = 0; i < this.stateObjects.Length; i++)
+        {
+            this.stateObjects[i].InitForAIGame();
+            this.stateObjects[i].SetMyTitle(playerNum, this.sumPlayer[0]);
+        }
         /*greenValueText.text = "All green value: " + (0) + "%";
-        redValueText.text = "All red value: " + (100) + "%";*/
+        redValueText.text = "All red value: " + (100) + "%";
+
+        this.HelpHashValue = new HashValues();
+        this.HelpHashValue.buildHelpAI(this.squares);
+        this.HelpHashValue.printHelp(1);
+        this.HelpHashValue.printHelp(2);*/
 
     }
     public void CutView()
@@ -142,31 +153,33 @@ public class PlayerVsAI : MonoBehaviour
         int maxRand = 3;
         int rand = UnityEngine.Random.Range(0, maxRand);
         Debug.Log(rand);
+        // ALL the high values an a little low
         Dictionary<float, int> helpCutPlayer1 = new Dictionary<float, int>{
-                        { 2f, 44 },
-                        { 4f, 92 },
-                        { 6f, 60 },
-                        { 8f, 32 },
-                        { 10f, 10 }};
+                        { 2f, 28 },
+                        { 4f, 1 },
+                        { 8f, 127 }};
+        // Player 2 vals:
+        // States with val(2) => 99 27
+        // States with val(4) => 69 42 39 71
+        // States with val(8) => 31 38 58
+        // sum(2152) / 2 =1076
+        rand = 2;
         if (rand == 0) ;
         else if (rand == 1)
         {
-            // 50% more high and 50% more low values
+            // All the Mid values and one state low
             helpCutPlayer1 = new Dictionary<float, int>{
-                { 2f, 10 },
-                { 4f, 42 },
-                { 6f, 60 },
-                { 8f, 48 },
-                { 10f, 24 }};
+                        { 2f, 96 },
+                        { 4f, 221 },
+                        { 8f, 0 }};
         }
         else if (rand == 2)
         {
+            // 1 low state and 25 square more, 1 state with mid, 2 states with high
             helpCutPlayer1 = new Dictionary<float, int>{
-                { 2f, 54 },
-                { 4f, 82 },
-                { 6f, 58 },
-                { 8f, 46 },
-                { 10f, 2 }};
+                        { 2f, (99+25) },
+                        { 4f, 69 },
+                        { 8f, 69 }};
         }
         return helpCutPlayer1;
     }
@@ -192,10 +205,10 @@ public class PlayerVsAI : MonoBehaviour
             Debug.Log("Player2[ " + k + "]: " + sumRGYBPlayer2[k]);
         }*/
         Manager.inst.setSumRGYB(sumRGYB);
-        buttonsValueText[0].text = "P2 choose X(Red) = (1,1) value: " + (sumRGYB[0]) + "%";
-        buttonsValueText[1].text = "P2 choose O(Green) = (2,2) value: " + (sumRGYB[1]) + "%";
-        buttonsValueText[2].text = "P2 choose O(Green) = (1,2) value: " + (sumRGYB[2]) + "%";
-        buttonsValueText[3].text = "P2 choose X(Red) = (2,1) value: " + (sumRGYB[3]) + "%";
+        buttonsValueText[0].text = "Part 1 (X) value: " + (sumRGYB[0]) + "%";
+        buttonsValueText[1].text = "Part 2 (O) value: " + (sumRGYB[1]) + "%";
+        buttonsValueText[2].text = "Part 3 (O) value: " + (sumRGYB[2]) + "%";
+        buttonsValueText[3].text = "Part 4 (X) value: " + (sumRGYB[3]) + "%";
         Manager.inst.initialSeeOtherPlayerBT();
 
             if (playerNum == 1)

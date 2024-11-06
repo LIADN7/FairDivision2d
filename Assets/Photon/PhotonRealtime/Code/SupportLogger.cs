@@ -430,5 +430,10 @@ namespace Photon.Realtime
         {
             Debug.LogError(errorInfo.ToString());
         }
+
+        public void OnPlayerLeftRoom()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
