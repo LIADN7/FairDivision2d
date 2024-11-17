@@ -48,7 +48,7 @@ public class Config : MonoBehaviour
      * 3 - with chat and without see other heatmap
      * 4 - with chat and with see other heatmap
      */
-    public void createConfig(int scenarioNumber)
+    public void createConfig(int scenarioNumber, int roundNumberConfig)
     {
         bool isSeeOtherEnable = scenarioNumber == 2 || scenarioNumber == 4;
         bool isChetEnable = scenarioNumber == 3 || scenarioNumber == 4;
@@ -56,7 +56,7 @@ public class Config : MonoBehaviour
         this.chatEnable = isChetEnable;
         this.seeOtherEnable = isSeeOtherEnable;
         this.timeForHelpPage = timer;
-        this.roundNumber = 0;
+        this.roundNumber = roundNumberConfig;
     }
 
     public int getScenarioType()

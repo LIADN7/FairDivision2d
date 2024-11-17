@@ -54,7 +54,7 @@ public class Player : MonoBehaviourPunCallbacks
         view = GetComponent<PhotonView>();
         inst = this;
         string palyerId = PhotonNetwork.IsMasterClient ? "Player 1" : "Player 2";
-        palyerName.text = PhotonNetwork.NickName + ", " + palyerId + "\nThis is round number " + (int)(Config.inst.getRoundNumber()) + 1;
+        palyerName.text = PhotonNetwork.NickName + ", " + palyerId + "\nThis is round number " + ((int)(Config.inst.getRoundNumber()) + 1);
         if (PhotonNetwork.IsMasterClient)
         {
             view.RPC("InitSquares", RpcTarget.AllBufferedViaServer);
@@ -131,6 +131,7 @@ public class Player : MonoBehaviourPunCallbacks
                 redValueText.text = "All red value: " + (100) + "%";*/
         this.statusChange();
         this.setAllStateTitle(playerNum);
+
         // Check for values counter
         //------------------------
         // this.HelpHashValue = new HashValues();
@@ -155,6 +156,7 @@ public class Player : MonoBehaviourPunCallbacks
 
             //myNameText.text = "Player: " + Launcher.LauncherInst.rooms[0];
         }*/
+
 
     public void CutView()
     {
@@ -690,6 +692,7 @@ public class Player : MonoBehaviourPunCallbacks
         }
         statusChange();
     }
+
     [PunRPC]
     public void NextGame(string sceneName)
     {
@@ -697,7 +700,7 @@ public class Player : MonoBehaviourPunCallbacks
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         this.palyersGameOver[playerNum - 1] = true;
         Manager.inst.NextSceneClick();
-
+        this.SaveData();
         if (this.palyersGameOver[0] && this.palyersGameOver[1])
         {
 
@@ -724,35 +727,38 @@ public class Player : MonoBehaviourPunCallbacks
         if (PhotonNetwork.IsMasterClient)
         {
             int roundNumberConfig = Config.inst.addRoundNumber();
-            roundNumberConfig = 4;
+            //roundNumberConfig = 4;
             //Debug.LogError("scenarioNum= " + roundNumberConfig);
             if (roundNumberConfig == 2)
             {
 
-                int scenarioNum = UnityEngine.Random.Range(2, 5); // Create next 2 scenarios for round 3 and 4
+                int scenarioNum = UnityEngine.Random.Range(2, 4); // Create next 2 scenarios for round 3 and 4
 
                 //Config.inst.createConfig(scenarioNum);
-                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, scenarioNum);
+                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, scenarioNum, roundNumberConfig);
             }
             else if (roundNumberConfig == 4)
             {
-                LeaveGame("MainScene"); //Save data after click on the ending button!!!!
+
+                int scenarioNum = 4; // Create next 2 scenarios for round 5 and 6
+                //Config.inst.createConfig(scenarioNum);
+                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, scenarioNum, roundNumberConfig);
+            }
+            else if (roundNumberConfig == 6)
+            {
+                LeaveGame("EndGameFlow"); //Save data after click on the ending button!!!!
             }
             else
             {
 
-                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, -1);
+                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, Config.inst.getScenarioType(), roundNumberConfig);
             }
         }
     }
     [PunRPC]
-    private void RequestSceneLoad(string sceneName, int scenarioNum)
+    private void RequestSceneLoad(string sceneName, int scenarioNum, int roundNumberConfig)
     {
-        if (scenarioNum > 0)
-        {
-
-            Config.inst.createConfig(scenarioNum);
-        }
+        Config.inst.createConfig(scenarioNum, roundNumberConfig);
         // Master client loads the scene on behalf of non-master clients
         PhotonNetwork.LoadLevel(sceneName);
     }
@@ -779,7 +785,7 @@ public class Player : MonoBehaviourPunCallbacks
     }
 
     // This function save the data of the game
-    public void SaveData()
+    private void SaveData()
     {
         this.gameDatabase.isAgreed = Manager.inst.getIsAgreedMark();
         this.gameDatabase.SaveDatabaseAsync("CutAndChhosedatabase");

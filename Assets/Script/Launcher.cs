@@ -101,7 +101,7 @@ public class Launcher : MonoBehaviourPunCallbacks
 
             PhotonNetwork.NickName = playerName.text;
 
-            Config.inst.createConfig(scenarioNumber);
+            Config.inst.createConfig(scenarioNumber,0);
             //           if (rooms[0] == null)
             //         {
             RoomOptions opt = new RoomOptions();
