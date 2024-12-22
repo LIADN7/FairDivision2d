@@ -34,7 +34,7 @@ public class InteractPlaceHolder : MonoBehaviour
         
         if (this.chatInput.text.Length > 0 )
         {
-            Debug.Log("Send message");
+            Debug.Log("Send message - "+ this.chatInput.text);
             view.RPC("OtersGetMessage", RpcTarget.Others, this.chatInput.text);
         }
     }
