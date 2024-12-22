@@ -20,4 +20,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/EndGameFlow.unity
     guid: 46115c5e04e36b24c8b4940d8b08300b
+  - enabled: 1
+    path: Assets/Scenes/DemoScene.unity
+    guid: d15745d14d144a843a824d0bb96a2ccd
   m_configObjects: {}

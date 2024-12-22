@@ -21,6 +21,7 @@ public class Launcher : MonoBehaviourPunCallbacks
 
 
     private string[] roomNames = { "CutScene", "Room2", "Room3" };
+    private string sceneToLoad = "CutScene";
     //public Room[] rooms = {null, null, null };
 
     private void Awake()
@@ -83,7 +84,7 @@ public class Launcher : MonoBehaviourPunCallbacks
     {
         this.loadingScreen.SetActive(false);
         //rooms[0] = PhotonNetwork.CurrentRoom;
-        PhotonNetwork.LoadLevel(roomNames[0]);
+        PhotonNetwork.LoadLevel(this.sceneToLoad);
     }
 
     /*    public override void OnJoinedRoom()
@@ -131,6 +132,31 @@ public class Launcher : MonoBehaviourPunCallbacks
             //loadingScreen.SetActive(true);
             //PhotonNetwork.LoadLevel(roomNames[0]);
             //SceneManager.LoadScene(roomNames[0]);
+        }
+
+
+    }
+
+
+    public void CreateDemoGame(int scenarioNumber)
+    {
+        if (playerName.text != "")
+        {
+
+
+            PhotonNetwork.NickName = playerName.text;
+
+            Config.inst.createConfig(scenarioNumber, 0);
+            RoomOptions opt = new RoomOptions();
+            opt.MaxPlayers = 2;
+
+            this.menu.SetActive(false);
+            this.loadingScreen.SetActive(true);
+            this.loadingText.text = "Create room...";
+            this.sceneToLoad = "DemoScene";
+            Debug.Log(PhotonNetwork.JoinOrCreateRoom("DemoScene", opt, PhotonNetwork.CurrentLobby));
+            print(PhotonNetwork.CurrentLobby);
+            print(PhotonNetwork.CurrentRoom);
         }
 
 

@@ -14,6 +14,7 @@ public class CutAndChoosePlayerDatabase
     public string ScenarioType { get; set; } = "Normal";
     //1 Normal, 2 Info, 3 Chat, 4 InfoAChat
     public string PlayerName { get; set; } = ""; //{player1, player2} V
+    public string otherPlayerName { get; set; } = ""; //{player1, player2} V
     public List<ChatMessage> ChatHistory { get; set; } = new List<ChatMessage>();
     public bool isAgreed { get; set; } = false;
     public Dictionary<string, float> PlayerCutValues { get; set; } = new Dictionary<string, float>()

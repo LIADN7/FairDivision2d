@@ -224,6 +224,10 @@ public class Player : MonoBehaviourPunCallbacks
         if (isAllTrue())
         {
             Manager.inst.setViewToChoose();
+
+            // Set other player name on the database
+            photonView.RPC("UpdateOtherPlayerName", RpcTarget.Others, this.gameDatabase.PlayerName);
+
             //setAllState(player1, player2);
         }
 
@@ -769,7 +773,11 @@ public class Player : MonoBehaviourPunCallbacks
 
         photonView.RPC("LeaveGameForAll", RpcTarget.All, sceneName);
     }
-
+    [PunRPC]
+    private void UpdateOtherPlayerName(string otherName)
+    {
+        this.gameDatabase.otherPlayerName= otherName;
+    }
 
     [PunRPC]
     private void LeaveGameForAll(string sceneName)

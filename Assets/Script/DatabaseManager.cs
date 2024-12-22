@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
@@ -8,12 +7,14 @@ using Unity.Services.CloudSave;
 using Newtonsoft.Json;
 using System;
 using ExitGames.Client.Photon.StructWrapping;
+using System.Runtime.InteropServices;
 
 public class DatabaseManager : MonoBehaviour
 {
+    [DllImport("MasterURL")]
+    private static extern string GetMasterURL();
 
     public static DatabaseManager inst=null;
-
     private void Awake()
     {
         inst = this;
@@ -30,6 +31,12 @@ public class DatabaseManager : MonoBehaviour
     void Start()
     {
         this.ConnectToCloud();
+/*        #if UNITY_WEBGL && !UNITY_EDITOR
+        Debug.Log(GetMasterURL());
+            string url = GetMasterURL();
+            Debug.Log("URL from JavaScript: " + url);
+        #endif*/
+
     }
 
     private async Task ConnectToCloud()
