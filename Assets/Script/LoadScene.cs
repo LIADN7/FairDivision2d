@@ -1,10 +1,7 @@
 using Photon.Pun;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Threading.Tasks;
-using Unity.Services.Authentication;
 using System;
 
 public class LoadScene : MonoBehaviour

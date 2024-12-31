@@ -8,9 +8,6 @@ using System;
 using System.Linq;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
-using Unity.Services.Authentication;
-using Unity.Services.Core;
 //using static UnityEditor.Experimental.GraphView.GraphView;
 
 

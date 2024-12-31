@@ -103,6 +103,7 @@ $RECYCLE.BIN/
 # Office temporary files
 ~*
 
+!Packages/**
 
 # Pycharm project
 .idea
