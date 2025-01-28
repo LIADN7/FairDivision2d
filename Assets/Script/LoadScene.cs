@@ -9,13 +9,16 @@ public class LoadScene : MonoBehaviour
 
     public void LoadTheScene(string sceneName)
     {
+        //Config.inst.RedirectToSurvey(true);
         SceneManager.LoadScene(sceneName);
 
     }
 
 
+
     public void LeaveRoomBeforeLoadTheScene(string sceneName)
     {
+
         try
         {
         //AuthenticationService.Instance.SignOut(true);

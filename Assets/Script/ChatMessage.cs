@@ -9,6 +9,7 @@ public class ChatMessage
 
     public ChatMessage(string playerName, string message)
     {
+
         Message = message;
         PlayerName = playerName;
         Date = DateTime.Now;

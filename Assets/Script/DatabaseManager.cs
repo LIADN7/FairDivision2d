@@ -11,13 +11,18 @@ using System.Runtime.InteropServices;
 
 public class DatabaseManager : MonoBehaviour
 {
-    [DllImport("MasterURL")]
-    private static extern string GetMasterURL();
+    // [DllImport("__Internal")]
+    // private static extern System.IntPtr GetCurrentUrl();
 
+
+    // private string surveyID = "defaultSurveyID";
+    // private string userID = "defaultUserID";
     public static DatabaseManager inst=null;
     private void Awake()
     {
+
         inst = this;
+
         GameObject[] objs = GameObject.FindGameObjectsWithTag("DatabaseManager");
         if (objs.Length > 1)
         {
@@ -31,14 +36,51 @@ public class DatabaseManager : MonoBehaviour
     void Start()
     {
         this.ConnectToCloud();
-/*        #if UNITY_WEBGL && !UNITY_EDITOR
-        Debug.Log(GetMasterURL());
-            string url = GetMasterURL();
-            Debug.Log("URL from JavaScript: " + url);
-        #endif*/
+        // if (Application.platform == RuntimePlatform.WebGLPlayer)
+        // {
+        //     System.IntPtr urlPtr = GetCurrentUrl();
+        //     string jsonInput = Marshal.PtrToStringUTF8(urlPtr);
+        //     Debug.Log("aaaaa= " + urlPtr);
+        //     Debug.Log("jsonInput= " + jsonInput);
+        //     if (string.IsNullOrEmpty(jsonInput) || jsonInput == "{}")
+        //     {
+        //         Debug.Log("Received empty JSON, using default values.");
+        //     }
+        //     else
+        //     {
+        //         try
+        //         {
+        //             var parsedData = JsonUtility.FromJson<SurveyData>(jsonInput);
+        //             if (!string.IsNullOrEmpty(parsedData.surveyID))
+        //             {
+        //                 surveyID = parsedData.surveyID;
+        //             }
+        //             if (!string.IsNullOrEmpty(parsedData.userID))
+        //             {
+        //                 userID = parsedData.userID;
+        //             }
+        //             Debug.Log("surveyID= " + surveyID + " , userID= " + userID);
+        //         }
+
+        //         catch (Exception ex)
+        //         {
+        //             Debug.LogError($"Error parsing JSON: {ex.Message}");
+        //         }
+        //     }
+        //     //Marshal.PtrToStringUTF8(urlPtr);
+        // }
+
+        // //Application.OpenURL("http://www.panel4all.co.il");
 
     }
 
+
+    // [Serializable]
+    // private class SurveyData
+    // {
+    //     public string surveyID;
+    //     public string userID;
+    // }
     private async Task ConnectToCloud()
     {
         await UnityServices.InitializeAsync();

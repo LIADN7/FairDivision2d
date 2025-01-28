@@ -10,6 +10,8 @@ public class Config : MonoBehaviour
     [SerializeField] protected bool seeOtherEnable = false;
     [SerializeField] protected int timeForHelpPage = 10;
 
+    public string userID { get; set; } = "defaultUserID"; // A User ID of the player
+    public string surveyID { get; set; } = "defaultSurveyID"; // A survey ID of the survey
     private int roundNumber = 0;
     private void Awake()
     {
@@ -100,6 +102,20 @@ public class Config : MonoBehaviour
                 return "Normal";
         }
         return "";
+    }
+
+    public bool RedirectToSurvey(bool isFinish = true)
+    {
+        // Open new tab for the player's survey
+        // Application.OpenURL("http://www.panel4all.co.il");
+        // http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID=XXXXX&userID=YYYYY&status=finish
+        // http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID=XXXXX&userID=YYYYY&status=filterout
+        string url = $"http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID={surveyID}&userID={userID}&status=";
+
+        url = isFinish ? url + "finish" : url + "filterout";
+
+        Application.OpenURL(url);
+        return true; // Open new tab successfully
     }
 
 }

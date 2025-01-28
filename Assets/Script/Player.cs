@@ -8,6 +8,7 @@ using System;
 using System.Linq;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 //using static UnityEditor.Experimental.GraphView.GraphView;
 
 
@@ -16,7 +17,7 @@ public class Player : MonoBehaviourPunCallbacks
     //[SerializeField] public GameObject cutBt;
     private PhotonView view;
     public static Player inst;
-    //private Dictionary<int, int> player1 = new Dictionary<int, int>();
+    // private Dictionary<int, int> player1 = new Dictionary<int, int>();
     [SerializeField] protected Text[] buttonsValueText; // {red, green, yellow, blue}
     [SerializeField] protected Text palyerName;
     [SerializeField] protected Text chatText;
@@ -43,7 +44,8 @@ public class Player : MonoBehaviourPunCallbacks
 
     private CutAndChoosePlayerDatabase gameDatabase = new CutAndChoosePlayerDatabase();
     //private Task databaseTask;
-
+    [DllImport("__Internal")]
+    private static extern System.IntPtr GetCurrentUrl();
     void Start()
     {
 
@@ -70,17 +72,73 @@ public class Player : MonoBehaviourPunCallbacks
         this.gameDatabase.ScenarioType = Config.inst.getScenarioTypeName();
         this.gameDatabase.PlayerStartTime = DateTime.Now;
         this.gameDatabase.PlayerName = PhotonNetwork.NickName;
-        this.gameDatabase.PlayerID = 20548; // Need to add the real id from the user
+        //this.gameDatabase.PlayerID = 20548; // Need to add the real id from the user
         int[] tempChoosen = { -1, -1 };
         this.gameDatabase.PlayerChoosenColors = tempChoosen;
-/*        await UnityServices.InitializeAsync();
-        await AuthenticationService.Instance.SignInAnonymouslyAsync();
-        Debug.Log($"Init cloud");*/
+        this.SetDataFromURL();
+
+        /*        await UnityServices.InitializeAsync();
+                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                Debug.Log($"Init cloud");*/
         //int palyerId = PhotonNetwork.IsMasterClient ? 0 : 1;
 
         //this.databaseTask =this.gameDatabase.InitializeCloud();
     }
 
+    private void SetDataFromURL()
+    {
+        string surveyID = "defaultSurveyID";
+        string userID = "defaultUserID";
+        if (Application.platform == RuntimePlatform.WebGLPlayer)
+        {
+            System.IntPtr urlPtr = GetCurrentUrl();
+            string jsonInput = Marshal.PtrToStringUTF8(urlPtr);
+            // Debug.Log("aaaaa= " + urlPtr);
+            // Debug.Log("jsonInput= " + jsonInput);
+            if (string.IsNullOrEmpty(jsonInput) || jsonInput == "{}")
+            {
+                Debug.Log("Received empty JSON, using default values.");
+            }
+            else
+            {
+                try
+                {
+                    var parsedData = JsonUtility.FromJson<SurveyData>(jsonInput);
+                    if (!string.IsNullOrEmpty(parsedData.surveyID))
+                    {
+                        surveyID = parsedData.surveyID;
+                    }
+                    if (!string.IsNullOrEmpty(parsedData.userID))
+                    {
+                        userID = parsedData.userID;
+                    }
+                    Debug.Log("surveyID= " + surveyID + " , userID= " + userID);
+                }
+
+                catch (Exception ex)
+                {
+                    Debug.LogError($"Error parsing JSON: {ex.Message}");
+                }
+            }
+            //Marshal.PtrToStringUTF8(urlPtr);
+        }
+        this.gameDatabase.userID = userID;
+        this.gameDatabase.surveyID = surveyID;
+        Config.inst.userID = userID;
+        Config.inst.surveyID = surveyID;
+        // Open new tab for the player's survey
+        // Application.OpenURL("http://www.panel4all.co.il");
+        // http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID=XXXXX&userID=YYYYY&status=finish
+        // http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID=XXXXX&userID=YYYYY&status=filterout
+
+    }
+
+    [Serializable]
+    private class SurveyData
+    {
+        public string surveyID;
+        public string userID;
+    }
 
     [PunRPC]
     public void InitSquares()
@@ -747,7 +805,7 @@ public class Player : MonoBehaviourPunCallbacks
             }
             else if (roundNumberConfig == 6)
             {
-                LeaveGame("EndGameFlow"); //Save data after click on the ending button!!!!
+                LeaveGame("EndGameFlow", true); //Save data after click on the ending button!!!!
             }
             else
             {
@@ -765,10 +823,10 @@ public class Player : MonoBehaviourPunCallbacks
     }
 
 
-    public void LeaveGame(string sceneName)
+    public void LeaveGame(string sceneName, bool isRedirectToSurvey = false)
     {
 
-        photonView.RPC("LeaveGameForAll", RpcTarget.All, sceneName);
+        photonView.RPC("LeaveGameForAll", RpcTarget.All, sceneName, isRedirectToSurvey);
     }
     [PunRPC]
     private void UpdateOtherPlayerName(string otherName)
@@ -777,9 +835,10 @@ public class Player : MonoBehaviourPunCallbacks
     }
 
     [PunRPC]
-    private void LeaveGameForAll(string sceneName)
+    private void LeaveGameForAll(string sceneName, bool isRedirectToSurvey = false)
     {
         // Only for test 
+        Config.inst.RedirectToSurvey(isRedirectToSurvey);
         PhotonNetwork.LeaveRoom();
         StartCoroutine(DelayAndLoadScene(0.2f, sceneName));
     }
@@ -808,6 +867,13 @@ public class Player : MonoBehaviourPunCallbacks
                 Debug.Log("Num of clicked 'see': " + newData.CountPlayerSeeOther);
         */
     }
+
+    public bool RedirectToSurvey(string url)
+    {
+        Application.OpenURL(url);
+        return true; // Open new tab successfully
+    }
+
 
 }
 

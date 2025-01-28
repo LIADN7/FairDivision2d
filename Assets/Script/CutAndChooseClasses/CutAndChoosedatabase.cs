@@ -9,7 +9,9 @@ using Newtonsoft.Json;
 public class CutAndChoosePlayerDatabase
 {
     private string ScenraioName = "CutAChoose";
-    public int PlayerID { get; set; } = -1; // A number
+    public string userID { get; set; } = "defaultUserID"; // A User ID of the player
+    public string surveyID { get; set; } = "defaultSurveyID"; // A survey ID of the survey
+
     public int ScenarioNum { get; set; } = -1; // V
     public string ScenarioType { get; set; } = "Normal";
     //1 Normal, 2 Info, 3 Chat, 4 InfoAChat
