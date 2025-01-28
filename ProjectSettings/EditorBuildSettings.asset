@@ -20,4 +20,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/DemoScene.unity
     guid: d15745d14d144a843a824d0bb96a2ccd
+  - enabled: 1
+    path: Assets/Scenes/RRScene.unity
+    guid: 40d3f8df996e5dc4f929203433c1d1d6
   m_configObjects: {}
