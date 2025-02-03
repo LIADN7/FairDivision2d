@@ -1,35 +1,100 @@
-# FairDivision2d
+# Fair Division 2D
+
+<img src="https://github.com/LIADN7/FairDivision2d/blob/main/Assets/Imgs/VisualImages/SubjectiveDivisions.png" width="400" height="400"> <img src="https://github.com/LIADN7/FairDivision2d/blob/main/Assets/Imgs/VisualImages/CutMap.jpg" width="203" height="512">
 
 ## Introduction
-FairDivision2d is a program that focuses on fair division in two dimensions. It is part of a Master's thesis in Computer Science at the Open University.
 
-## Algorithms
-The program implements three algorithms for fair division:
+FairDivision2D is a research-driven program exploring fair division algorithms in two dimensions, forming part of a Master's thesis in Computer Science at the Open University. The project focuses on:
 
-1. Cut and Choose: This algorithm involves one player dividing the resources into pieces, and the other player choosing their desired piece. The goal is to encourage fair division.
+* Comparing structured fair-division algorithms with negotiation-based methods.
 
-2. The Last Diminisher: In this algorithm, the division process starts with one player dividing the resources, and the other player continuously diminishing the remaining pieces until an agreement is reached.
+* Evaluating the impact of private vs. public valuations.
 
-2. The round Algorithm: This algorithm involves one player defining a desired piece by drawing a surrounding boundary, and the other player getting the remaining resources.
+* Analyzing communication’s role in fair division.
+
+## Implemented Algorithms
+
+1. Symmetric Cut and Choose (2 players): Players independently mark a "halfway" cut. If cuts overlap, a predefined selection process resolves the division.
+
+2. The Last Diminisher (3 players): Players sequentially adjust a portion of land to match their valuation; the last to adjust keeps the portion.
+
+2. Round Robin (2 players): Players take turns selecting perceived equal-value land sections until all land is distributed.
 
 ## Tools Used
 The following tools were utilized in this project:
 
-1. [**Unity**](https://unity.com/) The FairDivision2d program was developed using the Unity game engine, providing a robust environment for designing and testing the fair division algorithms.
+1. [**Unity**](https://unity.com/) Game engine for visualization.
 
-2. [**PUN2**](https://www.photonengine.com/pun) Photon Unity Networking (PUN2) implemented multiplayer functionality and facilitated communication between players.
+2. [**Photon Unity Networking (PUN2)**](https://www.photonengine.com/pun) Enables real-time multiplayer interaction.
+
+3. [**Unity Cloud Database**](https://cloud.unity.com/home/) Stores player data and results.
 
 
-## Thesis Description
-The thesis involves conducting experiments with individuals who will play against each other to evaluate whether they can achieve better outcomes than those obtained using the different algorithms mentioned above. The experiments will be conducted under the following three conditions:
+## Experiment Setup
+Participants engage in fair division tasks under different conditions:
 
-1. Each player knows only their own preferences and requirements.
+* Private Valuations: Each player knows only their own valuation.
 
-2. The players receive guidance from the algorithm.
+* Algorithm-Guided Division: Players receive algorithm suggestions.
 
-3. The players receive guidance from the algorithm and have access to information about each other's preferences.
+* Algorithm + Communication: Players use both algorithm guidance and chat.
 
-The purpose of these experiments is to analyze the effectiveness and fairness of the algorithms in different scenarios and compare the results obtained.
 
-## Conclusion
-FairDivision2d provides a platform for evaluating and comparing different fair division algorithms in a two-dimensional setting. Through experiments and analysis, the program aims to contribute to the understanding of fair division methods and their effectiveness in various scenarios.
+## Experiment Workflow
+
+1. Practice Round: Players practice with AI opponents.
+
+2. Real Rounds:
+
+    * Rounds 1-2: No valuation visibility, no communication.
+
+    * Rounds 3-4: Randomly assigned to either valuation heat maps or chat communication.
+
+    * Rounds 5-6: Both valuation visibility and chat communication.
+
+
+## Data Collection & Analysis
+
+* Collected data includes:
+
+* Player decisions and timing.
+
+* Chat logs for negotiation analysis.
+
+* Heat map interactions.
+
+* Fairness metrics (social welfare, envy, satisfaction levels).
+
+* Geometric analysis of allocated land.
+
+
+## Future Enhancements
+
+* Improved heat map visualization.
+
+* Enhanced UI for valuation insights.
+
+* Automated statistical analysis.
+
+* Additional experiments with binding agreements.
+
+
+### Additional Resources
+
+For more details, visit: **[Fair Division 2D Research Website](https://sites.google.com/view/landdivision2d/home?authuser=0)**
+
+---
+
+### Credits
+
+This research is guided by:
+
+* Prof. Rica Gonen
+
+* Prof. Erel Segal-Halevi
+
+* Prof. Josue Ortega
+
+
+
+
