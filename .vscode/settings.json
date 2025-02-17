@@ -1,3 +1,7 @@
 {
-    "dotnet.preferCSharpExtension": true
+    "dotnet.preferCSharpExtension": true,
+    "[typescript]": {
+        "editor.defaultFormatter": null
+    },
+    "editor.defaultFormatter": "ms-dotnettools.csharp"
 }

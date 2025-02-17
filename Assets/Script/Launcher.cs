@@ -19,10 +19,15 @@ public class Launcher : MonoBehaviourPunCallbacks
     public TMP_Text loadingText;
     public Text playerName;
 
+    [SerializeField] public Text[] roomTextButtons;
 
-    private string[] roomNames = { "CutScene", "Room2", "Room3" };
+
+    private string[] roomNames = { "Room_1", "Room_2", "Room_3" };
+    private string[] sceneName = { "CutScene" };
     private string sceneToLoad = "CutScene";
     //public Room[] rooms = {null, null, null };
+    private int roomCounter = 0;
+
 
     private void Awake()
     {
@@ -37,6 +42,7 @@ public class Launcher : MonoBehaviourPunCallbacks
         if (!PhotonNetwork.IsConnected)
             PhotonNetwork.AutomaticallySyncScene = true;
         PhotonNetwork.GameVersion = "0.0.1";
+
 
 
 
@@ -60,6 +66,10 @@ public class Launcher : MonoBehaviourPunCallbacks
             this.menu.SetActive(true);
             this.loadingScreen.SetActive(false);
             Debug.Log("Connected");
+        }
+        for (int i = 0; i < roomTextButtons.Length; i++)
+        {
+            roomTextButtons[i].text = $"Cut & Choose {roomNames[i]} - 0/2";
         }
     }
 
@@ -93,15 +103,20 @@ public class Launcher : MonoBehaviourPunCallbacks
             PhotonNetwork.LoadLevel(roomNames[0]);
         }*/
 
+    //=================================================
+    //------------------- GAME 1 ----------------
+    //=================================================
 
-    public void CreateGame1(int scenarioNumber)
+
+
+    public void CreateGame1(int roomIndex)
     {
         if (playerName.text != "")
         {
 
 
             PhotonNetwork.NickName = playerName.text;
-
+            int scenarioNumber = 1;
             Config.inst.createConfig(scenarioNumber,0);
             //           if (rooms[0] == null)
             //         {
@@ -111,7 +126,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
             this.loadingText.text = "Create room...";
-            Debug.Log(PhotonNetwork.JoinOrCreateRoom(roomNames[0], opt, PhotonNetwork.CurrentLobby));
+            Debug.Log(PhotonNetwork.JoinOrCreateRoom(roomNames[roomIndex < roomNames.Length ? roomIndex : 0], opt, PhotonNetwork.CurrentLobby));
 
             /*            }
                         else
@@ -133,12 +148,23 @@ public class Launcher : MonoBehaviourPunCallbacks
             //PhotonNetwork.LoadLevel(roomNames[0]);
             //SceneManager.LoadScene(roomNames[0]);
         }
-
-
     }
 
 
-    public void CreateDemoGame(int scenarioNumber)
+
+    // public override void OnJoinRoomFailed(short returnCode, string message)
+    // {
+    //     Debug.Log("Room join failed: " + message);
+    //     this.menu.SetActive(true);
+    //     this.loadingScreen.SetActive(false);
+    // }
+
+
+
+    //=================================================
+    //------------------- GAME 2 - RR ----------------
+    //=================================================
+    public void CreateGame2(int scenarioNumber)
     {
         if (playerName.text != "")
         {
@@ -162,6 +188,33 @@ public class Launcher : MonoBehaviourPunCallbacks
 
     }
 
+    //=================================================
+    //------------------- DEMO GAME ----------------
+    //=================================================
+    public void CreateDemoGame(int scenarioNumber)
+    {
+        if (playerName.text != "")
+        {
+
+
+            PhotonNetwork.NickName = playerName.text;
+
+            Config.inst.createConfig(scenarioNumber, 0);
+            RoomOptions opt = new RoomOptions();
+            opt.MaxPlayers = 2;
+
+            this.menu.SetActive(false);
+            this.loadingScreen.SetActive(true);
+            this.loadingText.text = "Create room...";
+            this.sceneToLoad = "RRScene";
+            Debug.Log(PhotonNetwork.JoinOrCreateRoom(this.sceneToLoad, opt, PhotonNetwork.CurrentLobby));
+            print(PhotonNetwork.CurrentLobby);
+            print(PhotonNetwork.CurrentRoom);
+        }
+
+
+    }
+
 
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
@@ -176,6 +229,20 @@ public class Launcher : MonoBehaviourPunCallbacks
     }
 
 
+
+    public override void OnRoomListUpdate(List<RoomInfo> roomList)
+    {
+        foreach (var room in roomList)
+        {
+            for (int i = 0; i < roomNames.Length; i++)
+            {
+                if (room.Name == roomNames[i])
+                {
+                    roomTextButtons[i].text = "Cut & Choose " + $"{roomNames[i]} - {room.PlayerCount}/2";
+                }
+            }
+        }
+    }
 
 
     // Update is called once per frame

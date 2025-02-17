@@ -75,7 +75,7 @@ public class Player : MonoBehaviourPunCallbacks
         //this.gameDatabase.PlayerID = 20548; // Need to add the real id from the user
         int[] tempChoosen = { -1, -1 };
         this.gameDatabase.PlayerChoosenColors = tempChoosen;
-        this.SetDataFromURL();
+        // this.SetDataFromURL();
 
         /*        await UnityServices.InitializeAsync();
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
@@ -838,7 +838,7 @@ public class Player : MonoBehaviourPunCallbacks
     private void LeaveGameForAll(string sceneName, bool isRedirectToSurvey = false)
     {
         // Only for test 
-        Config.inst.RedirectToSurvey(isRedirectToSurvey);
+        // Config.inst.RedirectToSurvey(isRedirectToSurvey);
         PhotonNetwork.LeaveRoom();
         StartCoroutine(DelayAndLoadScene(0.2f, sceneName));
     }

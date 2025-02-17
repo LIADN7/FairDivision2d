@@ -23,6 +23,8 @@ public class RRStates : MonoBehaviour
             }
 
         }
+                // Debug.Log("sumA " + sumA + "" );
+                // Debug.Log("sumB " + sumB + "" );
         titleText.text = stateName;
     }
 
