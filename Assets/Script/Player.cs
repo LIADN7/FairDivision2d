@@ -805,6 +805,8 @@ public class Player : MonoBehaviourPunCallbacks
             }
             else if (roundNumberConfig == 6)
             {
+                int randomNumber = UnityEngine.Random.Range(0, roundNumberConfig);
+                photonView.RPC("SetRandomPaymentRound", RpcTarget.All, randomNumber);
                 LeaveGame("EndGameFlow", true); //Save data after click on the ending button!!!!
             }
             else
@@ -814,6 +816,13 @@ public class Player : MonoBehaviourPunCallbacks
             }
         }
     }
+
+    [PunRPC]
+    private void SetRandomPaymentRound(int randRound)
+    {
+        PlayerData.inst.SetRandIndex(randRound);
+    }
+
     [PunRPC]
     private void RequestSceneLoad(string sceneName, int scenarioNum, int roundNumberConfig)
     {

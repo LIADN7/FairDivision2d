@@ -149,6 +149,8 @@ public class Manager : MonoBehaviour
         this.viewTotalValueEndGame.SetActive(true);
         NextButton.SetActive(true);
         this.cutBt.SetActive(false);
+        RandArrays.inst.AddNumber(sum);
+        // RandArrays.inst.PrintAll();
 
     }
 

@@ -1,9 +1,8 @@
-using System.Collections;
+
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 using Photon.Realtime;
 using TMPro;
 
@@ -18,6 +17,7 @@ public class Launcher : MonoBehaviourPunCallbacks
     public GameObject menu;
     public TMP_Text loadingText;
     public Text playerName;
+    public Text playerEmail;
 
     [SerializeField] public Text[] roomTextButtons;
 
@@ -114,7 +114,7 @@ public class Launcher : MonoBehaviourPunCallbacks
         if (playerName.text != "")
         {
 
-
+            PlayerData.inst.SetPlayerData(this.playerName.text, this.playerEmail.text, "", "");
             PhotonNetwork.NickName = playerName.text;
             int scenarioNumber = 1;
             Config.inst.createConfig(scenarioNumber,0);
