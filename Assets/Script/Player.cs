@@ -186,6 +186,7 @@ public class Player : MonoBehaviourPunCallbacks
                 redValueText.text = "All red value: " + (100) + "%";*/
         this.statusChange();
         this.setAllStateTitle(playerNum);
+        StartCoroutine(SetCutBt(1f));
 
         // Check for values counter
         //------------------------
@@ -197,6 +198,11 @@ public class Player : MonoBehaviourPunCallbacks
         //--------------------
     }
 
+    private IEnumerator SetCutBt(float sec)
+    {
+        yield return new WaitForSeconds(sec);
+        Manager.inst?.cutBt.SetActive(true);
+    }
 
     public void setAllStateTitle(int playerNum)
     {
