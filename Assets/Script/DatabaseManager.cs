@@ -83,7 +83,7 @@ public class DatabaseManager : MonoBehaviour
         }
     }
 
-    public async void LoadData(string name)
+    public async Task<string> LoadData(string name)
     {
         string keyName = name;
         var playerData = await CloudSaveService.Instance.Data.LoadAsync(new HashSet<string> {
@@ -93,10 +93,13 @@ public class DatabaseManager : MonoBehaviour
         if (playerData.TryGetValue(keyName, out var firstKey))
         {
             string jsonData = firstKey.Get<string>();
-            CutAndChoosePlayerDatabase oldDataBase = FromJson(jsonData);
-            Debug.Log(oldDataBase.PlayerName);
-            Debug.Log(oldDataBase.PlayerName);
-            // Value.Get<string>()}");
+
+            // Optional: parse it into an object if needed
+            // CutAndChoosePlayerDatabase oldDataBase = FromJson(jsonData);
+
+            // Return the raw JSON
+            return jsonData;
         }
+        return null;
     }
 }

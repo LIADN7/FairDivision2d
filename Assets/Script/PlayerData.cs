@@ -9,65 +9,80 @@ public class PlayerData : MonoBehaviour
 {
     public static PlayerData inst { get; private set; }
 
+    // Player Info
     public string Name { get; set; }
     public string Email { get; set; }
     public string PhoneNumber { get; set; }
     public string ID { get; set; }
-    private int winRandIndex { get; set; } // The random round that pays
-    private float Winnings { get; set; } // Store the winnings amount
 
+    // Private data not directly serialized
+    private int winRandIndex { get; set; }
+    private float Winnings { get; set; }
+
+    // Called when the script instance is loaded
     private void Awake()
     {
         if (inst == null)
         {
             inst = this;
-            DontDestroyOnLoad(gameObject); // Ensure the object persists between scenes
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
-            Destroy(gameObject); // Prevent duplicates
+            Destroy(gameObject);
         }
     }
 
-    // Load data from Unity Cloud
-    public async void LoadData()
-    {
-        string keyName = "PlayerData"; // Unique key for cloud storage
-        DatabaseManager.inst.LoadData(keyName);
-    }
-
-    // Set player data
-    public void SetPlayerData(string name, string email = "", string phoneNumber = "", string id = "")
-    {
-        Name = name;
-        Email = email;
-        PhoneNumber = phoneNumber;
-        ID = id;
-    }
-
-
-    // Save data asynchronously to Unity Cloud
+    // Save player data to the cloud
     public async Task<bool> SaveDatabaseAsync()
     {
         string keyName = "PlayerData";
         DatabaseManager.inst.SaveData(keyName, ToJson());
-        return true; // Consider handling the actual save success response
+        return true;
     }
 
-    // Convert object to JSON format
-    public string ToJson()
+    // Load data from cloud (you'd need to parse JSON back into model)
+    public async void LoadData()
     {
-        try
+        string keyName = "PlayerData";
+        DatabaseManager.inst.LoadData(keyName);
+
+        // You can call ApplyJson(...) here after retrieving the JSON string
+
+        string key = "PlayerData";
+
+        // This assumes LoadData returns the JSON string. If not, use a callback.
+        string json = await DatabaseManager.inst.LoadData(key); // <-- make sure LoadData returns Task<string>
+
+        if (!string.IsNullOrEmpty(json))
         {
-            return JsonConvert.SerializeObject(this, Formatting.Indented);
+            PlayerData.PlayerDataModel model = JsonConvert.DeserializeObject<PlayerData.PlayerDataModel>(json);
+
+            if (model != null)
+            {
+                Debug.Log("Loaded Player Data:");
+                Debug.Log($"Name: {model.Name}");
+                Debug.Log($"Email: {model.Email}");
+                Debug.Log($"Phone: {model.PhoneNumber}");
+                Debug.Log($"ID: {model.ID}");
+                Debug.Log($"Winnings: {model.Winnings}");
+                Debug.Log($"Win Round Index: {model.WinRandIndex}");
+
+                // You can also use the model to populate the live PlayerData instance if needed:
+                //this.inst?.ApplyJson(json);
+            }
+            else
+            {
+                Debug.LogError("Failed to deserialize PlayerDataModel");
+            }
         }
-        catch (Exception ex)
+        else
         {
-            Console.WriteLine($"Error converting to JSON: {ex.Message}");
-            return null;
+            Debug.LogWarning("No data found in the cloud.");
         }
     }
 
+    // Export to file (Binary format)
     public void ExportDatabase(string filename)
     {
         try
@@ -75,34 +90,43 @@ public class PlayerData : MonoBehaviour
             using (FileStream fs = new FileStream(filename, FileMode.Create))
             {
                 BinaryFormatter formatter = new BinaryFormatter();
-                formatter.Serialize(fs, this);
+                formatter.Serialize(fs, ToModel());
             }
-            Console.WriteLine("Database exported successfully.");
+            Debug.Log("Database exported successfully.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error exporting database: {ex.Message}");
+            Debug.LogError($"Error exporting database: {ex.Message}");
         }
     }
 
-    // Method to deserialize the database from a file
-    public static CutAndChoosePlayerDatabase ImportDatabase(string filename)
+    // Import from file
+    public static PlayerDataModel ImportDatabase(string filename)
     {
-        CutAndChoosePlayerDatabase database = null;
+        PlayerDataModel database = null;
         try
         {
             using (FileStream fs = new FileStream(filename, FileMode.Open))
             {
                 BinaryFormatter formatter = new BinaryFormatter();
-                database = (CutAndChoosePlayerDatabase)formatter.Deserialize(fs);
+                database = (PlayerDataModel)formatter.Deserialize(fs);
             }
-            Console.WriteLine("Database imported successfully.");
+            Debug.Log("Database imported successfully.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error importing database: {ex.Message}");
+            Debug.LogError($"Error importing database: {ex.Message}");
         }
         return database;
+    }
+
+    // Set data
+    public void SetPlayerData(string name, string email = "", string phoneNumber = "", string id = "")
+    {
+        Name = name;
+        Email = email;
+        PhoneNumber = phoneNumber;
+        ID = id;
     }
 
     public void SetNormalizeWinning(float x)
@@ -115,13 +139,79 @@ public class PlayerData : MonoBehaviour
         this.winRandIndex = iRand;
         this.SetNormalizeWinning(RandArrays.inst ? RandArrays.inst.GetNumber(iRand) : 0);
     }
+
     public int GetRandIndex()
     {
         return this.winRandIndex;
     }
+
     public float GetNormalizeWinning()
     {
         return this.Winnings;
     }
 
+    // Convert to JSON using internal model
+    public string ToJson()
+    {
+        try
+        {
+            return JsonConvert.SerializeObject(ToModel(), Formatting.Indented);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Error converting to JSON: {ex.Message}");
+            return null;
+        }
+    }
+
+    // Apply JSON (if needed)
+    public void ApplyJson(string json)
+    {
+        try
+        {
+            var model = JsonConvert.DeserializeObject<PlayerDataModel>(json);
+            LoadFromModel(model);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Error loading from JSON: {ex.Message}");
+        }
+    }
+
+    // Convert to model
+    private PlayerDataModel ToModel()
+    {
+        return new PlayerDataModel
+        {
+            Name = this.Name,
+            Email = this.Email,
+            PhoneNumber = this.PhoneNumber,
+            ID = this.ID,
+            WinRandIndex = this.winRandIndex,
+            Winnings = this.Winnings
+        };
+    }
+
+    // Load from model
+    private void LoadFromModel(PlayerDataModel model)
+    {
+        Name = model.Name;
+        Email = model.Email;
+        PhoneNumber = model.PhoneNumber;
+        ID = model.ID;
+        winRandIndex = model.WinRandIndex;
+        Winnings = model.Winnings;
+    }
+
+    // 🧪 Internal data class (used for saving/loading)
+    [Serializable]
+    public class PlayerDataModel
+    {
+        public string Name;
+        public string Email;
+        public string PhoneNumber;
+        public string ID;
+        public int WinRandIndex;
+        public float Winnings;
+    }
 }
