@@ -22,7 +22,7 @@ public class Launcher : MonoBehaviourPunCallbacks
     [SerializeField] public Text[] roomTextButtons;
 
 
-    private string[] roomNames = { "Room_1", "Room_2", "Room_3" };
+    private string[] roomNames = { "Room_1", "Room_2", "Room_3", "Room_4" };
     private string[] sceneName = { "CutScene" };
     private string sceneToLoad = "CutScene";
     //public Room[] rooms = {null, null, null };
@@ -207,6 +207,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             this.loadingScreen.SetActive(true);
             this.loadingText.text = "Create room...";
             this.sceneToLoad = "RRScene";
+            // this.sceneToLoad = "RRTestScene";
             Debug.Log(PhotonNetwork.JoinOrCreateRoom(this.sceneToLoad, opt, PhotonNetwork.CurrentLobby));
             print(PhotonNetwork.CurrentLobby);
             print(PhotonNetwork.CurrentRoom);

@@ -199,12 +199,14 @@ public class PointOfState : MonoBehaviour
 
     public void setmyPowerColor(int i, float sum)
     {
-        this.myPowerColor= (getMyVal(i)/sum)*700;
+        float factor = getMyVal(i) < 4 ? 0 : getMyVal(i);
+        this.myPowerColor = (factor / sum) * 500;
     }
 
     public void setOtherPowerColor(int i, float sum)
     {
-        this.otherPowerColor = (getMyVal(i) / sum) * 700;
+        float factor = getMyVal(i) < 4 ? 0 : getMyVal(i);
+        this.otherPowerColor = (factor / sum) * 500;
     }
 
 }

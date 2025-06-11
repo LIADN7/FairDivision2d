@@ -7,6 +7,7 @@ using Unity.Services.CloudSave;
 using Newtonsoft.Json;
 using System;
 using ExitGames.Client.Photon.StructWrapping;
+
 using System.Runtime.InteropServices;
 
 public class DatabaseManager : MonoBehaviour
@@ -17,7 +18,7 @@ public class DatabaseManager : MonoBehaviour
 
     // private string surveyID = "defaultSurveyID";
     // private string userID = "defaultUserID";
-    public static DatabaseManager inst=null;
+    public static DatabaseManager inst = null;
     private void Awake()
     {
 
@@ -102,4 +103,7 @@ public class DatabaseManager : MonoBehaviour
         }
         return null;
     }
+
+
+
 }
