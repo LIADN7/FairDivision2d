@@ -132,4 +132,6 @@ public class SquareLineCalculator : MonoBehaviour
             playerInstance.statusChange();
         }
     }
+
+
 }

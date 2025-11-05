@@ -29,7 +29,7 @@ public class PointOfState : MonoBehaviour
 
         //this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 1f);
         this.setChaildSprite();
-        this.setChaildText();
+        // this.setChaildText(); // No longer needed - using colors instead of text
         this.stateName= this.transform.parent.name;
 
         this.squareSprite.color = new Color(myPowerColor * 0.555f, 0.012f, 0.012f, 1f);
@@ -163,17 +163,15 @@ public class PointOfState : MonoBehaviour
         }
         if (i == 3)
         {
-            // Yellow
-            //this.squareSprite.color = new Color(colorPower * 0.9f, colorPower * 0.9f, 0f,  0.79f);
-            this.squareSprite.color = Color.red;
+            // Yellow - Player1 Green, Player2 Red
+            this.squareSprite.color = Color.yellow;
             spriteStatus = 3;
 
         }
         if (i == 4)
         {
-            // Blue
-            //this.squareSprite.color = new Color(0f, 0f, colorPower * 0.4f,  1f);
-            this.squareSprite.color = Color.green;
+            // Blue - Player1 Red, Player2 Green  
+            this.squareSprite.color = Color.blue;
             spriteStatus = 4;
 
         }

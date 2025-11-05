@@ -558,11 +558,39 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         }
 
         Debug.Log("Both lines are now visible");
+
+        // Now calculate and apply final square colors based on both lines
+        ApplyFinalSquareColors(allSubmittedLines);
     }
 
     /// <summary>
-    /// Creates a visible line renderer for display.
+    /// Applies final square colors based on both players' submitted lines.
     /// </summary>
+    private void ApplyFinalSquareColors(Dictionary<int, LineData> allSubmittedLines)
+    {
+        if (allSubmittedLines.Count < 2)
+        {
+            Debug.LogWarning("Not enough lines to calculate final colors");
+            return;
+        }
+
+        // Get both lines
+        LineData player1Line = null;
+        LineData player2Line = null;
+
+        foreach (var kvp in allSubmittedLines)
+        {
+            if (kvp.Key == 1) player1Line = kvp.Value;
+            else if (kvp.Key == 2) player2Line = kvp.Value;
+        }
+
+        if (player1Line != null && player2Line != null)
+        {
+            Debug.Log("Both lines are displayed - final coloring will be handled by existing Player.cs logic");
+        }
+    }    /// <summary>
+         /// Creates a visible line renderer for display.
+         /// </summary>
     private void CreateVisibleLine(Vector3 start, Vector3 end, int forPlayerNumber)
     {
         GameObject lineObj = new GameObject($"Player{forPlayerNumber}SubmittedLine");

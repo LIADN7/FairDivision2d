@@ -24331,7 +24331,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}
-  m_Color: {r: 0.05490196, g: 0.9254902, b: 0.16078432, a: 1}
+  m_Color: {r: 0.054901984, g: 0.095601216, b: 0.9254902, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -24354,7 +24354,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.05490196, g: 0.9254902, b: 0.16078432, a: 1}
+  m_Color: {r: 0.05882353, g: 0.09803922, b: 0.9254902, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -25693,12 +25693,6 @@ MonoBehaviour:
   NextButton: {fileID: 49000922}
   textEndGameStatus: {fileID: 1009004864}
   textNote: {fileID: 66917791}
-  buttonNormalKey: {fileID: 1564366972}
-  buttonRedKey: {fileID: 2012704794}
-  buttonGreenKey: {fileID: 91774226}
-  normalKey: 51
-  redKey: 49
-  greenKey: 50
 --- !u!4 &764684018
 Transform:
   m_ObjectHideFlags: 0
@@ -39318,6 +39312,7 @@ MonoBehaviour:
   player2LineColor: {r: 1, g: 1, b: 1, a: 1}
   lineWidth: 0.1
   autoColorOnFinish: 1
+  playerLineRenderer: {fileID: 0}
 --- !u!1 &1232205975
 GameObject:
   m_ObjectHideFlags: 0
@@ -49526,7 +49521,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}
-  m_Color: {r: 0.93333334, g: 0.06666667, b: 0.06666667, a: 1}
+  m_Color: {r: 0.93333334, g: 0.91764706, b: 0.06666663, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -49605,7 +49600,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.93333334, g: 0.06666667, b: 0.06666667, a: 1}
+  m_Color: {r: 0.93333334, g: 0.91603994, b: 0.06666663, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1

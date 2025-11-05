@@ -475,25 +475,23 @@ public class Player : MonoBehaviourPunCallbacks
             PointOfState p = it.Value.GetComponent<PointOfState>();
             float val = p.getMyVal(j);
             int tempKey = p.getMyKey();
-            // X mean that player 2 chooce Red, O mean that player 2 chooce Green
-            int spriteStatus = 1; // Red+X = Player 2 choose Red
-            string colorText = "X";
-            if (this.player1[tempKey] == 2 && this.player2[tempKey] == 2) // Green+O = Player 2 choose Green
+            // Calculate sprite status based on both players' choices
+            // Same logic as before but using colors instead of X/O text
+            int spriteStatus = 1; // Default: Both chose Red
+            if (this.player1[tempKey] == 2 && this.player2[tempKey] == 2) // Both Green
             {
-                colorText = "O";
                 spriteStatus = 2;
             }
-            else if (this.player1[tempKey] == 1 && this.player2[tempKey] == 2) // Red+O = Player 2 choose Green
+            else if (this.player1[tempKey] == 1 && this.player2[tempKey] == 2) // P1 Red, P2 Green
             {
-                colorText = "O";
-                spriteStatus = 3;
+                spriteStatus = 3; // Yellow
             }
-            else if (this.player1[tempKey] == 2 && this.player2[tempKey] == 1) // Green+X = Player 2 choose Red
+            else if (this.player1[tempKey] == 2 && this.player2[tempKey] == 1) // P1 Green, P2 Red
             {
-                colorText = "X";
-                spriteStatus = 4;
+                spriteStatus = 4; // Blue
             }
-            p.setChildText(colorText);
+            // No longer setting text - using colors only
+            // p.setChildText(colorText);
             sumRGYB[spriteStatus - 1] += val;
             statusCounter[spriteStatus - 1]++;
             p.setSpriteStatus(spriteStatus, 1);
