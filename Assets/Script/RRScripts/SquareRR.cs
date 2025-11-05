@@ -44,16 +44,16 @@ public class SquareRR : MonoBehaviour
         switch (playerValues[playerNumber])
         {
             case 2:
-                SetColor(new Color(0, 0.5f, 0)); // Dark Green
+                SetColor(new Color(0.2f, 0.4f, 0.2f)); // Dark Green (lowest value)
                 break;
             case 4:
-                SetColor(Color.green); // Regular Green
+                SetColor(new Color(0.0f, 0.7f, 0.0f)); // Medium Green
                 break;
             case 6:
-                SetColor(new Color(0.5f, 1f, 0)); // Bright Green
+                SetColor(new Color(0.4f, 1.0f, 0.4f)); // Bright Green
                 break;
             case 10:
-                SetColor(Color.blue); // Blue
+                SetColor(Color.blue); // Blue (highest value)
                 break;
             default:
                 SetColor(Color.white); // Default Color
