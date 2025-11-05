@@ -20,12 +20,6 @@ public class Manager : MonoBehaviour
     [SerializeField] protected Text textNote;
     //[SerializeField] protected Text textChatAlert;
     //[SerializeField] protected SpriteRenderer backgraundStatus;
-    [SerializeField] protected Image buttonNormalKey;
-    [SerializeField] protected Image buttonRedKey;
-    [SerializeField] protected Image buttonGreenKey;
-    [SerializeField] protected KeyCode normalKey;
-    [SerializeField] protected KeyCode redKey;
-    [SerializeField] protected KeyCode greenKey;
     float[] sumRGYB = { 0, 0, 0, 0 }; //GREEN, RED, YELLOW, BLUE (after cut!)
 
     public static Manager inst;
@@ -59,9 +53,6 @@ public class Manager : MonoBehaviour
         this.SeeOtherPlayerBT.SetActive(Config.inst.getSeeOtherEnable());
         this.chatView.SetActive(Config.inst.getChetEnable());
         NextButton.SetActive(false);
-        buttonNormalKey.color = Color.white;
-        buttonRedKey.color = Color.red;
-        buttonGreenKey.color = Color.green;
 
 
     }
@@ -69,23 +60,7 @@ public class Manager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-
-        if (Input.GetKeyDown(this.normalKey))
-        {
-            buttonNormalKey.color = Color.grey;
-            //buttonNormalKey.transition = Selectable.Transition.Animation;
-            setStatusClick(0);
-        }
-        if (Input.GetKeyDown(this.redKey))
-        {
-            setStatusClick(1);
-        }
-        if (Input.GetKeyDown(this.greenKey))
-        {
-            setStatusClick(2);
-        }
-
-
+        // No keyboard input needed - line drawing handles coloring automatically
     }
 
 
@@ -99,7 +74,7 @@ public class Manager : MonoBehaviour
         this.SeeOtherPlayerBT.SetActive(false);
         this.cutBt.SetActive(false);
         this.status = 0;
-        resetAllKeyButtons();
+        // No button reset needed - line drawing system handles this
         //backgraundStatus.color = Color.white;
         this.isCut = true;
 
@@ -183,7 +158,7 @@ public class Manager : MonoBehaviour
         if (Config.inst.getSeeOtherEnable())
         {
             this.status = 0;
-            resetAllKeyButtons();
+            // No button reset needed - line drawing system handles this
             //backgraundStatus.color = Color.white;
             Image tempSprit = this.SeeOtherPlayerBT.GetComponent<Image>();
             if (this.isShowView)
@@ -205,41 +180,14 @@ public class Manager : MonoBehaviour
     {
         this.SeeOtherPlayerBT.SetActive(true && Config.inst.getSeeOtherEnable());
         //backgraundStatus.color = Color.white;
-        resetAllKeyButtons();
+        // No button reset needed - line drawing system handles this
         this.isShowView = false;
         Image tempSprit = this.SeeOtherPlayerBT.GetComponent<Image>();
         tempSprit.color = Color.white;
     }
 
 
-    public void setStatusClick(int color)
-    {
-        if (!isCut && !isShowView)
-        {
-            resetAllKeyButtons();
-            if (color == 0)
-            {
-                this.status = 0;
-                buttonNormalKey.color = new Color(0.8f, 0.8f, 0.8f);
-                //backgraundStatus.color = Color.white;
-
-            }
-            if (color == 1)
-            {
-                this.status = 1;
-                buttonRedKey.color = new Color(0.5f, 0, 0);
-                //backgraundStatus.color = Color.red;
-
-            }
-            if (color == 2)
-            {
-                this.status = 2;
-                buttonGreenKey.color = new Color(0, 0.5f, 0);
-                //backgraundStatus.color = Color.green;
-
-            }
-        }
-    }
+    // Legacy function - no longer needed with line drawing system
 
 
     public bool getIsShowView()
@@ -247,12 +195,7 @@ public class Manager : MonoBehaviour
         return this.isShowView;
     }
 
-    public void resetAllKeyButtons()
-    {
-        buttonNormalKey.color = Color.white;
-        buttonRedKey.color = Color.red;
-        buttonGreenKey.color = Color.green;
-    }
+    // Legacy function - no longer needed with line drawing system
 
 
     public void setAllChildFalse(GameObject obj)

@@ -76,6 +76,7 @@ MonoBehaviour:
   - ProcessSquareChoiceAI
   - UpdateTurn
   - ReceiveLineData
+  - ReceiveSubmittedLine
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 0

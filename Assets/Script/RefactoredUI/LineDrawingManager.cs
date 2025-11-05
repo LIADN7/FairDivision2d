@@ -1,5 +1,6 @@
 using UnityEngine;
 using Photon.Pun;
+using System.Collections.Generic;
 
 /// <summary>
 /// Manages the drawing of straight lines on the map for dividing territories.
@@ -21,8 +22,11 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
     [Header("Line Properties")]
     public float lineWidth = 0.1f;
 
+    [Header("Auto Coloring")]
+    public bool autoColorOnFinish = true; // Automatically color squares when line is finished
+
     // Auto-created components
-    private LineRenderer playerLineRenderer;
+    public LineRenderer playerLineRenderer; // Made public for cross-manager access
     private RectTransform mapBounds;
     private Canvas uiCanvas;
     private Material lineMaterial;
@@ -34,6 +38,25 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
     private bool hasDrawnLine = false;
     private bool isSubmitted = false; // New: tracks if player has submitted their line
     private int playerNumber; // 1 or 2
+
+    // Store submitted lines data (hidden until both players finish)
+    private Dictionary<int, LineData> submittedLines = new Dictionary<int, LineData>();
+
+    [System.Serializable]
+    private class LineData
+    {
+        public Vector3 startPoint;
+        public Vector3 endPoint;
+        public int playerNumber;
+        public LineRenderer lineRenderer;
+
+        public LineData(Vector3 start, Vector3 end, int player)
+        {
+            startPoint = start;
+            endPoint = end;
+            playerNumber = player;
+        }
+    }
 
     // Events
     public System.Action<Vector3, Vector3, int> OnLineCompleted;
@@ -269,11 +292,18 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Finishes the line drawing and stores data locally (no network sync until submit).
+    /// Automatically colors squares based on the drawn line.
     /// </summary>
     private void FinishDrawing()
     {
         isDrawing = false;
         hasDrawnLine = true;
+
+        // Auto-color squares based on the drawn line if enabled
+        if (autoColorOnFinish)
+        {
+            SquareLineCalculator.ColorAllSquaresByLine(startPoint, endPoint);
+        }
 
         // Only notify local systems that line is complete
         // DO NOT send to other players yet - they will see it after submit
@@ -293,13 +323,13 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         Vector3 receivedStart = new Vector3(startX, startY, startZ);
         Vector3 receivedEnd = new Vector3(endX, endY, endZ);
 
-        // Create a line renderer for the other player's line
-        CreateOtherPlayerLine(receivedStart, receivedEnd, senderPlayerNumber);
+        // Don't create visual line - only for temporary display during drawing
+        // Final line will be shown only when both players submit via ShowBothLines()
 
         // Notify local systems
         OnLineCompleted?.Invoke(receivedStart, receivedEnd, senderPlayerNumber);
 
-        Debug.Log($"Received line from Player {senderPlayerNumber}");
+        Debug.Log($"Received temporary line from Player {senderPlayerNumber} (not displayed)");
     }
 
     /// <summary>
@@ -425,6 +455,14 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
 
         isSubmitted = true;
 
+        // Store own line data
+        LineData ownLineData = new LineData(startPoint, endPoint, playerNumber);
+        ownLineData.lineRenderer = playerLineRenderer; // Keep reference to existing renderer
+        submittedLines[playerNumber] = ownLineData;
+
+        // Keep own line visible - player should see their submitted line
+        // Only other player's lines are hidden until both players finish
+
         // Send line data to other players via RPC
         photonView.RPC("ReceiveSubmittedLine", RpcTarget.Others,
             startPoint.x, startPoint.y, startPoint.z,
@@ -439,7 +477,7 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Receives submitted line data from other players via RPC.
-    /// This will be visible to all players after submission.
+    /// Stores the line data but doesn't display it until both players are done.
     /// </summary>
     [PunRPC]
     private void ReceiveSubmittedLine(float startX, float startY, float startZ,
@@ -449,10 +487,11 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         Vector3 receivedStart = new Vector3(startX, startY, startZ);
         Vector3 receivedEnd = new Vector3(endX, endY, endZ);
 
-        // Create a line renderer for the other player's submitted line
-        CreateOtherPlayerLine(receivedStart, receivedEnd, senderPlayerNumber);
+        // Store the line data but don't display it yet
+        LineData lineData = new LineData(receivedStart, receivedEnd, senderPlayerNumber);
+        submittedLines[senderPlayerNumber] = lineData;
 
-        Debug.Log($"Received submitted line from Player {senderPlayerNumber}");
+        Debug.Log($"Received and stored submitted line from Player {senderPlayerNumber}");
     }
 
     /// <summary>
@@ -472,5 +511,77 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         // This would need to be tracked by a game manager that knows about both players
         // For now, return false - implement in game manager
         return false;
+    }
+
+    /// <summary>
+    /// Shows both players' lines when both have submitted their cuts.
+    /// This is called when both players have finished cutting.
+    /// </summary>
+    public void ShowBothLines()
+    {
+        // Find all LineDrawingManager instances and collect their submitted lines
+        LineDrawingManager[] allManagers = FindObjectsOfType<LineDrawingManager>();
+        Dictionary<int, LineData> allSubmittedLines = new Dictionary<int, LineData>();
+
+        // Collect all submitted lines from all managers
+        foreach (LineDrawingManager manager in allManagers)
+        {
+            foreach (var kvp in manager.submittedLines)
+            {
+                allSubmittedLines[kvp.Key] = kvp.Value;
+            }
+        }
+
+        // Now display all collected lines
+        foreach (var kvp in allSubmittedLines)
+        {
+            int playerNum = kvp.Key;
+            LineData lineData = kvp.Value;
+
+            if (lineData.lineRenderer != null)
+            {
+                // Show existing line renderer
+                lineData.lineRenderer.enabled = true;
+
+                // Set appropriate color
+                Color lineColor = playerNum == 1 ? player1LineColor : player2LineColor;
+                lineData.lineRenderer.material.color = lineColor;
+
+                Debug.Log($"Showing existing line for player {playerNum}");
+            }
+            else
+            {
+                // Create new line renderer for other players' lines
+                CreateVisibleLine(lineData.startPoint, lineData.endPoint, playerNum);
+                Debug.Log($"Created new line for player {playerNum}");
+            }
+        }
+
+        Debug.Log("Both lines are now visible");
+    }
+
+    /// <summary>
+    /// Creates a visible line renderer for display.
+    /// </summary>
+    private void CreateVisibleLine(Vector3 start, Vector3 end, int forPlayerNumber)
+    {
+        GameObject lineObj = new GameObject($"Player{forPlayerNumber}SubmittedLine");
+        lineObj.transform.SetParent(transform);
+
+        LineRenderer lineRenderer = lineObj.AddComponent<LineRenderer>();
+        lineRenderer.material = lineMaterial;
+        lineRenderer.startWidth = lineWidth;
+        lineRenderer.endWidth = lineWidth;
+        lineRenderer.positionCount = 2;
+        lineRenderer.useWorldSpace = true;
+        lineRenderer.enabled = true;
+
+        Color lineColor = forPlayerNumber == 1 ? player1LineColor : player2LineColor;
+        lineRenderer.material.color = lineColor;
+        lineRenderer.startColor = lineColor;
+        lineRenderer.endColor = lineColor;
+
+        lineRenderer.SetPosition(0, start);
+        lineRenderer.SetPosition(1, end);
     }
 }

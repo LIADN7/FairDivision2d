@@ -282,7 +282,6 @@ public class PlayerVsAI : MonoBehaviour
             buttonsValueText[1].text = "Part 2 value: " + (greenVal * 100) + "%";
             if ((greenVal * 100) == 50)
             {
-                Manager.inst.setStatusClick(0);
                 Manager.inst.setNote(-1, "The map is divided into 50%\n(if you wish, you can change the division or choose not to divide equally)", false);
 
             }

@@ -221,6 +221,17 @@ public class Player : MonoBehaviourPunCallbacks
 
     public void CutView()
     {
+        // Submit the drawn line to prevent further editing
+        GameObject lineManagerObj = GameObject.Find("LineDrawingManager");
+        if (lineManagerObj != null)
+        {
+            var lineManager = lineManagerObj.GetComponent<LineDrawingManager>();
+            if (lineManager != null)
+            {
+                lineManager.SubmitLine();
+            }
+        }
+
         float cutSum = this.statusChange();
         if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.PlayerCount > 1)
         {
@@ -298,6 +309,17 @@ public class Player : MonoBehaviourPunCallbacks
     [PunRPC]
     public void setAllState()
     {
+        // Display both players' lines when both have submitted
+        GameObject lineManagerObj = GameObject.Find("LineDrawingManager");
+        if (lineManagerObj != null)
+        {
+            var lineManager = lineManagerObj.GetComponent<LineDrawingManager>();
+            if (lineManager != null)
+            {
+                lineManager.ShowBothLines();
+            }
+        }
+
         //GREEN, RED, YELLOW, BLUE
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         float[] sumRGYB = createSumRGYB(playerNum);
@@ -513,7 +535,6 @@ public class Player : MonoBehaviourPunCallbacks
             buttonsValueText[1].text = "Part 2 value: " + (greenVal * 100) + "%";
             if ((greenVal * 100) == 50)
             {
-                Manager.inst.setStatusClick(0);
                 Manager.inst.setNote(-1, "The map is divided into 50%\n(if you wish, you can change the division or choose not to divide equally)", false);
 
             }
