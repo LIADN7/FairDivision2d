@@ -30,12 +30,8 @@ public class Player : MonoBehaviourPunCallbacks
     public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
     private Dictionary<int, int> player1 = new Dictionary<int, int>();
     private Dictionary<int, int> player2 = new Dictionary<int, int>();
-    private string[] playerSaveBtTexts = { "", "", "", "" };
     private List<ChatMessage> chatHistory = new List<ChatMessage>();
     private HashValues HelpHashValue;
-    // Saves the player's state
-    private Dictionary<int, int> savePlayer1 = new Dictionary<int, int>();
-    private Dictionary<int, int> savePlayer2 = new Dictionary<int, int>();
     [SerializeField] protected SumSquares[] stateObjects; // All the state obj with square childs
     private int chooseNum = 0;
     private string[] endExplanationPlayers = { "You get:\n", "You get:\n" };
@@ -180,7 +176,7 @@ public class Player : MonoBehaviourPunCallbacks
             PointOfState p = it.Value.GetComponent<PointOfState>();
             p.setmyPowerColor(playerNum, this.sumPlayer[playerNum - 1]);
             p.setOtherPowerColor(otherPlayerNum, this.sumPlayer[otherPlayerNum - 1]);
-            p.setSpriteStatus(1, 1);
+            p.setSpriteStatus(1, playerNum);
         }
         /*        greenValueText.text = "All green value: " + (0) + "%";
                 redValueText.text = "All red value: " + (100) + "%";*/
@@ -262,6 +258,7 @@ public class Player : MonoBehaviourPunCallbacks
         {
             Manager.inst.setNote(7f, "Waiting for the other player to connect!", true);
         }
+        /*
         if (isAllTrue())
         {
             view.RPC("setAllState", RpcTarget.All);
@@ -270,6 +267,7 @@ public class Player : MonoBehaviourPunCallbacks
             view.RPC("SetForOtherPlayerColorValuesDataBase", RpcTarget.Others, tempMySum);
             //setAllState();
         }
+        */
 
     }
 
@@ -299,6 +297,12 @@ public class Player : MonoBehaviourPunCallbacks
 
             // Set other player name on the database
             photonView.RPC("UpdateOtherPlayerName", RpcTarget.Others, this.gameDatabase.PlayerName);
+
+            // Calculate and save state for both players
+            setAllState();
+            float[] tempMySum = Manager.inst.getAllSumRGYB();
+            this.gameDatabase.SetPlayerColorValues(tempMySum);
+            view.RPC("SetForOtherPlayerColorValuesDataBase", RpcTarget.Others, tempMySum);
 
             //setAllState(player1, player2);
         }
@@ -512,12 +516,12 @@ public class Player : MonoBehaviourPunCallbacks
 
 
 
-    public float statusChange()
+    public float statusChange(int? targetPlayerNum = null)
     {
         lock (this)
         {
             float sumG = 0;
-            int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+            int playerNum = targetPlayerNum ?? (PhotonNetwork.IsMasterClient ? 1 : 2);
 
             foreach (var it in squares)
             {
@@ -529,8 +533,19 @@ public class Player : MonoBehaviourPunCallbacks
 
             }
             float greenVal = (sumG / this.sumPlayer[playerNum - 1]);
-            buttonsValueText[0].text = "Part 1 value: " + ((1 - greenVal) * 100) + "%";
-            buttonsValueText[1].text = "Part 2 value: " + (greenVal * 100) + "%";
+
+            // Update button texts based on whether we're showing other player's values or not
+            bool showingOtherPlayer = (targetPlayerNum != null && targetPlayerNum != (PhotonNetwork.IsMasterClient ? 1 : 2));
+            if (showingOtherPlayer)
+            {
+                buttonsValueText[0].text = "Other player Part 1: " + ((1 - greenVal) * 100) + "%";
+                buttonsValueText[1].text = "Other player Part 2: " + (greenVal * 100) + "%";
+            }
+            else
+            {
+                buttonsValueText[0].text = "Part 1 value: " + ((1 - greenVal) * 100) + "%";
+                buttonsValueText[1].text = "Part 2 value: " + (greenVal * 100) + "%";
+            }
             if ((greenVal * 100) == 50)
             {
                 Manager.inst.setNote(-1, "The map is divided into 50%\n(if you wish, you can change the division or choose not to divide equally)", false);
@@ -546,81 +561,100 @@ public class Player : MonoBehaviourPunCallbacks
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
         this.gameDatabase.AddCountPlayerSeeOther();
+
         if (Manager.inst.getIsShowView())
         {
-            Debug.Log("second");
+            Debug.Log("Returning to normal view - showing current real state");
 
-            SetMap(playerNum == 1 ? this.savePlayer1 : this.savePlayer2, playerNum);
-            //this.statusChange();
-            this.setAllStateTitle(playerNum);
-            float[] sumRGYB = setOtherCutMap(playerNum);
+            // Calculate current red and green values for logging
+            float redValuePlayer1 = 0f, greenValuePlayer1 = 0f;
+            float redValuePlayer2 = 0f, greenValuePlayer2 = 0f;
 
-            for (int i = 0; i < buttonsValueText.Length; i++)
+            foreach (var it in this.squares)
             {
-                buttonsValueText[i].text = playerSaveBtTexts[i];
+                PointOfState p = it.Value.GetComponent<PointOfState>();
+                if (p.getSpriteStatus() == 1) // Red
+                {
+                    redValuePlayer1 += p.getMyVal(1);
+                    redValuePlayer2 += p.getMyVal(2);
+                }
+                else if (p.getSpriteStatus() == 2) // Green
+                {
+                    greenValuePlayer1 += p.getMyVal(1);
+                    greenValuePlayer2 += p.getMyVal(2);
+                }
             }
 
+            // Convert to percentages
+            float redPercent1 = (redValuePlayer1 / this.sumPlayer[0]) * 100;
+            float greenPercent1 = (greenValuePlayer1 / this.sumPlayer[0]) * 100;
+            float redPercent2 = (redValuePlayer2 / this.sumPlayer[1]) * 100;
+            float greenPercent2 = (greenValuePlayer2 / this.sumPlayer[1]) * 100;
 
+            Debug.Log($"Current values - Player 1: Red={redPercent1:F5}%, Green={greenPercent1:F5}% | Player 2: Red={redPercent2:F5}%, Green={greenPercent2:F5}%");
+
+            // Show current real state based on current square colors
+            // No need to restore old saved state - just calculate current values
+            this.statusChange(); // This calculates and displays current player's values
+            this.setAllStateTitle(playerNum); // Set titles for current player
+
+            // Ensure squares show current player's values (not other player's)
+            foreach (var it in this.squares)
+            {
+                PointOfState p = it.Value.GetComponent<PointOfState>();
+                // Keep current color, but show current player's values
+                p.setSpriteStatus(p.getSpriteStatus(), playerNum);
+            }
         }
         else
         {
-            Debug.Log("first");
-            Dictionary<int, int> tempPlayer = getTempPlayer();
-            if (playerNum == 1) savePlayer1 = tempPlayer;
-            else savePlayer2 = tempPlayer;
-            for (int i = 0; i < buttonsValueText.Length; i++)
+            Debug.Log("Switching to other player's view");
+
+            // Calculate current red and green values for logging before switching
+            float redValuePlayer1 = 0f, greenValuePlayer1 = 0f;
+            float redValuePlayer2 = 0f, greenValuePlayer2 = 0f;
+
+            foreach (var it in this.squares)
             {
-                playerSaveBtTexts[i] = buttonsValueText[i].text;
+                PointOfState p = it.Value.GetComponent<PointOfState>();
+                if (p.getSpriteStatus() == 1) // Red
+                {
+                    redValuePlayer1 += p.getMyVal(1);
+                    redValuePlayer2 += p.getMyVal(2);
+                }
+                else if (p.getSpriteStatus() == 2) // Green
+                {
+                    greenValuePlayer1 += p.getMyVal(1);
+                    greenValuePlayer2 += p.getMyVal(2);
+                }
             }
-            //setOtherHeatmap(); // Set other player heatmap in green color
+
+            // Convert to percentages
+            float redPercent1 = (redValuePlayer1 / this.sumPlayer[0]) * 100;
+            float greenPercent1 = (greenValuePlayer1 / this.sumPlayer[0]) * 100;
+            float redPercent2 = (redValuePlayer2 / this.sumPlayer[1]) * 100;
+            float greenPercent2 = (greenValuePlayer2 / this.sumPlayer[1]) * 100;
+
+            Debug.Log($"Switching to other view - Player 1: Red={redPercent1:F5}%, Green={greenPercent1:F5}% | Player 2: Red={redPercent2:F5}%, Green={greenPercent2:F5}%");
+
+            // Show other player's view with their values
             float[] sumRGYB = setOtherCutMap(otherPlayerNum);
-            buttonsValueText[0].text = "Other player val: " + (sumRGYB[0]) + "%";
-            buttonsValueText[1].text = "Other player val: " + (sumRGYB[1]) + "%";
-            buttonsValueText[2].text = "Other player val: " + (sumRGYB[2]) + "%";
-            buttonsValueText[3].text = "Other player val: " + (sumRGYB[3]) + "%";
+
+            // Update button texts to show other player values (using F5 format to match interface)
+            buttonsValueText[0].text = "Other player val: " + sumRGYB[0].ToString("F5") + "%";
+            buttonsValueText[1].text = "Other player val: " + sumRGYB[1].ToString("F5") + "%";
+            buttonsValueText[2].text = "Other player val: " + sumRGYB[2].ToString("F5") + "%";
+            buttonsValueText[3].text = "Other player val: " + sumRGYB[3].ToString("F5") + "%";
         }
+
         Manager.inst.changeSeeOtherPlayerBT();
-
-
     }
 
 
 
-    // Update the map based on the received data.
-    private void SetMap(Dictionary<int, int> tempPlayer, int playerNum)
-    {
-        if (tempPlayer == null) return;
 
-        //float[] sumRGYB = { 0, 0 }; //GREEN, RED, YELLOW, BLUE
-        //int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
-        foreach (var it in this.squares)
-        {
-            PointOfState p = it.Value.GetComponent<PointOfState>();
-            float val = p.getMyVal(playerNum);
-            int tempKey = p.getMyKey();
-            int spriteStatus = tempPlayer[tempKey]; // Red, Green, Yellow or Blue
 
-            //sumRGYB[spriteStatus - 1] += val;
-            p.setSpriteStatus(spriteStatus, 1);
 
-        }
-
-    }
-
-    // Get temporary player data for sending.
-    private Dictionary<int, int> getTempPlayer()
-    {
-        //int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
-        Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
-        foreach (var it in this.squares)
-        {
-            PointOfState p = it.Value.GetComponent<PointOfState>();
-            int status = p.getSpriteStatus();
-            int key = p.getMyKey();
-            tempPlayer.Add(key, status);
-        }
-        return tempPlayer;
-    }
 
 
     // Set the heatmap of the other player
@@ -865,7 +899,7 @@ public class Player : MonoBehaviourPunCallbacks
     [PunRPC]
     private void UpdateOtherPlayerName(string otherName)
     {
-        this.gameDatabase.otherPlayerName= otherName;
+        this.gameDatabase.otherPlayerName = otherName;
     }
 
     [PunRPC]

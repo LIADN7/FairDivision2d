@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Photon.Pun;
 
 /// <summary>
 /// Calculates which side of a line each square is on and automatically colors them.
@@ -50,7 +51,8 @@ public class SquareLineCalculator : MonoBehaviour
         // Find all squares with the SquarePoint tag
         GameObject[] allSquares = GameObject.FindGameObjectsWithTag("SquarePoint");
 
-        Debug.Log($"Found {allSquares.Length} squares to color based on line from {lineStart} to {lineEnd}");
+        // Reduced debug output to avoid console flooding during real-time updates
+        // Debug.Log($"Found {allSquares.Length} squares to color based on line from {lineStart} to {lineEnd}");
 
         // Get the Player instance to access the existing coloring system
         Player playerInstance = Player.inst;
@@ -63,6 +65,12 @@ public class SquareLineCalculator : MonoBehaviour
         // Counter for debugging
         int redCount = 0, greenCount = 0;
 
+        // Determine which player's values to show based on SeeOther button state
+        bool showOtherPlayer = Manager.inst.getIsShowView();
+        int currentPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
+        int targetPlayer = showOtherPlayer ? otherPlayerNum : currentPlayerNum;
+
         // Process each square
         foreach (GameObject squareObj in allSquares)
         {
@@ -72,8 +80,8 @@ public class SquareLineCalculator : MonoBehaviour
                 // Calculate which side of the line this square is on
                 int colorStatus = GetSquareColorByLine(squareObj.transform.position, lineStart, lineEnd);
 
-                // Update the square using the existing system (status, power)
-                pointOfState.setSpriteStatus(colorStatus, 1);
+                // Update the square using the existing system with correct player for heatmap colors
+                pointOfState.setSpriteStatus(colorStatus, targetPlayer);
 
                 // Count for debugging
                 if (colorStatus == 1) redCount++;
@@ -81,10 +89,11 @@ public class SquareLineCalculator : MonoBehaviour
             }
         }
 
-        Debug.Log($"Colored {redCount} squares Red and {greenCount} squares Green");
+        // Reduced debug output for real-time updates
+        // Debug.Log($"Colored {redCount} squares Red and {greenCount} squares Green");
 
-        // Update the UI using the existing Player system
-        playerInstance.statusChange();
+        // Update the UI using the existing Player system with correct player values
+        playerInstance.statusChange(targetPlayer);
     }
 
     /// <summary>
@@ -100,6 +109,12 @@ public class SquareLineCalculator : MonoBehaviour
 
         Debug.Log($"Coloring {squares.Count} squares based on line from {lineStart} to {lineEnd}");
 
+        // Determine which player's values to show based on SeeOther button state
+        bool showOtherPlayer = Manager.inst.getIsShowView();
+        int currentPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
+        int targetPlayer = showOtherPlayer ? otherPlayerNum : currentPlayerNum;
+
         // Counter for debugging
         int redCount = 0, greenCount = 0;
 
@@ -114,8 +129,8 @@ public class SquareLineCalculator : MonoBehaviour
                 // Calculate which side of the line this square is on
                 int colorStatus = GetSquareColorByLine(squareObj.transform.position, lineStart, lineEnd);
 
-                // Update the square using the existing system (status, power)
-                pointOfState.setSpriteStatus(colorStatus, 1);
+                // Update the square using the existing system with correct player for heatmap colors
+                pointOfState.setSpriteStatus(colorStatus, targetPlayer);
 
                 // Count for debugging
                 if (colorStatus == 1) redCount++;
@@ -125,11 +140,11 @@ public class SquareLineCalculator : MonoBehaviour
 
         Debug.Log($"Colored {redCount} squares Red and {greenCount} squares Green using dictionary method");
 
-        // Update the UI using the existing Player system
+        // Update the UI using the existing Player system with correct player values
         Player playerInstance = Player.inst;
         if (playerInstance != null)
         {
-            playerInstance.statusChange();
+            playerInstance.statusChange(targetPlayer);
         }
     }
 

@@ -144,7 +144,10 @@ public class PointOfState : MonoBehaviour
     // i is the color number, iPower =1 is my power and 2 for power of the other player
     public void setSpriteStatus(int i, int iPower)
     {
-        float colorPower = iPower == 1 ? myPowerColor : otherPowerColor;
+        // Check if iPower matches current player number to choose correct color values
+        int currentPlayerNum = Photon.Pun.PhotonNetwork.IsMasterClient ? 1 : 2;
+        bool isMyValues = (iPower == currentPlayerNum);
+        float colorPower = isMyValues ? myPowerColor : otherPowerColor;
         if (i == 1)
         {
             // Red

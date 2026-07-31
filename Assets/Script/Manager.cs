@@ -43,6 +43,9 @@ public class Manager : MonoBehaviour
     }
     void Start()
     {
+        // Ensure DatabaseManager exists for saving game data
+        DatabaseManager.EnsureInstance();
+
         this.status = 0;
         this.viewAfterCut.SetActive(false);
         this.viewTotalValueEndGame.SetActive(false);
@@ -155,7 +158,7 @@ public class Manager : MonoBehaviour
 
     public void changeSeeOtherPlayerBT()
     {
-        if (Config.inst.getSeeOtherEnable())
+        if (Config.inst.getSeeOtherEnable() && !this.isCut) // Don't allow if already cut
         {
             this.status = 0;
             // No button reset needed - line drawing system handles this
@@ -164,26 +167,36 @@ public class Manager : MonoBehaviour
             if (this.isShowView)
             {
                 tempSprit.color = Color.white;
-                this.cutBt.SetActive(true && !this.isCut); // not after cut!
+                this.cutBt.SetActive(!this.isCut); // Show cut button only if not cut yet
             }
             else
             {
                 tempSprit.color = Color.red;
-                this.cutBt.SetActive(false && !this.isCut); // not after cut!
+                this.cutBt.SetActive(false); // Hide cut button when viewing other player
             }
             this.isShowView = !this.isShowView;
+        }
+
+        // Hide the SeeOtherPlayerBT if cut is done
+        if (this.isCut)
+        {
+            this.SeeOtherPlayerBT.SetActive(false);
         }
     }
 
 
     public void initialSeeOtherPlayerBT()
     {
-        this.SeeOtherPlayerBT.SetActive(true && Config.inst.getSeeOtherEnable());
+        // Only activate if see other is enabled AND cut hasn't been done yet
+        this.SeeOtherPlayerBT.SetActive(Config.inst.getSeeOtherEnable() && !this.isCut);
         //backgraundStatus.color = Color.white;
         // No button reset needed - line drawing system handles this
         this.isShowView = false;
-        Image tempSprit = this.SeeOtherPlayerBT.GetComponent<Image>();
-        tempSprit.color = Color.white;
+        if (this.SeeOtherPlayerBT.activeInHierarchy)
+        {
+            Image tempSprit = this.SeeOtherPlayerBT.GetComponent<Image>();
+            tempSprit.color = Color.white;
+        }
     }
 
 

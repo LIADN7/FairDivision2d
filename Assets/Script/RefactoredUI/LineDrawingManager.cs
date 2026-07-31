@@ -39,6 +39,10 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
     private bool isSubmitted = false; // New: tracks if player has submitted their line
     private int playerNumber; // 1 or 2
 
+    // Real-time coloring optimization
+    private float lastUpdateTime = 0f;
+    private float updateInterval = 0.05f; // Update every 50ms for performance
+
     // Store submitted lines data (hidden until both players finish)
     private Dictionary<int, LineData> submittedLines = new Dictionary<int, LineData>();
 
@@ -205,10 +209,7 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         // Debug information
         if (Input.GetMouseButtonDown(0))
         {
-            Debug.Log("Mouse clicked!");
-            Debug.Log($"CanDrawLine: {CanDrawLine()}");
-            Debug.Log($"hasDrawnLine: {hasDrawnLine}");
-            Debug.Log($"IsMyTurnToDraw: {IsMyTurnToDraw()}");
+            // Mouse click detected - checking drawing conditions
         }
 
         if (Input.GetMouseButtonDown(0))
@@ -245,8 +246,7 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
     private void StartDrawing()
     {
         Vector3 mouseWorldPos = GetMouseWorldPosition();
-        Debug.Log($"Mouse World Position: {mouseWorldPos}");
-        Debug.Log($"Is Point Within Bounds: {IsPointWithinBounds(mouseWorldPos)}");
+        // Checking mouse position and bounds
 
         if (IsPointWithinBounds(mouseWorldPos))
         {
@@ -272,7 +272,6 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
             playerLineRenderer.enabled = true;
             playerLineRenderer.SetPosition(0, startPoint);
             playerLineRenderer.SetPosition(1, startPoint);
-            Debug.Log("Started drawing line!");
         }
         else
         {
@@ -282,12 +281,42 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Updates the line while drawing.
+    /// Now includes real-time coloring for immediate visual feedback.
     /// </summary>
     private void UpdateDrawing()
     {
         Vector3 mouseWorldPos = GetMouseWorldPosition();
         endPoint = ClampPointToBounds(mouseWorldPos);
         playerLineRenderer.SetPosition(1, endPoint);
+
+        // Real-time coloring with throttling for performance
+        if (autoColorOnFinish && Time.time - lastUpdateTime > updateInterval)
+        {
+            ColorSquaresInRealTime(startPoint, endPoint);
+            lastUpdateTime = Time.time;
+        }
+    }
+
+    /// <summary>
+    /// Colors squares in real-time while drawing the line.
+    /// Provides immediate visual feedback to the player.
+    /// </summary>
+    private void ColorSquaresInRealTime(Vector3 lineStart, Vector3 lineEnd)
+    {
+        // Use the existing coloring logic for real-time updates
+        SquareLineCalculator.ColorAllSquaresByLine(lineStart, lineEnd);
+
+        // Update the UI values display in real-time so player can see changing percentages
+        if (Player.inst != null)
+        {
+            // Check if we should show other player's values during cutting
+            bool showOtherPlayer = Manager.inst.getIsShowView();
+            int currentPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+            int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
+
+            int targetPlayer = showOtherPlayer ? otherPlayerNum : currentPlayerNum;
+            Player.inst.statusChange(targetPlayer); // Updates the sum display with correct player values
+        }
     }
 
     /// <summary>
@@ -299,17 +328,27 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         isDrawing = false;
         hasDrawnLine = true;
 
-        // Auto-color squares based on the drawn line if enabled
+        // Final coloring when line is completed (same as real-time, but ensures final state)
         if (autoColorOnFinish)
         {
             SquareLineCalculator.ColorAllSquaresByLine(startPoint, endPoint);
+
+            // Update values display with correct player based on SeeOther button state
+            if (Player.inst != null)
+            {
+                bool showOtherPlayer = Manager.inst.getIsShowView();
+                int currentPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+                int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
+
+                int targetPlayer = showOtherPlayer ? otherPlayerNum : currentPlayerNum;
+                Player.inst.statusChange(targetPlayer);
+            }
         }
 
         // Only notify local systems that line is complete
         // DO NOT send to other players yet - they will see it after submit
         OnLineCompleted?.Invoke(startPoint, endPoint, playerNumber);
 
-        Debug.Log($"Player {playerNumber} completed line from {startPoint} to {endPoint} (local only)");
     }
 
     /// <summary>
@@ -328,8 +367,6 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
 
         // Notify local systems
         OnLineCompleted?.Invoke(receivedStart, receivedEnd, senderPlayerNumber);
-
-        Debug.Log($"Received temporary line from Player {senderPlayerNumber} (not displayed)");
     }
 
     /// <summary>
@@ -377,8 +414,7 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         bool withinX = point.x >= (mapCenter.x - halfWidth) && point.x <= (mapCenter.x + halfWidth);
         bool withinY = point.y >= (mapCenter.y - halfHeight) && point.y <= (mapCenter.y + halfHeight);
 
-        Debug.Log($"Point: {point}, Center: {mapCenter}, Size: {mapSize}");
-        Debug.Log($"Within bounds: {withinX && withinY}");
+        // Point bounds check completed
 
         return withinX && withinY;
     }
@@ -421,8 +457,6 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
                 DestroyImmediate(line.gameObject);
             }
         }
-
-        Debug.Log("Drawing state reset - can draw new lines again");
     }
 
     /// <summary>
@@ -472,7 +506,7 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         // Notify local systems that line is submitted
         OnLineSubmitted?.Invoke();
 
-        Debug.Log($"Player {playerNumber} submitted line from {startPoint} to {endPoint}");
+        // Player submitted line
     }
 
     /// <summary>
@@ -491,7 +525,7 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         LineData lineData = new LineData(receivedStart, receivedEnd, senderPlayerNumber);
         submittedLines[senderPlayerNumber] = lineData;
 
-        Debug.Log($"Received and stored submitted line from Player {senderPlayerNumber}");
+        // Line received and stored
     }
 
     /// <summary>
@@ -546,18 +580,14 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
                 // Set appropriate color
                 Color lineColor = playerNum == 1 ? player1LineColor : player2LineColor;
                 lineData.lineRenderer.material.color = lineColor;
-
-                Debug.Log($"Showing existing line for player {playerNum}");
             }
             else
             {
                 // Create new line renderer for other players' lines
                 CreateVisibleLine(lineData.startPoint, lineData.endPoint, playerNum);
-                Debug.Log($"Created new line for player {playerNum}");
             }
         }
 
-        Debug.Log("Both lines are now visible");
 
         // Now calculate and apply final square colors based on both lines
         ApplyFinalSquareColors(allSubmittedLines);

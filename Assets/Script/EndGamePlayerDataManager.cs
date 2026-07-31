@@ -53,7 +53,7 @@ public class EndGamePlayerDataManager : MonoBehaviour
         // Basic validation checks
         if (string.IsNullOrEmpty(name))
         {
-            ShowError("Please enter your name.");
+            ShowError("Please enter your full name.");
             return;
         }
 

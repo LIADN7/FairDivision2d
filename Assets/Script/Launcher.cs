@@ -150,16 +150,30 @@ public class Launcher : MonoBehaviourPunCallbacks
         }
     }
 
+    // =================================================
+    //------------------- TEST GAME 1 ----------------  
+    //=================================================
+    public void CreateTetsGame1(int scenarioNumber)
+    {
+        if (playerName.text != "")
+        {
 
+            PlayerData.inst.SetPlayerData(this.playerName.text, this.playerEmail.text, "", "");
+            PhotonNetwork.NickName = playerName.text;
+            Config.inst.createConfig(scenarioNumber, 0);
+            RoomOptions opt = new RoomOptions();
+            opt.MaxPlayers = 2;
 
-    // public override void OnJoinRoomFailed(short returnCode, string message)
-    // {
-    //     Debug.Log("Room join failed: " + message);
-    //     this.menu.SetActive(true);
-    //     this.loadingScreen.SetActive(false);
-    // }
+            this.menu.SetActive(false);
+            this.loadingScreen.SetActive(true);
+            this.loadingText.text = "Create room...";
+            Debug.Log(PhotonNetwork.JoinOrCreateRoom(roomNames[0], opt, PhotonNetwork.CurrentLobby));
 
+            print(PhotonNetwork.CurrentLobby);
+            print(PhotonNetwork.CurrentRoom);
 
+        }
+    }
 
     //=================================================
     //------------------- GAME 2 - RR ----------------
