@@ -26,4 +26,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/RRTestScene.unity
     guid: 1528986b19ab30340845d6305c3e092f
+  - enabled: 1
+    path: Assets/Scenes/CutSceneAITutorial.unity
+    guid: af5b71041b6d339448e4bea25a8b1832
   m_configObjects: {}
+  m_UseUCBPForAssetBundles: 0

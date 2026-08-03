@@ -2171,7 +2171,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 450554331}
         m_TargetAssemblyTypeName: Launcher, Assembly-CSharp
-        m_MethodName: CreateGame1
+        m_MethodName: CreateAITutorialGame1
         m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

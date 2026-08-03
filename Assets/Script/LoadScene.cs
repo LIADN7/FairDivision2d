@@ -21,6 +21,9 @@ public class LoadScene : MonoBehaviour
 
         try
         {
+
+        PlayerAITutorial.inst?.LeaveGame(sceneName);
+
         //AuthenticationService.Instance.SignOut(true);
         Player.inst.LeaveGame(sceneName);
 

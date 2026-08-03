@@ -1,0 +1,645 @@
+using UnityEngine;
+using Photon.Pun;
+using System.Collections.Generic;
+
+/// <summary>
+/// Manages the drawing of straight lines on the map for dividing territories.
+/// Each player draws one line to divide the map into two colored regions.
+/// </summary>
+public class LineDrawingManagerAITutoria : MonoBehaviourPunCallbacks
+{
+    [Header("Line Rendering")]
+    public Camera gameCamera;
+
+    [Header("Map Boundaries (Auto-Created)")]
+    public Vector2 mapSize = new Vector2(15f, 10f); // Size of the drawable area - covers the whole map
+    public Vector3 mapCenter = Vector3.zero; // Center position of the map
+
+    [Header("Line Colors")]
+    public Color player1LineColor = Color.black;
+    public Color player2LineColor = Color.white;
+
+    [Header("Line Properties")]
+    public float lineWidth = 0.1f;
+
+    [Header("Auto Coloring")]
+    public bool autoColorOnFinish = true; // Automatically color squares when line is finished
+
+    // Auto-created components
+    public LineRenderer playerLineRenderer; // Made public for cross-manager access
+    private RectTransform mapBounds;
+    private Canvas uiCanvas;
+    private Material lineMaterial;
+
+    // Private variables
+    private Vector3 startPoint;
+    private Vector3 endPoint;
+    private bool isDrawing = false;
+    private bool hasDrawnLine = false;
+    private bool isSubmitted = false; // New: tracks if player has submitted their line
+    private int playerNumber; // 1 or 2
+
+    // Real-time coloring optimization
+    private float lastUpdateTime = 0f;
+    private float updateInterval = 0.05f; // Update every 50ms for performance
+
+    // Store submitted lines data (hidden until both players finish)
+    private Dictionary<int, LineData> submittedLines = new Dictionary<int, LineData>();
+
+    [System.Serializable]
+    private class LineData
+    {
+        public Vector3 startPoint;
+        public Vector3 endPoint;
+        public int playerNumber;
+        public LineRenderer lineRenderer;
+
+        public LineData(Vector3 start, Vector3 end, int player)
+        {
+            startPoint = start;
+            endPoint = end;
+            playerNumber = player;
+        }
+    }
+
+    // Events
+    public System.Action<Vector3, Vector3, int> OnLineCompleted;
+    public System.Action OnLineSubmitted;
+
+    void Start()
+    {
+        CreateLineMaterial();
+        CreateMapBounds();
+        InitializeLineRenderer();
+        DeterminePlayerNumber();
+    }
+
+    void Update()
+    {
+        if (CanDrawLine())
+        {
+            HandleLineDrawing();
+        }
+    }
+
+    /// <summary>
+    /// Creates a default line material at runtime.
+    /// </summary>
+    private void CreateLineMaterial()
+    {
+        lineMaterial = new Material(Shader.Find("Sprites/Default"));
+        lineMaterial.color = Color.white;
+    }
+
+    /// <summary>
+    /// Creates the map boundaries UI element at runtime.
+    /// </summary>
+    private void CreateMapBounds()
+    {
+        // Find existing canvas or create new one
+        uiCanvas = FindObjectOfType<Canvas>();
+        if (uiCanvas == null)
+        {
+            GameObject canvasObj = new GameObject("Auto-Created Canvas");
+            uiCanvas = canvasObj.AddComponent<Canvas>();
+            uiCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvasObj.AddComponent<UnityEngine.UI.CanvasScaler>();
+            canvasObj.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+        }
+
+        // Create map bounds rectangle
+        GameObject boundsObj = new GameObject("MapBounds");
+        boundsObj.transform.SetParent(uiCanvas.transform, false);
+
+        mapBounds = boundsObj.AddComponent<RectTransform>();
+        UnityEngine.UI.Image boundsImage = boundsObj.AddComponent<UnityEngine.UI.Image>();
+
+        // Make it transparent (invisible but functional)
+        Color transparentColor = Color.white;
+        transparentColor.a = 0f;
+        boundsImage.color = transparentColor;
+        boundsImage.raycastTarget = false; // Don't block mouse clicks
+
+        // Set size and position based on map parameters
+        SetupMapBoundsSize();
+    }
+
+    /// <summary>
+    /// Sets up the size and position of the map bounds based on world coordinates.
+    /// </summary>
+    private void SetupMapBoundsSize()
+    {
+        if (gameCamera == null || mapBounds == null) return;
+
+        // Calculate screen coordinates for the map bounds
+        Vector3 bottomLeft = mapCenter - new Vector3(mapSize.x / 2, mapSize.y / 2, 0);
+        Vector3 topRight = mapCenter + new Vector3(mapSize.x / 2, mapSize.y / 2, 0);
+
+        Vector2 screenBottomLeft = gameCamera.WorldToScreenPoint(bottomLeft);
+        Vector2 screenTopRight = gameCamera.WorldToScreenPoint(topRight);
+
+        // Set the RectTransform to match these screen coordinates
+        mapBounds.position = (screenBottomLeft + screenTopRight) / 2;
+        mapBounds.sizeDelta = screenTopRight - screenBottomLeft;
+    }
+
+    /// <summary>
+    /// Initializes the line renderer with default settings.
+    /// </summary>
+    private void InitializeLineRenderer()
+    {
+        if (playerLineRenderer == null)
+        {
+            GameObject lineObj = new GameObject("PlayerLine");
+            lineObj.transform.SetParent(transform);
+            playerLineRenderer = lineObj.AddComponent<LineRenderer>();
+        }
+
+        playerLineRenderer.material = lineMaterial;
+        playerLineRenderer.startWidth = lineWidth;
+        playerLineRenderer.endWidth = lineWidth;
+        playerLineRenderer.positionCount = 2;
+        playerLineRenderer.useWorldSpace = true;
+        playerLineRenderer.enabled = false;
+    }
+
+    /// <summary>
+    /// Determines the player number based on Photon network role.
+    /// </summary>
+    private void DeterminePlayerNumber()
+    {
+        playerNumber = PhotonNetwork.IsMasterClient ? 1 : 2;
+        Color lineColor = playerNumber == 1 ? player1LineColor : player2LineColor;
+        playerLineRenderer.startColor = lineColor;
+        playerLineRenderer.endColor = lineColor;
+    }
+
+    /// <summary>
+    /// Checks if the current player can draw a line.
+    /// Now allows redrawing to replace existing lines, but not after submission.
+    /// </summary>
+    private bool CanDrawLine()
+    {
+        return IsMyTurnToDraw() && !isSubmitted; // Cannot draw after submission
+    }
+
+    /// <summary>
+    /// Determines if it's the current player's turn to draw.
+    /// This should be connected to your existing turn system.
+    /// </summary>
+    private bool IsMyTurnToDraw()
+    {
+        // TODO: Connect this to your existing turn management system
+        // For now, allow both players to draw
+        return true;
+    }
+
+    /// <summary>
+    /// Handles the mouse input for drawing lines.
+    /// </summary>
+    private void HandleLineDrawing()
+    {
+        // Allow canceling current drawing with ESC key
+        if (Input.GetKeyDown(KeyCode.Escape) && isDrawing)
+        {
+            CancelCurrentDrawing();
+            return;
+        }
+
+        // Debug information
+        if (Input.GetMouseButtonDown(0))
+        {
+            // Mouse click detected - checking drawing conditions
+        }
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            StartDrawing();
+        }
+        else if (Input.GetMouseButton(0) && isDrawing)
+        {
+            UpdateDrawing();
+        }
+        else if (Input.GetMouseButtonUp(0) && isDrawing)
+        {
+            FinishDrawing();
+        }
+    }
+
+    /// <summary>
+    /// Cancels the current line drawing process.
+    /// </summary>
+    private void CancelCurrentDrawing()
+    {
+        isDrawing = false;
+        if (playerLineRenderer != null)
+        {
+            playerLineRenderer.enabled = false;
+        }
+        Debug.Log("Line drawing canceled");
+    }
+
+    /// <summary>
+    /// Starts the line drawing process. 
+    /// If a line already exists, it will be replaced with a new one.
+    /// </summary>
+    private void StartDrawing()
+    {
+        Vector3 mouseWorldPos = GetMouseWorldPosition();
+        // Checking mouse position and bounds
+
+        if (IsPointWithinBounds(mouseWorldPos))
+        {
+            // Reset previous line state to allow redrawing
+            if (hasDrawnLine)
+            {
+                Debug.Log("Replacing existing line with new one");
+                hasDrawnLine = false;
+
+                // Clean up other player lines created by previous attempts
+                LineRenderer[] existingLines = GetComponentsInChildren<LineRenderer>();
+                foreach (LineRenderer line in existingLines)
+                {
+                    if (line != playerLineRenderer)
+                    {
+                        DestroyImmediate(line.gameObject);
+                    }
+                }
+            }
+
+            startPoint = mouseWorldPos;
+            isDrawing = true;
+            playerLineRenderer.enabled = true;
+            playerLineRenderer.SetPosition(0, startPoint);
+            playerLineRenderer.SetPosition(1, startPoint);
+        }
+        else
+        {
+            Debug.Log("Point is outside bounds!");
+        }
+    }
+
+    /// <summary>
+    /// Updates the line while drawing.
+    /// Now includes real-time coloring for immediate visual feedback.
+    /// </summary>
+    private void UpdateDrawing()
+    {
+        Vector3 mouseWorldPos = GetMouseWorldPosition();
+        endPoint = ClampPointToBounds(mouseWorldPos);
+        playerLineRenderer.SetPosition(1, endPoint);
+
+        // Real-time coloring with throttling for performance
+        if (autoColorOnFinish && Time.time - lastUpdateTime > updateInterval)
+        {
+            ColorSquaresInRealTime(startPoint, endPoint);
+            lastUpdateTime = Time.time;
+        }
+    }
+
+    /// <summary>
+    /// Colors squares in real-time while drawing the line.
+    /// Provides immediate visual feedback to the player.
+    /// </summary>
+    private void ColorSquaresInRealTime(Vector3 lineStart, Vector3 lineEnd)
+    {
+        // Use the existing coloring logic for real-time updates
+        SquareLineCalculatorAITutoria.ColorAllSquaresByLine(lineStart, lineEnd);
+
+        // Update the UI values display in real-time so player can see changing percentages
+        if (PlayerAITutorial.inst != null)
+        {
+            // Check if we should show other player's values during cutting
+            bool showOtherPlayer = Manager.inst.getIsShowView();
+            int currentPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+            int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
+
+            int targetPlayer = showOtherPlayer ? otherPlayerNum : currentPlayerNum;
+            PlayerAITutorial.inst.statusChange(targetPlayer); // Updates the sum display with correct player values
+        }
+    }
+
+    /// <summary>
+    /// Finishes the line drawing and stores data locally (no network sync until submit).
+    /// Automatically colors squares based on the drawn line.
+    /// </summary>
+    private void FinishDrawing()
+    {
+        isDrawing = false;
+        hasDrawnLine = true;
+
+        // Final coloring when line is completed (same as real-time, but ensures final state)
+        if (autoColorOnFinish)
+        {
+            SquareLineCalculatorAITutoria.ColorAllSquaresByLine(startPoint, endPoint);
+
+            // Update values display with correct player based on SeeOther button state
+            if (PlayerAITutorial.inst != null)
+            {
+                bool showOtherPlayer = Manager.inst.getIsShowView();
+                int currentPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+                int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
+
+                int targetPlayer = showOtherPlayer ? otherPlayerNum : currentPlayerNum;
+                PlayerAITutorial.inst.statusChange(targetPlayer);
+            }
+        }
+
+        // Only notify local systems that line is complete
+        // DO NOT send to other players yet - they will see it after submit
+        OnLineCompleted?.Invoke(startPoint, endPoint, playerNumber);
+
+    }
+
+    /// <summary>
+    /// Receives line data from other players via RPC.
+    /// </summary>
+    [PunRPC]
+    private void ReceiveLineData(float startX, float startY, float startZ,
+                                float endX, float endY, float endZ,
+                                int senderPlayerNumber)
+    {
+        Vector3 receivedStart = new Vector3(startX, startY, startZ);
+        Vector3 receivedEnd = new Vector3(endX, endY, endZ);
+
+        // Don't create visual line - only for temporary display during drawing
+        // Final line will be shown only when both players submit via ShowBothLines()
+
+        // Notify local systems
+        OnLineCompleted?.Invoke(receivedStart, receivedEnd, senderPlayerNumber);
+    }
+
+    /// <summary>
+    /// Creates a visual representation of another player's line.
+    /// </summary>
+    private void CreateOtherPlayerLine(Vector3 start, Vector3 end, int otherPlayerNumber)
+    {
+        GameObject otherLineObj = new GameObject($"Player{otherPlayerNumber}Line");
+        otherLineObj.transform.SetParent(transform);
+
+        LineRenderer otherLineRenderer = otherLineObj.AddComponent<LineRenderer>();
+        otherLineRenderer.material = lineMaterial;
+        otherLineRenderer.startWidth = lineWidth;
+        otherLineRenderer.endWidth = lineWidth;
+        otherLineRenderer.positionCount = 2;
+        otherLineRenderer.useWorldSpace = true;
+
+        Color otherPlayerColor = otherPlayerNumber == 1 ? player1LineColor : player2LineColor;
+        otherLineRenderer.startColor = otherPlayerColor;
+        otherLineRenderer.endColor = otherPlayerColor; otherLineRenderer.SetPosition(0, start);
+        otherLineRenderer.SetPosition(1, end);
+    }
+
+    /// <summary>
+    /// Converts mouse screen position to world position.
+    /// </summary>
+    private Vector3 GetMouseWorldPosition()
+    {
+        Vector3 mouseScreenPos = Input.mousePosition;
+        mouseScreenPos.z = 10f; // Fixed distance from camera
+        Vector3 worldPos = gameCamera.ScreenToWorldPoint(mouseScreenPos);
+        worldPos.z = 0; // Force Z to 0 for 2D
+        return worldPos;
+    }
+
+    /// <summary>
+    /// Checks if a point is within the defined map boundaries using simple world coordinates.
+    /// </summary>
+    private bool IsPointWithinBounds(Vector3 point)
+    {
+        // Simple world coordinate bounds check
+        float halfWidth = mapSize.x / 2f;
+        float halfHeight = mapSize.y / 2f;
+
+        bool withinX = point.x >= (mapCenter.x - halfWidth) && point.x <= (mapCenter.x + halfWidth);
+        bool withinY = point.y >= (mapCenter.y - halfHeight) && point.y <= (mapCenter.y + halfHeight);
+
+        // Point bounds check completed
+
+        return withinX && withinY;
+    }
+
+    /// <summary>
+    /// Clamps a point to stay within map boundaries using world coordinates.
+    /// </summary>
+    private Vector3 ClampPointToBounds(Vector3 point)
+    {
+        float halfWidth = mapSize.x / 2f;
+        float halfHeight = mapSize.y / 2f;
+
+        point.x = Mathf.Clamp(point.x, mapCenter.x - halfWidth, mapCenter.x + halfWidth);
+        point.y = Mathf.Clamp(point.y, mapCenter.y - halfHeight, mapCenter.y + halfHeight);
+        point.z = 0f;
+
+        return point;
+    }
+
+    /// <summary>
+    /// Public method to reset the drawing state (useful for restarting the game).
+    /// </summary>
+    public void ResetDrawing()
+    {
+        hasDrawnLine = false;
+        isDrawing = false;
+        isSubmitted = false; // Reset submission state
+
+        if (playerLineRenderer != null)
+        {
+            playerLineRenderer.enabled = false;
+        }
+
+        // Clean up other player lines
+        LineRenderer[] allLines = GetComponentsInChildren<LineRenderer>();
+        foreach (LineRenderer line in allLines)
+        {
+            if (line != playerLineRenderer)
+            {
+                DestroyImmediate(line.gameObject);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Public method to get the current drawn line data.
+    /// </summary>
+    public bool GetLineData(out Vector3 start, out Vector3 end)
+    {
+        start = startPoint;
+        end = endPoint;
+        return hasDrawnLine;
+    }
+
+    /// <summary>
+    /// Submits the current line and shares it with other players.
+    /// After submission, no more drawing is allowed.
+    /// </summary>
+    public void SubmitLine()
+    {
+        if (!hasDrawnLine)
+        {
+            Debug.LogWarning("Cannot submit: No line has been drawn yet");
+            return;
+        }
+
+        if (isSubmitted)
+        {
+            Debug.LogWarning("Line already submitted");
+            return;
+        }
+
+        isSubmitted = true;
+
+        // Store own line data
+        LineData ownLineData = new LineData(startPoint, endPoint, playerNumber);
+        ownLineData.lineRenderer = playerLineRenderer; // Keep reference to existing renderer
+        submittedLines[playerNumber] = ownLineData;
+
+        // Keep own line visible - player should see their submitted line
+        // Only other player's lines are hidden until both players finish
+
+        // Send line data to other players via RPC
+        photonView.RPC("ReceiveSubmittedLine", RpcTarget.Others,
+            startPoint.x, startPoint.y, startPoint.z,
+            endPoint.x, endPoint.y, endPoint.z,
+            playerNumber);
+
+        // Notify local systems that line is submitted
+        OnLineSubmitted?.Invoke();
+
+        // Player submitted line
+    }
+
+    /// <summary>
+    /// Receives submitted line data from other players via RPC.
+    /// Stores the line data but doesn't display it until both players are done.
+    /// </summary>
+    [PunRPC]
+    private void ReceiveSubmittedLine(float startX, float startY, float startZ,
+                                     float endX, float endY, float endZ,
+                                     int senderPlayerNumber)
+    {
+        Vector3 receivedStart = new Vector3(startX, startY, startZ);
+        Vector3 receivedEnd = new Vector3(endX, endY, endZ);
+
+        // Store the line data but don't display it yet
+        LineData lineData = new LineData(receivedStart, receivedEnd, senderPlayerNumber);
+        submittedLines[senderPlayerNumber] = lineData;
+
+        // Line received and stored
+    }
+
+    /// <summary>
+    /// Checks if the current player has submitted their line.
+    /// </summary>
+    public bool IsLineSubmitted()
+    {
+        return isSubmitted;
+    }
+
+    /// <summary>
+    /// Checks if both players have submitted their lines (for game progression).
+    /// This should be called by the game manager.
+    /// </summary>
+    public bool AreBothLinesSubmitted()
+    {
+        // This would need to be tracked by a game manager that knows about both players
+        // For now, return false - implement in game manager
+        return false;
+    }
+
+    /// <summary>
+    /// Shows both players' lines when both have submitted their cuts.
+    /// This is called when both players have finished cutting.
+    /// </summary>
+    public void ShowBothLines()
+    {
+        // Find all LineDrawingManager instances and collect their submitted lines
+        LineDrawingManagerAITutoria[] allManagers = FindObjectsOfType<LineDrawingManagerAITutoria>();
+        Dictionary<int, LineData> allSubmittedLines = new Dictionary<int, LineData>();
+
+        // Collect all submitted lines from all managers
+        foreach (LineDrawingManagerAITutoria manager in allManagers)
+        {
+            foreach (var kvp in manager.submittedLines)
+            {
+                allSubmittedLines[kvp.Key] = kvp.Value;
+            }
+        }
+
+        // Now display all collected lines
+        foreach (var kvp in allSubmittedLines)
+        {
+            int playerNum = kvp.Key;
+            LineData lineData = kvp.Value;
+
+            if (lineData.lineRenderer != null)
+            {
+                // Show existing line renderer
+                lineData.lineRenderer.enabled = true;
+
+                // Set appropriate color
+                Color lineColor = playerNum == 1 ? player1LineColor : player2LineColor;
+                lineData.lineRenderer.material.color = lineColor;
+            }
+            else
+            {
+                // Create new line renderer for other players' lines
+                CreateVisibleLine(lineData.startPoint, lineData.endPoint, playerNum);
+            }
+        }
+
+
+        // Now calculate and apply final square colors based on both lines
+        ApplyFinalSquareColors(allSubmittedLines);
+    }
+
+    /// <summary>
+    /// Applies final square colors based on both players' submitted lines.
+    /// </summary>
+    private void ApplyFinalSquareColors(Dictionary<int, LineData> allSubmittedLines)
+    {
+        if (allSubmittedLines.Count < 2)
+        {
+            Debug.LogWarning("Not enough lines to calculate final colors");
+            return;
+        }
+
+        // Get both lines
+        LineData player1Line = null;
+        LineData player2Line = null;
+
+        foreach (var kvp in allSubmittedLines)
+        {
+            if (kvp.Key == 1) player1Line = kvp.Value;
+            else if (kvp.Key == 2) player2Line = kvp.Value;
+        }
+
+        if (player1Line != null && player2Line != null)
+        {
+            Debug.Log("Both lines are displayed - final coloring will be handled by existing Player.cs logic");
+        }
+    }    /// <summary>
+         /// Creates a visible line renderer for display.
+         /// </summary>
+    private void CreateVisibleLine(Vector3 start, Vector3 end, int forPlayerNumber)
+    {
+        GameObject lineObj = new GameObject($"Player{forPlayerNumber}SubmittedLine");
+        lineObj.transform.SetParent(transform);
+
+        LineRenderer lineRenderer = lineObj.AddComponent<LineRenderer>();
+        lineRenderer.material = lineMaterial;
+        lineRenderer.startWidth = lineWidth;
+        lineRenderer.endWidth = lineWidth;
+        lineRenderer.positionCount = 2;
+        lineRenderer.useWorldSpace = true;
+        lineRenderer.enabled = true;
+
+        Color lineColor = forPlayerNumber == 1 ? player1LineColor : player2LineColor;
+        lineRenderer.material.color = lineColor;
+        lineRenderer.startColor = lineColor;
+        lineRenderer.endColor = lineColor;
+
+        lineRenderer.SetPosition(0, start);
+        lineRenderer.SetPosition(1, end);
+    }
+}

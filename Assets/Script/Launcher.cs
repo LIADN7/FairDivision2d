@@ -24,7 +24,8 @@ public class Launcher : MonoBehaviourPunCallbacks
 
     private string[] roomNames = { "Room_1", "Room_2", "Room_3", "Room_4" };
     private string[] sceneName = { "CutScene" };
-    private string sceneToLoad = "CutScene";
+    // private string sceneToLoad = "CutScene";
+    private string sceneToLoad = "CutSceneAITutorial";
     //public Room[] rooms = {null, null, null };
     private int roomCounter = 0;
 
@@ -103,11 +104,37 @@ public class Launcher : MonoBehaviourPunCallbacks
             PhotonNetwork.LoadLevel(roomNames[0]);
         }*/
 
+
+
+    //=================================================
+    //------------------- GAME AI TUTORIAL 1 ----------------
+    //=================================================
+
+    public void CreateAITutorialGame1(int roomIndex)
+    {
+        if (playerName.text != "")
+        {
+
+            PlayerData.inst.SetPlayerData(this.playerName.text, this.playerEmail.text, "", "");
+            PhotonNetwork.NickName = playerName.text;
+            int scenarioNumber = 1;
+            Config.inst.createConfig(scenarioNumber,0);
+            RoomOptions opt = new RoomOptions();
+            opt.MaxPlayers = 2;
+
+            this.menu.SetActive(false);
+            this.loadingScreen.SetActive(true);
+            this.loadingText.text = "Create room...";
+            Debug.Log(PhotonNetwork.JoinOrCreateRoom(roomNames[roomIndex < roomNames.Length ? roomIndex : 0], opt, PhotonNetwork.CurrentLobby));
+
+            print(PhotonNetwork.CurrentLobby);
+            print(PhotonNetwork.CurrentRoom);
+        }
+    }
+
     //=================================================
     //------------------- GAME 1 ----------------
     //=================================================
-
-
 
     public void CreateGame1(int roomIndex)
     {
@@ -265,4 +292,7 @@ public class Launcher : MonoBehaviourPunCallbacks
     {
         //print(PhotonNetwork.CurrentRoom);
     }
+
+
+
 }

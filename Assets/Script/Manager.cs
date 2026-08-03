@@ -121,13 +121,16 @@ public class Manager : MonoBehaviour
     }
 
 
-    public void setEndGameLayer(float sum)
+    public void setEndGameLayer(float sum,bool isReelGame=true)
     {
         this.textEndGameStatus.text = "You get total: " + sum + "%";
         this.viewTotalValueEndGame.SetActive(true);
         NextButton.SetActive(true);
         this.cutBt.SetActive(false);
-        RandArrays.inst.AddNumber(sum);
+        if(isReelGame){
+            RandArrays.inst.AddNumber(sum);
+
+        }
         // RandArrays.inst.PrintAll();
 
     }
