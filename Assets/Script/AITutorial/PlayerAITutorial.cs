@@ -32,6 +32,8 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     private Dictionary<int, int> player2 = new Dictionary<int, int>();
     private List<ChatMessage> chatHistory = new List<ChatMessage>();
     private HashValuesAITutorial HelpHashValue;
+    public int myPlayerNum { get; private set; } = 0;
+
     [SerializeField] protected SumSquaresAITutorial[] stateObjects; // All the state obj with square childs
     private int chooseNum = 0;
     private string[] endExplanationPlayers = { "You get:\n", "You get:\n" };
@@ -49,13 +51,15 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         view = GetComponent<PhotonView>();
         inst = this;
         string palyerId = PhotonNetwork.IsMasterClient ? "Player 1" : "Player 2";
+        this.myPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        PCPlayerAITutorial.inst.pcPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
         palyerName.text = PhotonNetwork.NickName + ", " + palyerId + "\nThis is round number " + ((int)(Config.inst.getRoundNumber()) + 1);
         if (PhotonNetwork.IsMasterClient)
         {
             view.RPC("InitSquares", RpcTarget.AllBufferedViaServer);
         }
 
-        this.InitDatabaseAsync();
+        // this.InitDatabaseAsync();
         Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)", false);
 
 
@@ -144,7 +148,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         int palyerId = PhotonNetwork.IsMasterClient ? 0 : 1;
 
 
-        Debug.Log("Round Number - " + Config.inst.getRoundNumber());
+        Debug.Log("Round Number Tutorial- " + Config.inst.getRoundNumber());
         StartCoroutine(withSec(0.2f, tempSquares));
 
 
@@ -253,21 +257,12 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
             Manager.inst.setViewAfterCut();
             Manager.inst.setNote(-1, "Please wait for the other player to cut", false);
+
         }
         else
         {
             Manager.inst.setNote(7f, "Waiting for the other player to connect!", true);
         }
-        /*
-        if (isAllTrue())
-        {
-            view.RPC("setAllState", RpcTarget.All);
-            float[] tempMySum = Manager.inst.getAllSumRGYB();
-            this.gameDatabase.SetPlayerColorValues(tempMySum);
-            view.RPC("SetForOtherPlayerColorValuesDataBase", RpcTarget.Others, tempMySum);
-            //setAllState();
-        }
-        */
 
     }
 
@@ -290,13 +285,14 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         {
             this.player2 = tempPlayer;
         }
-        this.playerCut[i - 1] = true;
+        this.playerCut[0] = true;
+        this.playerCut[1] = true;
         if (isAllTrue())
         {
             Manager.inst.setViewToChoose();
-
+            PCPlayerAITutorial.inst.ShowRandomDefaultCutLine();
             // Set other player name on the database
-            photonView.RPC("UpdateOtherPlayerName", RpcTarget.Others, this.gameDatabase.PlayerName);
+            // photonView.RPC("UpdateOtherPlayerName", RpcTarget.Others, this.gameDatabase.PlayerName);
 
             // Calculate and save state for both players
             setAllState();
@@ -818,7 +814,6 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         this.palyersGameOver[playerNum - 1] = true;
         Manager.inst.NextSceneClick();
-        this.SaveData();
         if (this.palyersGameOver[0] && this.palyersGameOver[1])
         {
 
@@ -916,12 +911,6 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         SceneManager.LoadScene(sceneName);
     }
 
-    // This function save the data of the game
-    private void SaveData()
-    {
-        this.gameDatabase.isAgreed = Manager.inst.getIsAgreedMark();
-        this.gameDatabase.SaveDatabaseAsync("CutAndChhosedatabase");
-    }
 
     // This function load the data that saved
     public void LoadDatabaseAsync(string path)

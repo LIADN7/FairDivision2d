@@ -328,6 +328,8 @@ public class LineDrawingManagerAITutoria : MonoBehaviourPunCallbacks
         isDrawing = false;
         hasDrawnLine = true;
 
+        Debug.Log($"Line drawing finished. Start: {startPoint}, End: {endPoint}");
+
         // Final coloring when line is completed (same as real-time, but ensures final state)
         if (autoColorOnFinish)
         {
@@ -621,7 +623,12 @@ public class LineDrawingManagerAITutoria : MonoBehaviourPunCallbacks
     }    /// <summary>
          /// Creates a visible line renderer for display.
          /// </summary>
-    private void CreateVisibleLine(Vector3 start, Vector3 end, int forPlayerNumber)
+    public LineRenderer ShowLineForPlayer(Vector3 start, Vector3 end, int forPlayerNumber)
+    {
+        return CreateVisibleLine(start, end, forPlayerNumber);
+    }
+
+    private LineRenderer CreateVisibleLine(Vector3 start, Vector3 end, int forPlayerNumber)
     {
         GameObject lineObj = new GameObject($"Player{forPlayerNumber}SubmittedLine");
         lineObj.transform.SetParent(transform);
@@ -641,5 +648,7 @@ public class LineDrawingManagerAITutoria : MonoBehaviourPunCallbacks
 
         lineRenderer.SetPosition(0, start);
         lineRenderer.SetPosition(1, end);
+
+        return lineRenderer;
     }
 }
