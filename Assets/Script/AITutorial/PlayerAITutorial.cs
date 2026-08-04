@@ -211,13 +211,6 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             this.stateObjects[i].SetMyTitle(playerNum, this.sumPlayer[playerNum - 1]);
         }
     }
-    // Update is called once per frame
-    /*    void Update()
-        {
-
-            //myNameText.text = "Player: " + Launcher.LauncherInst.rooms[0];
-        }*/
-
 
     public void CutView()
     {
@@ -233,35 +226,32 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         }
 
         float cutSum = this.statusChange();
-        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.PlayerCount > 1)
+        this.gameDatabase.SetPlayerTimeCut();
+        float[] cutVal = { 100 - cutSum, cutSum };
+        this.gameDatabase.SetPlayerCutValues(cutVal);
+        Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
+        Dictionary<int, Dictionary<int, string>> tempPlayerWithParentName = new Dictionary<int, Dictionary<int, string>>();
+        foreach (var it in this.squares)
         {
-            this.gameDatabase.SetPlayerTimeCut();
-            float[] cutVal = { 100 - cutSum, cutSum };
-            this.gameDatabase.SetPlayerCutValues(cutVal);
-            int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
-            Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
-            Dictionary<int, Dictionary<int, string>> tempPlayerWithParentName = new Dictionary<int, Dictionary<int, string>>();
-            foreach (var it in this.squares)
-            {
-                PointOfStateAITutorial p = it.Value.GetComponent<PointOfStateAITutorial>();
-                int status = p.getSpriteStatus();
-                int key = p.getMyKey();
-                string stateName = p.getMyStateName();
-                tempPlayer.Add(key, status);
+            PointOfStateAITutorial p = it.Value.GetComponent<PointOfStateAITutorial>();
+            int status = p.getSpriteStatus();
+            int key = p.getMyKey();
+            string stateName = p.getMyStateName();
+            tempPlayer.Add(key, status);
 
-                tempPlayerWithParentName.Add(key, new Dictionary<int, string>() { { status, stateName } });
+            tempPlayerWithParentName.Add(key, new Dictionary<int, string>() { { status, stateName } });
 
-                //p.setSpriteStatus(1);
-            }
-            this.gameDatabase.playerCutSquares = tempPlayerWithParentName;
-            view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
-            Manager.inst.setViewAfterCut();
-            Manager.inst.setNote(-1, "Please wait for the other player to cut", false);
+            //p.setSpriteStatus(1);
+        }
+        this.gameDatabase.playerCutSquares = tempPlayerWithParentName;
 
+        if (PCPlayerAITutorial.inst != null)
+        {
+            PCPlayerAITutorial.inst.GenerateAndInjectLocalCut(this, tempPlayer);
         }
         else
         {
-            Manager.inst.setNote(7f, "Waiting for the other player to connect!", true);
+            Debug.LogWarning("PCPlayerAITutorial instance not found. Falling back to local player-only flow.");
         }
 
     }
@@ -273,37 +263,96 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         this.gameDatabase.SetOtherPlayerColorValues(tempOtherSum);
     }
 
-    [PunRPC]
-    public void Cut(Dictionary<int, int> tempPlayer, int i)
+    public void RegisterLocalPlayerCut(Dictionary<int, int> tempPlayer)
     {
-
-        if (i == 1)
+        int localPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        if (localPlayerNum == 1)
         {
             this.player1 = tempPlayer;
         }
-        else if (i == 2)
+        else
         {
             this.player2 = tempPlayer;
         }
-        this.playerCut[0] = true;
-        this.playerCut[1] = true;
-        if (isAllTrue())
+
+        this.playerCut[localPlayerNum - 1] = true;
+    }
+
+    public void ApplyLocalPcCut(Dictionary<int, int> tempPlayer)
+    {
+        int pcPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
+        if (pcPlayerNum == 1)
         {
-            Manager.inst.setViewToChoose();
-            PCPlayerAITutorial.inst.ShowRandomDefaultCutLine();
-            // Set other player name on the database
-            // photonView.RPC("UpdateOtherPlayerName", RpcTarget.Others, this.gameDatabase.PlayerName);
-
-            // Calculate and save state for both players
-            setAllState();
-            float[] tempMySum = Manager.inst.getAllSumRGYB();
-            this.gameDatabase.SetPlayerColorValues(tempMySum);
-            view.RPC("SetForOtherPlayerColorValuesDataBase", RpcTarget.Others, tempMySum);
-
-            //setAllState(player1, player2);
+            this.player1 = tempPlayer;
+        }
+        else
+        {
+            this.player2 = tempPlayer;
         }
 
+        this.playerCut[pcPlayerNum - 1] = true;
 
+        if (!this.playerCut[0])
+        {
+            return;
+        }
+
+        if (!this.playerCut[1])
+        {
+            return;
+        }
+
+        Manager.inst.setViewAfterCut();
+        Manager.inst.setViewToChoose();
+
+        setAllState();
+        float[] tempMySum = Manager.inst.getAllSumRGYB();
+        this.gameDatabase.SetPlayerColorValues(tempMySum);
+
+        int otherPlayerNum = pcPlayerNum;
+        float[] otherPlayerSum = GetSumRGYBForPlayer(otherPlayerNum);
+        this.gameDatabase.SetOtherPlayerColorValues(otherPlayerSum);
+    }
+
+    private float[] GetSumRGYBForPlayer(int playerNum)
+    {
+        float[] sumRGYB = CalculateSumRGYBForPlayer(playerNum);
+        for (int k = 0; k < sumRGYB.Length; k++)
+        {
+            sumRGYB[k] = (sumRGYB[k] / this.sumPlayer[playerNum - 1]) * 100;
+        }
+
+        return sumRGYB;
+    }
+
+    private float[] CalculateSumRGYBForPlayer(int playerNum)
+    {
+        float[] sumRGYB = { 0, 0, 0, 0 };
+
+        foreach (var it in this.squares)
+        {
+            PointOfStateAITutorial p = it.Value.GetComponent<PointOfStateAITutorial>();
+            float val = p.getMyVal(playerNum);
+            int tempKey = p.getMyKey();
+
+            int spriteStatus = 1;
+            if (this.player1[tempKey] == 2 && this.player2[tempKey] == 2)
+            {
+                spriteStatus = 2;
+            }
+            else if (this.player1[tempKey] == 1 && this.player2[tempKey] == 2)
+            {
+                spriteStatus = 3;
+            }
+            else if (this.player1[tempKey] == 2 && this.player2[tempKey] == 1)
+            {
+                spriteStatus = 4;
+            }
+
+            sumRGYB[spriteStatus - 1] += val;
+        }
+
+        return sumRGYB;
     }
 
     [PunRPC]

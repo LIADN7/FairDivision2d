@@ -53,32 +53,17 @@ public class PCPlayerAITutorial : MonoBehaviour
     /// </summary>
     public void ShowRandomDefaultCutLine()
     {
-        if (defaultCutLines.Count == 0)
+        if (!TryGetRandomCutLine(out CutLineOption selectedCutLine, out int randomIndex))
         {
-            InitializeDefaultCutLines();
-        }
-
-        if (defaultCutLines.Count == 0)
-        {
-            Debug.LogWarning("PCPlayerAITutorial has no default cut lines to show");
             return;
         }
 
-        if (pcPlayerNum == 0)
-        {
-            Debug.LogWarning("PCPlayerAITutorial cannot show a cut line because pcPlayerNum is not set yet");
-            return;
-        }
-
-        LineDrawingManagerAITutoria lineManager = FindObjectOfType<LineDrawingManagerAITutoria>();
+        LineDrawingManagerAITutoria lineManager = Object.FindAnyObjectByType<LineDrawingManagerAITutoria>();
         if (lineManager == null)
         {
             Debug.LogWarning("PCPlayerAITutorial could not find LineDrawingManagerAITutoria");
             return;
         }
-
-        int randomIndex = Random.Range(0, defaultCutLines.Count);
-        CutLineOption selectedCutLine = defaultCutLines[randomIndex];
 
         if (activeCutLineRenderer != null)
         {
@@ -88,6 +73,92 @@ public class PCPlayerAITutorial : MonoBehaviour
 
         activeCutLineRenderer = lineManager.ShowLineForPlayer(selectedCutLine.startPoint, selectedCutLine.endPoint, pcPlayerNum);
         Debug.Log($"PCPlayerAITutorial showed random cut line {randomIndex} for player {pcPlayerNum}: Start {selectedCutLine.startPoint}, End {selectedCutLine.endPoint}");
+    }
+
+    public void GenerateAndInjectLocalCut(PlayerAITutorial playerTutorial, Dictionary<int, int> localPlayerCut)
+    {
+        if (playerTutorial == null)
+        {
+            Debug.LogWarning("PCPlayerAITutorial cannot inject a local cut because PlayerAITutorial is missing");
+            return;
+        }
+
+        playerTutorial.RegisterLocalPlayerCut(localPlayerCut);
+
+        if (!TryGetRandomCutLine(out CutLineOption selectedCutLine, out int randomIndex))
+        {
+            return;
+        }
+
+        ShowCutLineForPlayer(selectedCutLine);
+
+        Dictionary<int, int> pcPlayerCut = new Dictionary<int, int>();
+
+        foreach (var squareEntry in playerTutorial.squares)
+        {
+            GameObject squareObject = squareEntry.Value;
+            PointOfStateAITutorial pointOfState = squareObject.GetComponent<PointOfStateAITutorial>();
+            if (pointOfState == null)
+            {
+                continue;
+            }
+
+            int status = SquareLineCalculatorAITutoria.GetSquareColorByLine(squareObject.transform.position, selectedCutLine.startPoint, selectedCutLine.endPoint);
+            int key = pointOfState.getMyKey();
+
+            pcPlayerCut[key] = status;
+
+            pointOfState.setSpriteStatus(status, pcPlayerNum);
+        }
+
+        playerTutorial.ApplyLocalPcCut(pcPlayerCut);
+
+        Debug.Log($"PCPlayerAITutorial generated and injected local cut {randomIndex} for player {pcPlayerNum}");
+    }
+
+    private bool TryGetRandomCutLine(out CutLineOption selectedCutLine, out int randomIndex)
+    {
+        selectedCutLine = null;
+        randomIndex = -1;
+
+        if (defaultCutLines.Count == 0)
+        {
+            InitializeDefaultCutLines();
+        }
+
+        if (defaultCutLines.Count == 0)
+        {
+            Debug.LogWarning("PCPlayerAITutorial has no default cut lines to show");
+            return false;
+        }
+
+        if (pcPlayerNum == 0)
+        {
+            Debug.LogWarning("PCPlayerAITutorial cannot show a cut line because pcPlayerNum is not set yet");
+            return false;
+        }
+
+        randomIndex = Random.Range(0, defaultCutLines.Count);
+        selectedCutLine = defaultCutLines[randomIndex];
+        return true;
+    }
+
+    private void ShowCutLineForPlayer(CutLineOption selectedCutLine)
+    {
+        LineDrawingManagerAITutoria lineManager = Object.FindAnyObjectByType<LineDrawingManagerAITutoria>();
+        if (lineManager == null)
+        {
+            Debug.LogWarning("PCPlayerAITutorial could not find LineDrawingManagerAITutoria");
+            return;
+        }
+
+        if (activeCutLineRenderer != null)
+        {
+            Destroy(activeCutLineRenderer.gameObject);
+            activeCutLineRenderer = null;
+        }
+
+        activeCutLineRenderer = lineManager.ShowLineForPlayer(selectedCutLine.startPoint, selectedCutLine.endPoint, pcPlayerNum);
     }
 
     /// <summary>
