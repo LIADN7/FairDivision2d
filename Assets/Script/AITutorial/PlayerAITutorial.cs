@@ -61,8 +61,17 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
 
         // this.InitDatabaseAsync();
         Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)", false);
+    }
 
-
+    /// <summary>
+    /// Called when player exits the Paytable / OpenGame screen to launch Step 0.
+    /// </summary>
+    public void OnPaytableClosed()
+    {
+        if (TutorialFplanManager.Instance != null && TutorialFplanManager.Instance.CurrentStepIndex < 0)
+        {
+            TutorialFplanManager.Instance.StartTutorial();
+        }
     }
 
 
@@ -215,14 +224,14 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     public void CutView()
     {
         // Submit the drawn line to prevent further editing
-        GameObject lineManagerObj = GameObject.Find("LineDrawingManager");
-        if (lineManagerObj != null)
+        LineDrawingManagerAITutoria lineManager = UnityEngine.Object.FindAnyObjectByType<LineDrawingManagerAITutoria>();
+        if (lineManager != null)
         {
-            var lineManager = lineManagerObj.GetComponent<LineDrawingManagerAITutoria>();
-            if (lineManager != null)
-            {
-                lineManager.SubmitLine();
-            }
+            lineManager.SubmitLine();
+        }
+        else
+        {
+            Debug.LogWarning("PlayerAITutorial could not find LineDrawingManagerAITutoria instance to submit line.");
         }
 
         float cutSum = this.statusChange();
@@ -254,6 +263,18 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             Debug.LogWarning("PCPlayerAITutorial instance not found. Falling back to local player-only flow.");
         }
 
+        if (TutorialFplanManager.Instance != null)
+        {
+            TutorialFplanManager.Instance.NextStep();
+        }
+    }
+
+    /// <summary>
+    /// Called when all tutorial Fplan steps are completed to finalize the match flow.
+    /// </summary>
+    public void CompleteTutorialAndShowResults()
+    {
+        Debug.Log("[PlayerAITutorial] CompleteTutorialAndShowResults invoked from TutorialFplanManager.");
     }
 
     [PunRPC]

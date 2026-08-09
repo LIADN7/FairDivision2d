@@ -180,7 +180,17 @@ public class LineDrawingManagerAITutoria : MonoBehaviourPunCallbacks
     /// </summary>
     private bool CanDrawLine()
     {
-        return IsMyTurnToDraw() && !isSubmitted; // Cannot draw after submission
+        if (isSubmitted)
+        {
+            return false;
+        }
+
+        if (TutorialFplanManager.Instance != null && TutorialFplanManager.Instance.IsGameplayLocked)
+        {
+            return false;
+        }
+
+        return IsMyTurnToDraw();
     }
 
     /// <summary>
