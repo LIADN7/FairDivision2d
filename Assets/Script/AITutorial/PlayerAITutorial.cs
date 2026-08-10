@@ -993,35 +993,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         // Master client loads the scene on behalf of non-master clients
         if (PhotonNetwork.IsMasterClient)
         {
-            int roundNumberConfig = Config.inst.addRoundNumber();
-            //roundNumberConfig = 4;
-            //Debug.LogError("scenarioNum= " + roundNumberConfig);
-            if (roundNumberConfig == 2)
-            {
-
-                int scenarioNum = UnityEngine.Random.Range(2, 4); // Create next 2 scenarios for round 3 and 4
-
-                //Config.inst.createConfig(scenarioNum);
-                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, scenarioNum, roundNumberConfig);
-            }
-            else if (roundNumberConfig == 4)
-            {
-
-                int scenarioNum = 4; // Create next 2 scenarios for round 5 and 6
-                //Config.inst.createConfig(scenarioNum);
-                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, scenarioNum, roundNumberConfig);
-            }
-            else if (roundNumberConfig == 6)
-            {
-                int randomNumber = UnityEngine.Random.Range(0, roundNumberConfig);
-                photonView.RPC("SetRandomPaymentRound", RpcTarget.All, randomNumber);
-                LeaveGame("EndGameFlow", true); //Save data after click on the ending button!!!!
-            }
-            else
-            {
-
-                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, Config.inst.getScenarioType(), roundNumberConfig);
-            }
+            photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, 1, 0);
         }
     }
 
