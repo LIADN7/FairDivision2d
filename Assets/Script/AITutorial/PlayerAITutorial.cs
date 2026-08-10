@@ -32,6 +32,8 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     private Dictionary<int, int> player2 = new Dictionary<int, int>();
     private List<ChatMessage> chatHistory = new List<ChatMessage>();
     private HashValuesAITutorial HelpHashValue;
+    public int myPlayerNum { get; private set; } = 0;
+
     [SerializeField] protected SumSquaresAITutorial[] stateObjects; // All the state obj with square childs
     private int chooseNum = 0;
     private string[] endExplanationPlayers = { "You get:\n", "You get:\n" };
@@ -49,16 +51,27 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         view = GetComponent<PhotonView>();
         inst = this;
         string palyerId = PhotonNetwork.IsMasterClient ? "Player 1" : "Player 2";
+        this.myPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        PCPlayerAITutorial.inst.pcPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
         palyerName.text = PhotonNetwork.NickName + ", " + palyerId + "\nThis is round number " + ((int)(Config.inst.getRoundNumber()) + 1);
         if (PhotonNetwork.IsMasterClient)
         {
             view.RPC("InitSquares", RpcTarget.AllBufferedViaServer);
         }
 
-        this.InitDatabaseAsync();
+        // this.InitDatabaseAsync();
         Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)", false);
+    }
 
-
+    /// <summary>
+    /// Called when player exits the Paytable / OpenGame screen to launch Step 0.
+    /// </summary>
+    public void OnPaytableClosed()
+    {
+        if (TutorialFplanManager.Instance != null && TutorialFplanManager.Instance.CurrentStepIndex < 0)
+        {
+            TutorialFplanManager.Instance.StartTutorial();
+        }
     }
 
 
@@ -144,7 +157,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         int palyerId = PhotonNetwork.IsMasterClient ? 0 : 1;
 
 
-        Debug.Log("Round Number - " + Config.inst.getRoundNumber());
+        Debug.Log("Round Number Tutorial- " + Config.inst.getRoundNumber());
         StartCoroutine(withSec(0.2f, tempSquares));
 
 
@@ -207,68 +220,61 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             this.stateObjects[i].SetMyTitle(playerNum, this.sumPlayer[playerNum - 1]);
         }
     }
-    // Update is called once per frame
-    /*    void Update()
-        {
-
-            //myNameText.text = "Player: " + Launcher.LauncherInst.rooms[0];
-        }*/
-
 
     public void CutView()
     {
         // Submit the drawn line to prevent further editing
-        GameObject lineManagerObj = GameObject.Find("LineDrawingManager");
-        if (lineManagerObj != null)
+        LineDrawingManagerAITutoria lineManager = UnityEngine.Object.FindAnyObjectByType<LineDrawingManagerAITutoria>();
+        if (lineManager != null)
         {
-            var lineManager = lineManagerObj.GetComponent<LineDrawingManagerAITutoria>();
-            if (lineManager != null)
-            {
-                lineManager.SubmitLine();
-            }
-        }
-
-        float cutSum = this.statusChange();
-        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom.PlayerCount > 1)
-        {
-            this.gameDatabase.SetPlayerTimeCut();
-            float[] cutVal = { 100 - cutSum, cutSum };
-            this.gameDatabase.SetPlayerCutValues(cutVal);
-            int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
-            Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
-            Dictionary<int, Dictionary<int, string>> tempPlayerWithParentName = new Dictionary<int, Dictionary<int, string>>();
-            foreach (var it in this.squares)
-            {
-                PointOfStateAITutorial p = it.Value.GetComponent<PointOfStateAITutorial>();
-                int status = p.getSpriteStatus();
-                int key = p.getMyKey();
-                string stateName = p.getMyStateName();
-                tempPlayer.Add(key, status);
-
-                tempPlayerWithParentName.Add(key, new Dictionary<int, string>() { { status, stateName } });
-
-                //p.setSpriteStatus(1);
-            }
-            this.gameDatabase.playerCutSquares = tempPlayerWithParentName;
-            view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
-            Manager.inst.setViewAfterCut();
-            Manager.inst.setNote(-1, "Please wait for the other player to cut", false);
+            lineManager.SubmitLine();
         }
         else
         {
-            Manager.inst.setNote(7f, "Waiting for the other player to connect!", true);
+            Debug.LogWarning("PlayerAITutorial could not find LineDrawingManagerAITutoria instance to submit line.");
         }
-        /*
-        if (isAllTrue())
-        {
-            view.RPC("setAllState", RpcTarget.All);
-            float[] tempMySum = Manager.inst.getAllSumRGYB();
-            this.gameDatabase.SetPlayerColorValues(tempMySum);
-            view.RPC("SetForOtherPlayerColorValuesDataBase", RpcTarget.Others, tempMySum);
-            //setAllState();
-        }
-        */
 
+        float cutSum = this.statusChange();
+        this.gameDatabase.SetPlayerTimeCut();
+        float[] cutVal = { 100 - cutSum, cutSum };
+        this.gameDatabase.SetPlayerCutValues(cutVal);
+        Dictionary<int, int> tempPlayer = new Dictionary<int, int>();
+        Dictionary<int, Dictionary<int, string>> tempPlayerWithParentName = new Dictionary<int, Dictionary<int, string>>();
+        foreach (var it in this.squares)
+        {
+            PointOfStateAITutorial p = it.Value.GetComponent<PointOfStateAITutorial>();
+            int status = p.getSpriteStatus();
+            int key = p.getMyKey();
+            string stateName = p.getMyStateName();
+            tempPlayer.Add(key, status);
+
+            tempPlayerWithParentName.Add(key, new Dictionary<int, string>() { { status, stateName } });
+
+            //p.setSpriteStatus(1);
+        }
+        this.gameDatabase.playerCutSquares = tempPlayerWithParentName;
+
+        if (PCPlayerAITutorial.inst != null)
+        {
+            PCPlayerAITutorial.inst.GenerateAndInjectLocalCut(this, tempPlayer);
+        }
+        else
+        {
+            Debug.LogWarning("PCPlayerAITutorial instance not found. Falling back to local player-only flow.");
+        }
+
+        if (TutorialFplanManager.Instance != null)
+        {
+            TutorialFplanManager.Instance.NextStep();
+        }
+    }
+
+    /// <summary>
+    /// Called when all tutorial Fplan steps are completed to finalize the match flow.
+    /// </summary>
+    public void CompleteTutorialAndShowResults()
+    {
+        Debug.Log("[PlayerAITutorial] CompleteTutorialAndShowResults invoked from TutorialFplanManager.");
     }
 
     [PunRPC]
@@ -278,36 +284,102 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         this.gameDatabase.SetOtherPlayerColorValues(tempOtherSum);
     }
 
-    [PunRPC]
-    public void Cut(Dictionary<int, int> tempPlayer, int i)
+    public void RegisterLocalPlayerCut(Dictionary<int, int> tempPlayer)
     {
-
-        if (i == 1)
+        int localPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        if (localPlayerNum == 1)
         {
             this.player1 = tempPlayer;
         }
-        else if (i == 2)
+        else
         {
             this.player2 = tempPlayer;
         }
-        this.playerCut[i - 1] = true;
-        if (isAllTrue())
+
+        this.playerCut[localPlayerNum - 1] = true;
+    }
+
+    public void ApplyLocalPcCut(Dictionary<int, int> tempPlayer)
+    {
+        int pcPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
+        if (pcPlayerNum == 1)
         {
-            Manager.inst.setViewToChoose();
-
-            // Set other player name on the database
-            photonView.RPC("UpdateOtherPlayerName", RpcTarget.Others, this.gameDatabase.PlayerName);
-
-            // Calculate and save state for both players
-            setAllState();
-            float[] tempMySum = Manager.inst.getAllSumRGYB();
-            this.gameDatabase.SetPlayerColorValues(tempMySum);
-            view.RPC("SetForOtherPlayerColorValuesDataBase", RpcTarget.Others, tempMySum);
-
-            //setAllState(player1, player2);
+            this.player1 = tempPlayer;
+        }
+        else
+        {
+            this.player2 = tempPlayer;
         }
 
+        this.playerCut[pcPlayerNum - 1] = true;
 
+        if (!this.playerCut[0])
+        {
+            return;
+        }
+
+        if (!this.playerCut[1])
+        {
+            return;
+        }
+
+        Manager.inst.setViewAfterCut();
+        Manager.inst.setViewToChoose();
+
+        setAllState();
+        float[] tempMySum = Manager.inst.getAllSumRGYB();
+        this.gameDatabase.SetPlayerColorValues(tempMySum);
+
+        int otherPlayerNum = pcPlayerNum;
+        float[] otherPlayerSum = GetSumRGYBForPlayer(otherPlayerNum);
+        this.gameDatabase.SetOtherPlayerColorValues(otherPlayerSum);
+
+        // If Human is Player 2 (myPlayerNum == 2), PC is Player 1 and makes 1st choice after 1s delay
+        if (myPlayerNum == 2 && PCPlayerAITutorial.inst != null)
+        {
+            PCPlayerAITutorial.inst.MakePCChoices(this, 1);
+        }
+    }
+
+    private float[] GetSumRGYBForPlayer(int playerNum)
+    {
+        float[] sumRGYB = CalculateSumRGYBForPlayer(playerNum);
+        for (int k = 0; k < sumRGYB.Length; k++)
+        {
+            sumRGYB[k] = (sumRGYB[k] / this.sumPlayer[playerNum - 1]) * 100;
+        }
+
+        return sumRGYB;
+    }
+
+    private float[] CalculateSumRGYBForPlayer(int playerNum)
+    {
+        float[] sumRGYB = { 0, 0, 0, 0 };
+
+        foreach (var it in this.squares)
+        {
+            PointOfStateAITutorial p = it.Value.GetComponent<PointOfStateAITutorial>();
+            float val = p.getMyVal(playerNum);
+            int tempKey = p.getMyKey();
+
+            int spriteStatus = 1;
+            if (this.player1[tempKey] == 2 && this.player2[tempKey] == 2)
+            {
+                spriteStatus = 2;
+            }
+            else if (this.player1[tempKey] == 1 && this.player2[tempKey] == 2)
+            {
+                spriteStatus = 3;
+            }
+            else if (this.player1[tempKey] == 2 && this.player2[tempKey] == 1)
+            {
+                spriteStatus = 4;
+            }
+
+            sumRGYB[spriteStatus - 1] += val;
+        }
+
+        return sumRGYB;
     }
 
     [PunRPC]
@@ -366,90 +438,168 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         return false;
     }
 
+    /// <summary>
+    /// Returns indices of all pieces (0..3) whose color buttons are still interactable.
+    /// </summary>
+    public List<int> GetAvailableChoiceIndices()
+    {
+        List<int> available = new List<int>();
+        for (int j = 0; j < colorsValueObj.Length; j++)
+        {
+            if (colorsValueObj[j] != null && colorsValueObj[j].GetComponent<Button>().IsInteractable())
+            {
+                available.Add(j);
+            }
+        }
+        return available;
+    }
+
+    /// <summary>
+    /// Returns how many pieces (out of 4) have been taken/chosen so far.
+    /// </summary>
+    public int GetChosenCount()
+    {
+        int count = 0;
+        for (int j = 0; j < colorsValueObj.Length; j++)
+        {
+            if (colorsValueObj[j] != null && !colorsValueObj[j].GetComponent<Button>().IsInteractable())
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
     public void ChooseView(int i)
     {
-        if (isAllTrue() && (i >= 0 && i < 4))
+        // Block choosing if tutorial instruction step panel is currently active
+        if (TutorialFplanManager.Instance != null && TutorialFplanManager.Instance.IsGameplayLocked)
         {
-            int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
-            float tempSum = Manager.inst.getSumRGYB(i);
-            if (playerNum == 1 && chooseNum < 1)
-            {
-                endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
-                choosePlayer[playerNum - 1] = tempSum;
-                this.gameDatabase.SetPlayerChoosenColors(0, i);
-                view.RPC("Choose", RpcTarget.All, i, playerNum);
-                buttonsValueText[i].text += " (You)";
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 1 choose, please pick 2 parts");
-                Manager.inst.setNote(-1, "Please wait for player 2 to pick 2 parts)", false);
+            return;
+        }
 
+        if (!isAllTrue() || i < 0 || i >= 4) return;
 
-            }
-            else if (playerNum == 2 && chooseNum == 1)
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+
+        if (playerNum == 1 && chooseNum < 1)
+        {
+            // Human is Player 1 and picks 1st piece
+            ExecuteLocalChoose(i, playerNum);
+            buttonsValueText[i].text += " (You)";
+
+            Manager.inst.setNote(-1, "Player 1 choose, please wait for player 2 to pick 2 parts", false);
+
+            // PC is Player 2 and makes 2 choices after 1s simulated delay
+            if (PCPlayerAITutorial.inst != null)
             {
-                endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
-                choosePlayer[playerNum - 1] += tempSum;
-                this.gameDatabase.SetPlayerChoosenColors(0, i);
-                view.RPC("Choose", RpcTarget.All, i, playerNum);
-                buttonsValueText[i].text += " (You)";
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 2 choose 1 part");
-                Manager.inst.setNote(-1, "Please pick one more part)", false);
+                PCPlayerAITutorial.inst.MakePCChoices(this, 2);
             }
-            else if (playerNum == 2 && chooseNum == 2)
-            {
-                endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
-                choosePlayer[playerNum - 1] += tempSum;
-                this.gameDatabase.SetPlayerChoosenColors(1, i);
-                view.RPC("Choose", RpcTarget.All, i, playerNum);
-                buttonsValueText[i].text += " (You)";
-                view.RPC("GetValues", RpcTarget.All);
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "You got the last remaining part");
-                Manager.inst.setNote(-1, "Player 1 got the last remaining part)", false);
-            }
+        }
+        else if (playerNum == 2 && chooseNum == 1)
+        {
+            // Human is Player 2 and picks 1st of their 2 pieces
+            ExecuteLocalChoose(i, playerNum);
+            buttonsValueText[i].text += " (You)";
+
+            Manager.inst.setNote(-1, "Please pick one more part", false);
+        }
+        else if (playerNum == 2 && chooseNum == 2)
+        {
+            // Human is Player 2 and picks 2nd of their 2 pieces
+            ExecuteLocalChoose(i, playerNum);
+            buttonsValueText[i].text += " (You)";
+
+            // // Finalize remaining 4th piece and match results locally after a 0.5s visual delay
+            // StartCoroutine(DelayedExecuteLocalGetValues(0.5f));
+        }
+    }
+
+    private IEnumerator DelayedExecuteLocalGetValues(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        ExecuteLocalGetValues();
+    }
+
+    /// <summary>
+    /// Replaces old Photon RPC Choose method for local play.
+    /// </summary>
+    public void ExecuteLocalChoose(int i, int playerNum)
+    {
+        if (i < 0 || i >= 4) return;
+
+        float tempSum = Manager.inst.getSumRGYB(i);
+        endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
+        choosePlayer[playerNum - 1] += tempSum;
+
+        if (playerNum == myPlayerNum)
+        {
+            int slot = (chooseNum == 0 || chooseNum == 1) ? 0 : 1;
+            this.gameDatabase.SetPlayerChoosenColors(slot, i);
+        }
+
+        buttonsValueText[i].text = "Taken By Player " + playerNum;
+        colorsValueObj[i].GetComponent<Button>().interactable = false;
+        chooseNum++;
+
+        // Internal count check: If exactly 3 pieces have been chosen, automatically assign 4th piece after 0.5s
+        if (GetChosenCount() == 3)
+        {
+            StartCoroutine(DelayedExecuteLocalGetValues(0.5f));
+            StartCoroutine(DelayedNextTutorialStep(1.5f));
 
         }
     }
 
-    [PunRPC]
-    private void Choose(int i, int playerNum)
-    {
-        buttonsValueText[i].text = "Taken By Player " + playerNum;
-        colorsValueObj[i].GetComponent<Button>().interactable = false;
-        //colorsValueObj[i].SetActive(false);
-        chooseNum++;
-
-    }
-    [PunRPC]
-    private void SetNoteForOtherPlayer(string message)
-    {
-        Manager.inst.setNote(-1, message, false);
-
-    }
     private string getExplanationPlayer(int color, float value)
     {
         string[] strColors = { "RED-X", "GREEN-O", "RED-O", "GREEN-X" };
         return "" + strColors[color] + " with value: " + value + "\n";
     }
 
-    [PunRPC]
-    private void GetValues()
+    /// <summary>
+    /// Replaces old Photon RPC GetValues method for local play.
+    /// Player 1 always receives the remaining 4th piece.
+    /// </summary>
+    public void ExecuteLocalGetValues()
     {
-        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         int last = GetLast();
+        if (last < 0) return;
+
+        // In Cut & Choose, Player 1 ALWAYS receives the 4th remaining piece
+        int p1Index = 0; // Player 1 is always index 0 in arrays
+        float tempSum = Manager.inst.getSumRGYB(last);
+
         buttonsValueText[last].text = "Taken By Player 1";
-        if (PhotonNetwork.IsMasterClient)
+        endExplanationPlayers[p1Index] += getExplanationPlayer(last, tempSum);
+        choosePlayer[p1Index] += tempSum;
+        chooseNum++;
+
+        if (myPlayerNum == 1)
         {
             this.gameDatabase.SetPlayerChoosenColors(1, last);
-            float tempSum = Manager.inst.getSumRGYB(last);
-            endExplanationPlayers[playerNum - 1] += getExplanationPlayer(last, tempSum);
-            choosePlayer[playerNum - 1] += tempSum;
-            chooseNum++;
             buttonsValueText[last].text += " (You)";
         }
+
         colorsValueObj[last].GetComponent<Button>().interactable = false;
-        //colorsValueObj[last].SetActive(false);
-        Manager.inst.setNote(-1, endExplanationPlayers[playerNum - 1], false);
-        Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
-        this.gameDatabase.SumOfMyPart = choosePlayer[playerNum - 1];
+
+        Manager.inst.setNote(-1, endExplanationPlayers[myPlayerNum - 1], false);
+        Manager.inst.setEndGameLayer(choosePlayer[myPlayerNum - 1],false);
+        this.gameDatabase.SumOfMyPart = choosePlayer[myPlayerNum - 1];
+
+        if (TutorialFplanManager.Instance != null)
+        {
+            StartCoroutine(DelayedNextTutorialStep(1.5f));
+        }
+    }
+
+    private IEnumerator DelayedNextTutorialStep(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (TutorialFplanManager.Instance != null)
+        {
+            TutorialFplanManager.Instance.NextStep();
+        }
     }
 
     // Get the last number of the remaining color
@@ -818,7 +968,6 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         this.palyersGameOver[playerNum - 1] = true;
         Manager.inst.NextSceneClick();
-        this.SaveData();
         if (this.palyersGameOver[0] && this.palyersGameOver[1])
         {
 
@@ -844,35 +993,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         // Master client loads the scene on behalf of non-master clients
         if (PhotonNetwork.IsMasterClient)
         {
-            int roundNumberConfig = Config.inst.addRoundNumber();
-            //roundNumberConfig = 4;
-            //Debug.LogError("scenarioNum= " + roundNumberConfig);
-            if (roundNumberConfig == 2)
-            {
-
-                int scenarioNum = UnityEngine.Random.Range(2, 4); // Create next 2 scenarios for round 3 and 4
-
-                //Config.inst.createConfig(scenarioNum);
-                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, scenarioNum, roundNumberConfig);
-            }
-            else if (roundNumberConfig == 4)
-            {
-
-                int scenarioNum = 4; // Create next 2 scenarios for round 5 and 6
-                //Config.inst.createConfig(scenarioNum);
-                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, scenarioNum, roundNumberConfig);
-            }
-            else if (roundNumberConfig == 6)
-            {
-                int randomNumber = UnityEngine.Random.Range(0, roundNumberConfig);
-                photonView.RPC("SetRandomPaymentRound", RpcTarget.All, randomNumber);
-                LeaveGame("EndGameFlow", true); //Save data after click on the ending button!!!!
-            }
-            else
-            {
-
-                photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, Config.inst.getScenarioType(), roundNumberConfig);
-            }
+            photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, 1, 0);
         }
     }
 
@@ -916,12 +1037,6 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         SceneManager.LoadScene(sceneName);
     }
 
-    // This function save the data of the game
-    private void SaveData()
-    {
-        this.gameDatabase.isAgreed = Manager.inst.getIsAgreedMark();
-        this.gameDatabase.SaveDatabaseAsync("CutAndChhosedatabase");
-    }
 
     // This function load the data that saved
     public void LoadDatabaseAsync(string path)
