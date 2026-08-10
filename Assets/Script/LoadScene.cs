@@ -22,7 +22,7 @@ public class LoadScene : MonoBehaviour
         try
         {
 
-        PlayerAITutorial.inst?.LeaveGame(sceneName);
+        // PlayerAITutorial.inst?.LeaveGame(sceneName);
 
         //AuthenticationService.Instance.SignOut(true);
         Player.inst.LeaveGame(sceneName);
@@ -39,6 +39,33 @@ public class LoadScene : MonoBehaviour
                 StartCoroutine(DelayAndLoadScene(0.2f, sceneName));*/
         //LoadTheScene(sceneName);
     }
+
+
+
+
+    public void LeaveRoomBeforeLoadTheSceneAITutorial(string sceneName)
+    {
+
+        try
+        {
+
+        PlayerAITutorial.inst?.LeaveGame(sceneName);
+
+        }
+        catch(Exception ex)
+        {
+            Debug.Log($"Error exit Cloud services: {ex.Message}");
+
+        }
+
+        // Only for test 
+        /*        PhotonNetwork.LeaveRoom();
+                StartCoroutine(DelayAndLoadScene(0.2f, sceneName));*/
+        //LoadTheScene(sceneName);
+    }
+
+
+
 
 
 

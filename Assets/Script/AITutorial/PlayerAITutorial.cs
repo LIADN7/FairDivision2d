@@ -584,7 +584,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         colorsValueObj[last].GetComponent<Button>().interactable = false;
 
         Manager.inst.setNote(-1, endExplanationPlayers[myPlayerNum - 1], false);
-        Manager.inst.setEndGameLayer(choosePlayer[myPlayerNum - 1]);
+        Manager.inst.setEndGameLayer(choosePlayer[myPlayerNum - 1],false);
         this.gameDatabase.SumOfMyPart = choosePlayer[myPlayerNum - 1];
 
         if (TutorialFplanManager.Instance != null)

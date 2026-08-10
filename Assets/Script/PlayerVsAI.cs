@@ -318,7 +318,7 @@ public class PlayerVsAI : MonoBehaviour
             }
 
                 Manager.inst.setNote(-1, endExplanationPlayers, false);
-            Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
+            Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1],false);
         }
     }
     private string getExplanationPlayer(int color, float value)
