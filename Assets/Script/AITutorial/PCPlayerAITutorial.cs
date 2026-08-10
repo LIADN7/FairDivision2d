@@ -169,7 +169,60 @@ public class PCPlayerAITutorial : MonoBehaviour
         return defaultCutLines.Count;
     }
 
+    /// <summary>
+    /// Executes PC choices locally after a short simulated AI thinking delay (1 second).
+    /// If count == 1 (PC is Player 1), PC picks 1 random piece.
+    /// If count == 2 (PC is Player 2), PC picks 2 random pieces.
+    /// </summary>
+    public void MakePCChoices(PlayerAITutorial playerTutorial, int count)
+    {
+        StartCoroutine(MakePCChoicesCoroutine(playerTutorial, count));
+    }
 
+    private IEnumerator MakePCChoicesCoroutine(PlayerAITutorial playerTutorial, int count)
+    {
+        yield return new WaitForSeconds(1.0f); // 1 second simulated thinking time
+
+        if (playerTutorial == null)
+        {
+            playerTutorial = PlayerAITutorial.inst;
+        }
+
+        if (playerTutorial == null)
+        {
+            Debug.LogWarning("PCPlayerAITutorial cannot make choices because PlayerAITutorial is missing.");
+            yield break;
+        }
+
+        for (int c = 0; c < count; c++)
+        {
+            List<int> availableIndices = playerTutorial.GetAvailableChoiceIndices();
+            if (availableIndices.Count == 0)
+            {
+                break;
+            }
+
+            int randomIndex = availableIndices[Random.Range(0, availableIndices.Count)];
+            playerTutorial.ExecuteLocalChoose(randomIndex, pcPlayerNum);
+
+            if (c < count - 1)
+            {
+                yield return new WaitForSeconds(0.5f);
+            }
+        }
+
+        if (pcPlayerNum == 1)
+        {
+            Manager.inst.setNote(-1, "Player 1 choose, please pick 2 parts", false);
+        }
+
+        // // When PC is Player 2 and completes its 2 choices (making 3 chosen total), wait 0.5s and assign 4th piece to Player 1
+        // if (pcPlayerNum == 2 && playerTutorial.chooseNum >= 3)
+        // {
+        //     yield return new WaitForSeconds(0.5f);
+        //     playerTutorial.ExecuteLocalGetValues();
+        // }
+    }
 }
 
 

@@ -333,6 +333,12 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         int otherPlayerNum = pcPlayerNum;
         float[] otherPlayerSum = GetSumRGYBForPlayer(otherPlayerNum);
         this.gameDatabase.SetOtherPlayerColorValues(otherPlayerSum);
+
+        // If Human is Player 2 (myPlayerNum == 2), PC is Player 1 and makes 1st choice after 1s delay
+        if (myPlayerNum == 2 && PCPlayerAITutorial.inst != null)
+        {
+            PCPlayerAITutorial.inst.MakePCChoices(this, 1);
+        }
     }
 
     private float[] GetSumRGYBForPlayer(int playerNum)
@@ -432,90 +438,168 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         return false;
     }
 
+    /// <summary>
+    /// Returns indices of all pieces (0..3) whose color buttons are still interactable.
+    /// </summary>
+    public List<int> GetAvailableChoiceIndices()
+    {
+        List<int> available = new List<int>();
+        for (int j = 0; j < colorsValueObj.Length; j++)
+        {
+            if (colorsValueObj[j] != null && colorsValueObj[j].GetComponent<Button>().IsInteractable())
+            {
+                available.Add(j);
+            }
+        }
+        return available;
+    }
+
+    /// <summary>
+    /// Returns how many pieces (out of 4) have been taken/chosen so far.
+    /// </summary>
+    public int GetChosenCount()
+    {
+        int count = 0;
+        for (int j = 0; j < colorsValueObj.Length; j++)
+        {
+            if (colorsValueObj[j] != null && !colorsValueObj[j].GetComponent<Button>().IsInteractable())
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
     public void ChooseView(int i)
     {
-        if (isAllTrue() && (i >= 0 && i < 4))
+        // Block choosing if tutorial instruction step panel is currently active
+        if (TutorialFplanManager.Instance != null && TutorialFplanManager.Instance.IsGameplayLocked)
         {
-            int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
-            float tempSum = Manager.inst.getSumRGYB(i);
-            if (playerNum == 1 && chooseNum < 1)
-            {
-                endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
-                choosePlayer[playerNum - 1] = tempSum;
-                this.gameDatabase.SetPlayerChoosenColors(0, i);
-                view.RPC("Choose", RpcTarget.All, i, playerNum);
-                buttonsValueText[i].text += " (You)";
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 1 choose, please pick 2 parts");
-                Manager.inst.setNote(-1, "Please wait for player 2 to pick 2 parts)", false);
+            return;
+        }
 
+        if (!isAllTrue() || i < 0 || i >= 4) return;
 
-            }
-            else if (playerNum == 2 && chooseNum == 1)
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+
+        if (playerNum == 1 && chooseNum < 1)
+        {
+            // Human is Player 1 and picks 1st piece
+            ExecuteLocalChoose(i, playerNum);
+            buttonsValueText[i].text += " (You)";
+
+            Manager.inst.setNote(-1, "Player 1 choose, please wait for player 2 to pick 2 parts", false);
+
+            // PC is Player 2 and makes 2 choices after 1s simulated delay
+            if (PCPlayerAITutorial.inst != null)
             {
-                endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
-                choosePlayer[playerNum - 1] += tempSum;
-                this.gameDatabase.SetPlayerChoosenColors(0, i);
-                view.RPC("Choose", RpcTarget.All, i, playerNum);
-                buttonsValueText[i].text += " (You)";
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 2 choose 1 part");
-                Manager.inst.setNote(-1, "Please pick one more part)", false);
+                PCPlayerAITutorial.inst.MakePCChoices(this, 2);
             }
-            else if (playerNum == 2 && chooseNum == 2)
-            {
-                endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
-                choosePlayer[playerNum - 1] += tempSum;
-                this.gameDatabase.SetPlayerChoosenColors(1, i);
-                view.RPC("Choose", RpcTarget.All, i, playerNum);
-                buttonsValueText[i].text += " (You)";
-                view.RPC("GetValues", RpcTarget.All);
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "You got the last remaining part");
-                Manager.inst.setNote(-1, "Player 1 got the last remaining part)", false);
-            }
+        }
+        else if (playerNum == 2 && chooseNum == 1)
+        {
+            // Human is Player 2 and picks 1st of their 2 pieces
+            ExecuteLocalChoose(i, playerNum);
+            buttonsValueText[i].text += " (You)";
+
+            Manager.inst.setNote(-1, "Please pick one more part", false);
+        }
+        else if (playerNum == 2 && chooseNum == 2)
+        {
+            // Human is Player 2 and picks 2nd of their 2 pieces
+            ExecuteLocalChoose(i, playerNum);
+            buttonsValueText[i].text += " (You)";
+
+            // // Finalize remaining 4th piece and match results locally after a 0.5s visual delay
+            // StartCoroutine(DelayedExecuteLocalGetValues(0.5f));
+        }
+    }
+
+    private IEnumerator DelayedExecuteLocalGetValues(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        ExecuteLocalGetValues();
+    }
+
+    /// <summary>
+    /// Replaces old Photon RPC Choose method for local play.
+    /// </summary>
+    public void ExecuteLocalChoose(int i, int playerNum)
+    {
+        if (i < 0 || i >= 4) return;
+
+        float tempSum = Manager.inst.getSumRGYB(i);
+        endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
+        choosePlayer[playerNum - 1] += tempSum;
+
+        if (playerNum == myPlayerNum)
+        {
+            int slot = (chooseNum == 0 || chooseNum == 1) ? 0 : 1;
+            this.gameDatabase.SetPlayerChoosenColors(slot, i);
+        }
+
+        buttonsValueText[i].text = "Taken By Player " + playerNum;
+        colorsValueObj[i].GetComponent<Button>().interactable = false;
+        chooseNum++;
+
+        // Internal count check: If exactly 3 pieces have been chosen, automatically assign 4th piece after 0.5s
+        if (GetChosenCount() == 3)
+        {
+            StartCoroutine(DelayedExecuteLocalGetValues(0.5f));
+            StartCoroutine(DelayedNextTutorialStep(1.5f));
 
         }
     }
 
-    [PunRPC]
-    private void Choose(int i, int playerNum)
-    {
-        buttonsValueText[i].text = "Taken By Player " + playerNum;
-        colorsValueObj[i].GetComponent<Button>().interactable = false;
-        //colorsValueObj[i].SetActive(false);
-        chooseNum++;
-
-    }
-    [PunRPC]
-    private void SetNoteForOtherPlayer(string message)
-    {
-        Manager.inst.setNote(-1, message, false);
-
-    }
     private string getExplanationPlayer(int color, float value)
     {
         string[] strColors = { "RED-X", "GREEN-O", "RED-O", "GREEN-X" };
         return "" + strColors[color] + " with value: " + value + "\n";
     }
 
-    [PunRPC]
-    private void GetValues()
+    /// <summary>
+    /// Replaces old Photon RPC GetValues method for local play.
+    /// Player 1 always receives the remaining 4th piece.
+    /// </summary>
+    public void ExecuteLocalGetValues()
     {
-        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         int last = GetLast();
+        if (last < 0) return;
+
+        // In Cut & Choose, Player 1 ALWAYS receives the 4th remaining piece
+        int p1Index = 0; // Player 1 is always index 0 in arrays
+        float tempSum = Manager.inst.getSumRGYB(last);
+
         buttonsValueText[last].text = "Taken By Player 1";
-        if (PhotonNetwork.IsMasterClient)
+        endExplanationPlayers[p1Index] += getExplanationPlayer(last, tempSum);
+        choosePlayer[p1Index] += tempSum;
+        chooseNum++;
+
+        if (myPlayerNum == 1)
         {
             this.gameDatabase.SetPlayerChoosenColors(1, last);
-            float tempSum = Manager.inst.getSumRGYB(last);
-            endExplanationPlayers[playerNum - 1] += getExplanationPlayer(last, tempSum);
-            choosePlayer[playerNum - 1] += tempSum;
-            chooseNum++;
             buttonsValueText[last].text += " (You)";
         }
+
         colorsValueObj[last].GetComponent<Button>().interactable = false;
-        //colorsValueObj[last].SetActive(false);
-        Manager.inst.setNote(-1, endExplanationPlayers[playerNum - 1], false);
-        Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
-        this.gameDatabase.SumOfMyPart = choosePlayer[playerNum - 1];
+
+        Manager.inst.setNote(-1, endExplanationPlayers[myPlayerNum - 1], false);
+        Manager.inst.setEndGameLayer(choosePlayer[myPlayerNum - 1]);
+        this.gameDatabase.SumOfMyPart = choosePlayer[myPlayerNum - 1];
+
+        if (TutorialFplanManager.Instance != null)
+        {
+            StartCoroutine(DelayedNextTutorialStep(1.5f));
+        }
+    }
+
+    private IEnumerator DelayedNextTutorialStep(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (TutorialFplanManager.Instance != null)
+        {
+            TutorialFplanManager.Instance.NextStep();
+        }
     }
 
     // Get the last number of the remaining color
