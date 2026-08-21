@@ -104,18 +104,13 @@ public class Config : MonoBehaviour
         return "";
     }
 
-    public bool RedirectToSurvey(bool isFinish = true)
+    public bool RedirectToSurvey(float winnings = 0f, bool isFinish = true)
     {
-        // Open new tab for the player's survey
-        // Application.OpenURL("http://www.panel4all.co.il");
-        // http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID=XXXXX&userID=YYYYY&status=finish
-        // http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID=XXXXX&userID=YYYYY&status=filterout
-        // string url = $"http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID={surveyID}&userID={userID}&status=";
-
-        // url = isFinish ? url + "finish" : url + "filterout";
-
-        // Application.OpenURL(url);
-        return true; // Open new tab successfully
+        string status = isFinish ? "finish" : "filterout";
+        string url = $"http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID={surveyID}&userID={userID}&status={status}&winnings={winnings}";
+        Debug.Log("Redirecting to survey URL: " + url);
+        Application.OpenURL(url);
+        return true;
     }
 
 }

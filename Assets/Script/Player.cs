@@ -71,7 +71,7 @@ public class Player : MonoBehaviourPunCallbacks
         //this.gameDatabase.PlayerID = 20548; // Need to add the real id from the user
         int[] tempChoosen = { -1, -1 };
         this.gameDatabase.PlayerChoosenColors = tempChoosen;
-        // this.SetDataFromURL();
+        this.SetDataFromURL();
 
         /*        await UnityServices.InitializeAsync();
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
@@ -122,11 +122,11 @@ public class Player : MonoBehaviourPunCallbacks
         this.gameDatabase.surveyID = surveyID;
         Config.inst.userID = userID;
         Config.inst.surveyID = surveyID;
-        // Open new tab for the player's survey
-        // Application.OpenURL("http://www.panel4all.co.il");
-        // http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID=XXXXX&userID=YYYYY&status=finish
-        // http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID=XXXXX&userID=YYYYY&status=filterout
-
+        if (PlayerData.inst != null)
+        {
+            PlayerData.inst.SurveyID = surveyID;
+            PlayerData.inst.UserID = userID;
+        }
     }
 
     [Serializable]

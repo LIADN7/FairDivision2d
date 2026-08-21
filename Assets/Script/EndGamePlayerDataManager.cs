@@ -15,19 +15,19 @@ public class EndGamePlayerDataManager : MonoBehaviour
 
     private void Start()
     {
+        if (errorText != null) errorText.text = "";
         LoadPlayerData();
-        errorText.text = "";
     }
 
     private void LoadPlayerData()
     {
         if (PlayerData.inst != null)
         {
-            nameInput.text = PlayerData.inst.Name;
-            emailInput.text = PlayerData.inst.Email;
-            phoneInput.text = PlayerData.inst.PhoneNumber;
-            idInput.text = PlayerData.inst.ID;
-
+            // Old personal info loading (kept in comment for future reference):
+            if (nameInput != null) nameInput.text = PlayerData.inst.Name;
+            // if (emailInput != null) emailInput.text = PlayerData.inst.Email;
+            // if (phoneInput != null) phoneInput.text = PlayerData.inst.PhoneNumber;
+            // if (idInput != null) idInput.text = PlayerData.inst.ID;
 
             this.SetWinnings(PlayerData.inst.GetNormalizeWinning(), PlayerData.inst.GetRandIndex());
         }
@@ -39,18 +39,47 @@ public class EndGamePlayerDataManager : MonoBehaviour
 
     public void SetWinnings(float amount, int roundIndex = 0)
     {
-        winningsText.text = $"You won: {amount} ₪ from round " + (roundIndex + 1);
+        if (winningsText != null)
+        {
+            winningsText.text = $"You won: {amount} ₪ from round " + (roundIndex + 1);
+        }
     }
+
+    public void OnFinishButtonClicked()
+    {
+        float winnings = 0f;
+        if (PlayerData.inst != null)
+        {
+            winnings = PlayerData.inst.GetNormalizeWinning();
+            PlayerData.inst.SaveDatabaseAsync();
+        }
+
+        if (Config.inst != null)
+        {
+            Config.inst.RedirectToSurvey(winnings);
+        }
+        else
+        {
+            Debug.LogError("Config instance not found for redirect!");
+        }
+    }
+
+    // Maintained for backward compatibility if wired up to UI Button in scene Inspector
     public void HideInputFields()
     {
-        // PlayerData.inst?.LoadData();
+        OnFinishButtonClicked();
+    }
 
-        string name = nameInput.text.Trim();
-        string email = emailInput.text.Trim();
-        string phone = phoneInput.text.Trim();
-        string id = idInput.text.Trim();
+    /*
+    // Legacy validation & saving logic kept in comments for potential future use:
+    
+    public void OldHideInputFieldsValidation()
+    {
+        string name = nameInput != null ? nameInput.text.Trim() : "";
+        string email = emailInput != null ? emailInput.text.Trim() : "";
+        string phone = phoneInput != null ? phoneInput.text.Trim() : "";
+        string id = idInput != null ? idInput.text.Trim() : "";
 
-        // Basic validation checks
         if (string.IsNullOrEmpty(name))
         {
             ShowError("Please enter your full name.");
@@ -75,13 +104,6 @@ public class EndGamePlayerDataManager : MonoBehaviour
             return;
         }
 
-        // All good – save and hide inputs
-        nameInput.gameObject.SetActive(false);
-        emailInput.gameObject.SetActive(false);
-        phoneInput.gameObject.SetActive(false);
-        idInput.gameObject.SetActive(false);
-        submit.gameObject.SetActive(false);
-
         if (PlayerData.inst != null)
         {
             PlayerData.inst.Name = name;
@@ -89,42 +111,23 @@ public class EndGamePlayerDataManager : MonoBehaviour
             PlayerData.inst.PhoneNumber = phone;
             PlayerData.inst.ID = id;
             PlayerData.inst.SaveDatabaseAsync();
-            winningsText.text = "Data Saved!";
-        }
-
-        errorText.text = ""; // Clear error
-        if (nameInput.text != "" && emailInput.text != "" && phoneInput.text != "" && idInput.text != "")
-        {
-
-            nameInput.gameObject.SetActive(false);
-            emailInput.gameObject.SetActive(false);
-            phoneInput.gameObject.SetActive(false);
-            idInput.gameObject.SetActive(false);
-            submit.gameObject.SetActive(false);
-            if (PlayerData.inst != null)
-            {
-                PlayerData.inst.Name = nameInput.text;
-                PlayerData.inst.Email = emailInput.text;
-                PlayerData.inst.PhoneNumber = phoneInput.text;
-                PlayerData.inst.ID = idInput.text;
-                PlayerData.inst.SaveDatabaseAsync();
-                winningsText.text = "Save Data!";
-            }
         }
     }
 
-
     private void ShowError(string message)
     {
-        errorText.text = message;
-        errorText.color = Color.red;
-        StartCoroutine(ClearErrorAfterDelay(3f)); // Hide after 3 seconds
+        if (errorText != null)
+        {
+            errorText.text = message;
+            errorText.color = Color.red;
+            StartCoroutine(ClearErrorAfterDelay(3f));
+        }
     }
 
     private IEnumerator ClearErrorAfterDelay(float seconds)
     {
         yield return new WaitForSeconds(seconds);
-        errorText.text = "";
+        if (errorText != null) errorText.text = "";
     }
 
     private bool IsValidEmail(string email)
@@ -141,5 +144,5 @@ public class EndGamePlayerDataManager : MonoBehaviour
     {
         return id.Length == 9 && long.TryParse(id, out _);
     }
-
+    */
 }

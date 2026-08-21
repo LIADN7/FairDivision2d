@@ -9,6 +9,10 @@ public class PlayerData : MonoBehaviour
 {
     public static PlayerData inst { get; private set; }
 
+    // Survey metadata
+    public string SurveyID { get; set; }
+    public string UserID { get; set; }
+
     // Player Info
     public string Name { get; set; }
     public string Email { get; set; }
@@ -61,6 +65,8 @@ public class PlayerData : MonoBehaviour
             if (model != null)
             {
                 Debug.Log("Loaded Player Data:");
+                Debug.Log($"SurveyID: {model.SurveyID}");
+                Debug.Log($"UserID: {model.UserID}");
                 Debug.Log($"Name: {model.Name}");
                 Debug.Log($"Email: {model.Email}");
                 Debug.Log($"Phone: {model.PhoneNumber}");
@@ -183,6 +189,8 @@ public class PlayerData : MonoBehaviour
     {
         return new PlayerDataModel
         {
+            SurveyID = string.IsNullOrEmpty(this.SurveyID) ? Config.inst?.surveyID : this.SurveyID,
+            UserID = string.IsNullOrEmpty(this.UserID) ? Config.inst?.userID : this.UserID,
             Name = this.Name,
             Email = this.Email,
             PhoneNumber = this.PhoneNumber,
@@ -195,6 +203,8 @@ public class PlayerData : MonoBehaviour
     // Load from model
     private void LoadFromModel(PlayerDataModel model)
     {
+        SurveyID = model.SurveyID;
+        UserID = model.UserID;
         Name = model.Name;
         Email = model.Email;
         PhoneNumber = model.PhoneNumber;
@@ -207,6 +217,8 @@ public class PlayerData : MonoBehaviour
     [Serializable]
     public class PlayerDataModel
     {
+        public string SurveyID;
+        public string UserID;
         public string Name;
         public string Email;
         public string PhoneNumber;
