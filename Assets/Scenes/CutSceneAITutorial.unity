@@ -48463,7 +48463,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1230255559}
-  - component: {fileID: 1230255561}
   - component: {fileID: 1230255562}
   - component: {fileID: 1230255560}
   m_Layer: 5
@@ -48514,26 +48513,6 @@ MonoBehaviour:
   sceneViewId: 3
   InstantiationId: 0
   isRuntimeInstantiated: 0
---- !u!114 &1230255561
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1230255558}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f0a161c765ea7c043a0c9e01a3948034, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  gameCamera: {fileID: 519420031}
-  mapSize: {x: 8.5, y: 6.8}
-  mapCenter: {x: -5, y: 1.5, z: 0}
-  player1LineColor: {r: 0, g: 0, b: 0, a: 1}
-  player2LineColor: {r: 1, g: 1, b: 1, a: 1}
-  lineWidth: 0.1
-  autoColorOnFinish: 1
-  playerLineRenderer: {fileID: 0}
 --- !u!114 &1230255562
 MonoBehaviour:
   m_ObjectHideFlags: 0
