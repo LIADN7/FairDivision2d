@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,6 +11,7 @@ public class EndGamePlayerDataManager : MonoBehaviour
     public InputField phoneInput;
     public InputField idInput;
     public Text winningsText;
+    public  TextMeshProUGUI     winningsTextRTL   ;
     public Button submit;
     public TMP_Text errorText;
 
@@ -42,6 +44,9 @@ public class EndGamePlayerDataManager : MonoBehaviour
         if (winningsText != null)
         {
             winningsText.text = $"You won: {amount} ₪ from round " + (roundIndex + 1);
+            string valueText = new string(amount.ToString().Reverse().ToArray());
+            winningsTextRTL.text = $"ניצחת: {valueText} ₪ מהסיבוב " + (roundIndex + 1);
+
         }
     }
 

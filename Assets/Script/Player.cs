@@ -35,6 +35,7 @@ public class Player : MonoBehaviourPunCallbacks
     [SerializeField] protected SumSquares[] stateObjects; // All the state obj with square childs
     private int chooseNum = 0;
     private string[] endExplanationPlayers = { "You get:\n", "You get:\n" };
+    private string[] endExplanationPlayersRTL = { "קיבלת:\n", "קיבלת:\n" };
     private bool[] playerCut = { false, false };
     private bool[] palyersGameOver = { false, false };
 
@@ -56,7 +57,7 @@ public class Player : MonoBehaviourPunCallbacks
         }
 
         this.InitDatabaseAsync();
-        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)", false);
+        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)", false, "אנא חלקו את המפה לשני חלקים (אם תחלקו לשני חלקים שווים, מובטח שתקבלו לפחות 50%)");
 
 
     }
@@ -252,11 +253,11 @@ public class Player : MonoBehaviourPunCallbacks
             this.gameDatabase.playerCutSquares = tempPlayerWithParentName;
             view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
             Manager.inst.setViewAfterCut();
-            Manager.inst.setNote(-1, "Please wait for the other player to cut", false);
+            Manager.inst.setNote(-1, "Please wait for the other player to cut", false, "אנא המתינו שהשחקן השני יבצע את החיתוך");
         }
         else
         {
-            Manager.inst.setNote(7f, "Waiting for the other player to connect!", true);
+            Manager.inst.setNote(7f, "Waiting for the other player to connect!", true, "ממתינים להתחברות השחקן השני!");
         }
         /*
         if (isAllTrue())
@@ -349,11 +350,11 @@ public class Player : MonoBehaviourPunCallbacks
 
             if (playerNum == 1)
             {
-                Manager.inst.setNote(-1, "The meaning:\nO =  player 2 choose green\nX =  player 2 choose red\n\nPlease choose one color", false);
+                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease choose one color", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nאנא בחרו צבע אחד");
             }
             else if (playerNum == 2)
             {
-                Manager.inst.setNote(-1, "The meaning:\nO =  player 2 choose green\nX =  player 2 choose red\n\nPlease wait player 1 choose one color,\nafter that you choose 2 colors", false);
+                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease wait for player 1 to choose one color,\nafter that choose 2 colors", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nהמתינו ששחקן 1 יבחר צבע אחד,\nולאחר מכן בחרו שני צבעים");
             }
         }
     }
@@ -375,35 +376,38 @@ public class Player : MonoBehaviourPunCallbacks
             if (playerNum == 1 && chooseNum < 1)
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
+                endExplanationPlayersRTL[playerNum - 1] += getExplanationPlayerRTL(i, tempSum);
                 choosePlayer[playerNum - 1] = tempSum;
                 this.gameDatabase.SetPlayerChoosenColors(0, i);
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 1 choose, please pick 2 parts");
-                Manager.inst.setNote(-1, "Please wait for player 2 to pick 2 parts)", false);
+                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 1 choose, please pick 2 parts", "שחקן 1 בחר, אנא בחרו שני חלקים");
+                Manager.inst.setNote(-1, "Please wait for player 2 to pick 2 parts)", false, "המתינו ששחקן 2 יבחר שני חלקים");
 
 
             }
             else if (playerNum == 2 && chooseNum == 1)
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
+                endExplanationPlayersRTL[playerNum - 1] += getExplanationPlayerRTL(i, tempSum);
                 choosePlayer[playerNum - 1] += tempSum;
                 this.gameDatabase.SetPlayerChoosenColors(0, i);
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 2 choose 1 part");
-                Manager.inst.setNote(-1, "Please pick one more part)", false);
+                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 2 choose 1 part", "שחקן 2 בחר חלק אחד");
+                Manager.inst.setNote(-1, "Please pick one more part)", false, "אנא בחרו חלק אחד נוסף");
             }
             else if (playerNum == 2 && chooseNum == 2)
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
+                endExplanationPlayersRTL[playerNum - 1] += getExplanationPlayerRTL(i, tempSum);
                 choosePlayer[playerNum - 1] += tempSum;
                 this.gameDatabase.SetPlayerChoosenColors(1, i);
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
                 view.RPC("GetValues", RpcTarget.All);
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "You got the last remaining part");
-                Manager.inst.setNote(-1, "Player 1 got the last remaining part)", false);
+                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "You got the last remaining part", "קיבלתם את החלק האחרון שנשאר");
+                Manager.inst.setNote(-1, "Player 1 got the last remaining part)", false, "שחקן 1 קיבל את החלק האחרון שנשאר");
             }
 
         }
@@ -419,15 +423,22 @@ public class Player : MonoBehaviourPunCallbacks
 
     }
     [PunRPC]
-    private void SetNoteForOtherPlayer(string message)
+    private void SetNoteForOtherPlayer(string message, string messageRTL)
     {
-        Manager.inst.setNote(-1, message, false);
+        Manager.inst.setNote(-1, message, false, messageRTL);
 
     }
     private string getExplanationPlayer(int color, float value)
     {
-        string[] strColors = { "RED-X", "GREEN-O", "RED-O", "GREEN-X" };
-        return "" + strColors[color] + " with value: " + value + "\n";
+        string[] strColors = { "Red", "Green", "Yellow", "Blue" };
+        return "" + strColors[color] + " with value: " + value + "%\n";
+    }
+
+    private string getExplanationPlayerRTL(int color, float value)
+    {
+        string[] strColors = { "אדום", "ירוק", "צהוב", "כחול" };
+        string valueText = new string(value.ToString().Reverse().ToArray());
+        return "" + strColors[color] + " בערך: " + valueText + "%\n";
     }
 
     [PunRPC]
@@ -441,13 +452,14 @@ public class Player : MonoBehaviourPunCallbacks
             this.gameDatabase.SetPlayerChoosenColors(1, last);
             float tempSum = Manager.inst.getSumRGYB(last);
             endExplanationPlayers[playerNum - 1] += getExplanationPlayer(last, tempSum);
+            endExplanationPlayersRTL[playerNum - 1] += getExplanationPlayerRTL(last, tempSum);
             choosePlayer[playerNum - 1] += tempSum;
             chooseNum++;
             buttonsValueText[last].text += " (You)";
         }
         colorsValueObj[last].GetComponent<Button>().interactable = false;
         //colorsValueObj[last].SetActive(false);
-        Manager.inst.setNote(-1, endExplanationPlayers[playerNum - 1], false);
+        Manager.inst.setNote(-1, endExplanationPlayers[playerNum - 1], false, endExplanationPlayersRTL[playerNum - 1]);
         Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
         this.gameDatabase.SumOfMyPart = choosePlayer[playerNum - 1];
     }
@@ -548,7 +560,7 @@ public class Player : MonoBehaviourPunCallbacks
             }
             if ((greenVal * 100) == 50)
             {
-                Manager.inst.setNote(-1, "The map is divided into 50%\n(if you wish, you can change the division or choose not to divide equally)", false);
+                Manager.inst.setNote(-1, "The map is divided into 50%\n(if you wish, you can change the division or choose not to divide equally)", false, "המפה מחולקת ל־50%\n(אם תרצו, תוכלו לשנות את החלוקה או לבחור שלא לחלק באופן שווה)");
 
             }
             return (greenVal * 100);
@@ -835,7 +847,7 @@ public class Player : MonoBehaviourPunCallbacks
     {
         // Master client loads the scene on behalf of non-master clients
         this.palyersGameOver[playerNum - 1] = true;
-        Manager.inst.setNote(-1, "Other player continue the game...", false); // need to send in RPC!
+        Manager.inst.setNote(-1, "Other player continue the game...", false, "השחקן השני ממשיך במשחק..."); // need to send in RPC!
     }
 
     [PunRPC]

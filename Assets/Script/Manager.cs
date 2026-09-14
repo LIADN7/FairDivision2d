@@ -1,5 +1,6 @@
 
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -18,6 +19,7 @@ public class Manager : MonoBehaviour
     [SerializeField] protected GameObject NextButton;
     [SerializeField] protected Text textEndGameStatus;
     [SerializeField] protected Text textNote;
+    [SerializeField] protected TextMeshProUGUI textNoteRTL;
     //[SerializeField] protected Text textChatAlert;
     //[SerializeField] protected SpriteRenderer backgraundStatus;
     float[] sumRGYB = { 0, 0, 0, 0 }; //GREEN, RED, YELLOW, BLUE (after cut!)
@@ -135,17 +137,20 @@ public class Manager : MonoBehaviour
 
     }
 
-    public void setNote(float sec, string massage, bool isError)
+    public void setNote(float sec, string massage, bool isError, string massageRTL = "")
     {
-        StartCoroutine(withSec(sec, massage, isError));
+        StartCoroutine(withSec(sec, massage, isError, massageRTL));
 
     }
 
 
-    private IEnumerator withSec(float sec, string massage, bool isError)
+    private IEnumerator withSec(float sec, string massage, bool isError, string massageRTL = "")
     {
         this.textNote.color = isError ? Color.red : Color.black;
         this.textNote.text = massage;
+        this.textNoteRTL.color = isError ? Color.red : Color.black;
+        this.textNoteRTL.text = massageRTL;
+
         if (sec < 0)
         {
             yield return new WaitForSeconds(1);
@@ -154,7 +159,7 @@ public class Manager : MonoBehaviour
         {
             yield return new WaitForSeconds(sec);
             this.textNote.text = "";
-
+            this.textNoteRTL.text = "";
         }
     }
 
