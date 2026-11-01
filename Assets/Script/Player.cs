@@ -437,7 +437,8 @@ public class Player : MonoBehaviourPunCallbacks
     private string getExplanationPlayerRTL(int color, float value)
     {
         string[] strColors = { "אדום", "ירוק", "צהוב", "כחול" };
-        string valueText = new string(value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Reverse().ToArray());
+        // Digit order in the RTL note is handled by Manager.PrepareRtlNote; no manual reversal here.
+        string valueText = value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
         return "" + strColors[color] + " בערך: " + valueText + "%\n";
     }
 

@@ -150,7 +150,7 @@ public class Manager : MonoBehaviour
         this.textNote.color = isError ? Color.red : Color.black;
         this.textNote.text = massage;
         this.textNoteRTL.color = isError ? Color.red : Color.black;
-        this.textNoteRTL.text = massageRTL;
+        this.textNoteRTL.text = PrepareRtlNote(massageRTL);
 
         if (sec < 0)
         {
@@ -162,6 +162,30 @@ public class Manager : MonoBehaviour
             this.textNote.text = "";
             this.textNoteRTL.text = "";
         }
+    }
+
+    // textNoteRTL is a TextMeshPro text with "Right To Left" enabled, which mirrors the whole string.
+    // Display only: pre-reverse number runs ("50%", "30.1%") so they read left-to-right, and swap
+    // brackets so they are mirrored. Single digits and Hebrew words are unaffected.
+    private static string PrepareRtlNote(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return text;
+        }
+        string numbersFixed = System.Text.RegularExpressions.Regex.Replace(text, @"[0-9]+(?:[.,][0-9]+)*%?", m =>
+        {
+            char[] run = m.Value.ToCharArray();
+            System.Array.Reverse(run);
+            return new string(run);
+        });
+        char[] chars = numbersFixed.ToCharArray();
+        for (int i = 0; i < chars.Length; i++)
+        {
+            if (chars[i] == '(') chars[i] = ')';
+            else if (chars[i] == ')') chars[i] = '(';
+        }
+        return new string(chars);
     }
 
 
