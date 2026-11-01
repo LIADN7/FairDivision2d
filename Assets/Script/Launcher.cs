@@ -20,6 +20,7 @@ public class Launcher : MonoBehaviourPunCallbacks
     public Text playerEmail;
 
     [SerializeField] public Text[] roomTextButtons;
+    [SerializeField] public Text roomStatusText; // Lobby message shown when joining a room fails
 
 
     private string[] roomNames = { "Room_1", "Room_2", "Room_3", "Room_4" };
@@ -56,7 +57,7 @@ public class Launcher : MonoBehaviourPunCallbacks
         {
 
 
-            this.loadingText.text = "Connecting to network...";
+            this.loadingText.text = "Connecting to the game server...";
             //PhotonNetwork.AutomaticallySyncScene = true;
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
@@ -70,7 +71,7 @@ public class Launcher : MonoBehaviourPunCallbacks
         }
         for (int i = 0; i < roomTextButtons.Length; i++)
         {
-            roomTextButtons[i].text = $"Cut & Choose {roomNames[i]} - 0/2";
+            roomTextButtons[i].text = $"Room {i + 1}  (0/2 players)";
         }
     }
 
@@ -80,7 +81,7 @@ public class Launcher : MonoBehaviourPunCallbacks
     {
 
         PhotonNetwork.JoinLobby();
-        this.loadingText.text = "Joining lobby...";
+        this.loadingText.text = "Loading the lobby...";
 
     }
 
@@ -124,7 +125,7 @@ public class Launcher : MonoBehaviourPunCallbacks
 
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
-            this.loadingText.text = "Create room...";
+            this.loadingText.text = "Joining the room...";
             Debug.Log(PhotonNetwork.JoinOrCreateRoom(roomNames[roomIndex < roomNames.Length ? roomIndex : 0], opt, PhotonNetwork.CurrentLobby));
 
             print(PhotonNetwork.CurrentLobby);
@@ -152,7 +153,7 @@ public class Launcher : MonoBehaviourPunCallbacks
 
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
-            this.loadingText.text = "Create room...";
+            this.loadingText.text = "Joining the room...";
             Debug.Log(PhotonNetwork.JoinOrCreateRoom(roomNames[roomIndex < roomNames.Length ? roomIndex : 0], opt, PhotonNetwork.CurrentLobby));
 
             /*            }
@@ -193,7 +194,7 @@ public class Launcher : MonoBehaviourPunCallbacks
 
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
-            this.loadingText.text = "Create room...";
+            this.loadingText.text = "Joining the room...";
             Debug.Log(PhotonNetwork.JoinOrCreateRoom(roomNames[0], opt, PhotonNetwork.CurrentLobby));
 
             print(PhotonNetwork.CurrentLobby);
@@ -219,7 +220,7 @@ public class Launcher : MonoBehaviourPunCallbacks
 
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
-            this.loadingText.text = "Create room...";
+            this.loadingText.text = "Joining the room...";
             this.sceneToLoad = "DemoScene";
             Debug.Log(PhotonNetwork.JoinOrCreateRoom("DemoScene", opt, PhotonNetwork.CurrentLobby));
             print(PhotonNetwork.CurrentLobby);
@@ -246,7 +247,7 @@ public class Launcher : MonoBehaviourPunCallbacks
 
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
-            this.loadingText.text = "Create room...";
+            this.loadingText.text = "Joining the room...";
             this.sceneToLoad = "RRScene";
             // this.sceneToLoad = "RRTestScene";
             Debug.Log(PhotonNetwork.JoinOrCreateRoom(this.sceneToLoad, opt, PhotonNetwork.CurrentLobby));
@@ -265,7 +266,10 @@ public class Launcher : MonoBehaviourPunCallbacks
         Debug.Log("Room is full. Cannot join.");
         this.menu.SetActive(true);
         this.loadingScreen.SetActive(false);
-        // You can also display this message on your UI if needed.
+        if (this.roomStatusText != null)
+        {
+            this.roomStatusText.text = "This room is full or unavailable.\nPlease choose another room.";
+        }
 
 
     }
@@ -280,7 +284,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             {
                 if (room.Name == roomNames[i])
                 {
-                    roomTextButtons[i].text = "Cut & Choose " + $"{roomNames[i]} - {room.PlayerCount}/2";
+                    roomTextButtons[i].text = $"Room {i + 1}  ({room.PlayerCount}/2 players)";
                 }
             }
         }
