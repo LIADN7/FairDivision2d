@@ -246,7 +246,7 @@ The dependency map, the three highest-risk coupling points (**cell ID drift**, *
 
 **Tests and CI** [Verified]: no project test assemblies or test scripts (only third-party RTLTMPro tests); no CI (`.github` absent); no build scripts. Verification is manual and needs **two clients** (§13.2). *Tools → Live Game Data Monitor* shows live values in Play Mode.
 
-**Repository**: `https://github.com/LIADN7/FairDivision2d`; default branch `main`; feature branches merged via reviewed PR only. Generated folders (`Library`, `Temp`, `obj`, `*.csproj`) are ignored.
+**Repository**: `https://github.com/LIADN7/FairDivision2d`; default branch `main` (human-controlled); `dev` is the shared integration branch for approved UX batches (branch model and agent rules: `CLAUDE.md`). Generated folders (`Library`, `Temp`, `obj`, `*.csproj`) are ignored.
 
 ### 13.1 Environment and Editor access (verified 2026-11-01)
 
@@ -339,7 +339,7 @@ Authoritative list: [Reference §14](CUT_AND_CHOOSE_REFERENCE.md#14-research-inv
 
 ## 17. Current Status and Handoff
 
-**As of 2026-11-01.** Work branch `feat/ux-batch-1` (pushed; not merged; no PR), based on `tooling/unity-pipeline` (Pipeline package + docs), itself based on `AITutorial`. `main` is untouched. Owner priority: **player UX with minimum regression risk; no general refactoring.** Agents may commit and push feature branches; agents never merge into `main` or push to it.
+**As of 2026-11-01.** UX Batch 1 is accepted by the owner and merged into the shared integration branch **`dev`** (created from `AITutorial` `d1cc192`; merge commit `44772cb` of `feat/ux-batch-1` `56dfd5b`, which contains `tooling/unity-pipeline`). Start new batches from `dev`. `main` is untouched and human-controlled; before any `main` integration a full regression run (including six rounds) and Release validation (§13.3) are required. Owner priority: **player UX with minimum regression risk; no general refactoring.** Agent Git rules: `CLAUDE.md`.
 
 **UX Batch 1 — done** (IDs from the owner's UX report; display-only, no scoring/networking/saving changes):
 
