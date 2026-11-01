@@ -20,9 +20,10 @@ public class TestModeBadge : MonoBehaviour
         GameObject panel = new GameObject("Panel", typeof(RectTransform));
         panel.transform.SetParent(root.transform, false);
         RectTransform panelRect = (RectTransform)panel.transform;
-        panelRect.anchorMin = panelRect.anchorMax = panelRect.pivot = new Vector2(0f, 1f);
-        panelRect.anchoredPosition = new Vector2(8f, -8f);
-        panelRect.sizeDelta = new Vector2(250f, 30f);
+        // Top-right corner: clear of the map title (top-left) and the help/exit buttons at 960x600 and up.
+        panelRect.anchorMin = panelRect.anchorMax = panelRect.pivot = new Vector2(1f, 1f);
+        panelRect.anchoredPosition = new Vector2(-6f, -4f);
+        panelRect.sizeDelta = new Vector2(200f, 20f);
         Image background = panel.AddComponent<Image>();
         background.color = new Color(0.75f, 0f, 0f, 0.85f);
         background.raycastTarget = false;
@@ -35,7 +36,7 @@ public class TestModeBadge : MonoBehaviour
         labelRect.sizeDelta = Vector2.zero;
         Text text = label.AddComponent<Text>();
         text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        text.fontSize = 16;
+        text.fontSize = 13;
         text.fontStyle = FontStyle.Bold;
         text.alignment = TextAnchor.MiddleCenter;
         text.color = Color.white;
