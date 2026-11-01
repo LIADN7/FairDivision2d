@@ -78,7 +78,18 @@ public class DatabaseManager : MonoBehaviour
         try
         {
             Debug.Log("Starting Unity Services initialization...");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // Test isolation: Editor and Development builds use the "development" environment and their
+            // own sign-in profile, so they never read or write production Cloud Save data. If this fails,
+            // the error is logged below and nothing is saved (no fallback to production).
+            var testOptions = new InitializationOptions();
+            Unity.Services.Core.Environments.EnvironmentsOptionsExtensions.SetEnvironmentName(testOptions, "development");
+            testOptions.SetProfile("uxtest");
+            Debug.Log("TEST MODE: Unity Services environment = development, profile = uxtest");
+            await UnityServices.InitializeAsync(testOptions);
+#else
             await UnityServices.InitializeAsync();
+#endif
             Debug.Log("Unity Services initialized successfully");
 
             Debug.Log("Starting authentication...");
