@@ -4,7 +4,8 @@ Unity 6 (6000.2.10f1) + Photon PUN 2 research game for two-player fair division 
 
 ## Read first
 
-- **[docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md)** — project overview, experiment conditions and schedule, data schema, environment. Read it before planning any change.
+- **[docs/PROJECT_CONTEXT.md §17 — Current Status and Handoff](docs/PROJECT_CONTEXT.md#17-current-status-and-handoff)** — current branch, finished UX batches, known issues, next batch.
+- **[docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md)** — project overview, experiment conditions and schedule, data schema, environment, Unity Editor access, **test mode** (§13.2) and **release checklist** (§13.3). Read it before planning any change.
 - **[docs/CUT_AND_CHOOSE_REFERENCE.md](docs/CUT_AND_CHOOSE_REFERENCE.md)** — algorithm implementation, state machines, synchronization, dependency map, high-risk coupling points and research invariants. Read it before touching gameplay, UI flow, networking or data code.
 
 ## Development priorities
@@ -23,4 +24,6 @@ Unity 6 (6000.2.10f1) + Photon PUN 2 research game for two-player fair division 
 - **Ask before significant architecture changes** (refactors across classes, new packages, changes to `Packages/` or `ProjectSettings/`, networking or persistence changes).
 - **Git:** never push or merge directly into `main`, and never alter `main` or `dev` without explicit instruction. Do not assume a branch workflow — check the current branch and ask when unsure. Preserve uncommitted work.
 - **Secrets:** never print, copy or commit credentials, API keys, Photon App IDs or Cloud service keys (some already exist in the repo and are treated as exposed — see PROJECT_CONTEXT §11).
-- Do not start Play Mode, builds or external services (Photon, Unity Cloud, survey redirect) unless asked.
+- Do not start Play Mode, builds or external services (Photon, Unity Cloud, survey redirect) unless asked. When runtime testing is approved, test only in **test mode** (Editor or Development build: separate Photon pool, `development` Unity Services, TEST MODE badge) and never against production; do not change the isolation code without approval.
+- **Release safety:** participant builds use the Release profile with Development Build OFF and no TEST MODE badge (PROJECT_CONTEXT §13.3). Never publish a Development/test build to participants.
+- **Agents may commit and push feature branches; agents never merge into `main`.**

@@ -2,7 +2,7 @@
 
 > Overview for developers and AI agents joining the project. The full implementation reference for the core algorithm — cells, cuts, regions, selection, synchronization, state machines, dependency map, coupling risks and research invariants — is **[CUT_AND_CHOOSE_REFERENCE.md](CUT_AND_CHOOSE_REFERENCE.md)**. This file does not repeat it.
 >
-> **Last verified:** 2026-11-01 against branch `AITutorial` @ `d1cc192` (static code and asset inspection only — Unity was not run).
+> **Last verified:** 2026-11-01 on branch `feat/ux-batch-1` (code baseline `1f7b01d`): static inspection plus Editor checks through Unity Pipeline and one two-client smoke test in test mode. **New agent? Start with [§17 Current Status and Handoff](#17-current-status-and-handoff).**
 >
 > **Evidence tags used in both documents**
 > - **[Verified]** — confirmed in C# source or serialized scene/prefab data.
@@ -186,7 +186,8 @@ After round 6 the master draws a round index uniformly from 0–5 and shares it;
 
 ## 9. Networking and State Synchronization
 
-- **Connection** [Verified]: `PhotonNetwork.ConnectUsingSettings()` → `JoinLobby()`; `GameVersion = "0.0.1"`; `AutomaticallySyncScene = true`; fixed room names `Room_1` … `Room_4` with occupancy shown from `OnRoomListUpdate`; a full room returns to the menu (`OnJoinRoomFailed`).
+- **Connection** [Verified]: `PhotonNetwork.ConnectUsingSettings()` → `JoinLobby()`; `AutomaticallySyncScene = true`; fixed room names `Room_1` … `Room_4` with occupancy shown from `OnRoomListUpdate`; a failed join returns to the menu with a status message (`OnJoinRoomFailed`).
+- **Effective Photon version** [Verified at runtime]: `Launcher` sets `GameVersion = "0.0.1"`, but `ConnectUsingSettings()` overwrites it with the settings asset's empty `AppVersion`, so **Release/production clients connect as `_2.42`**. Editor and Development builds connect as **`uxtest_2.42`** (§13.2). Do not "fix" the `"0.0.1"` line: changing the production version would split new builds from deployed ones.
 - **Model**: RPC-only, peer-symmetric, no room properties; master = Player 1; no disconnect or master-switch handling.
 - RPC catalogue, message sequence and state ownership: [Reference §6–§7](CUT_AND_CHOOSE_REFERENCE.md#6-roles-host-authority-and-state-ownership).
 
@@ -243,23 +244,43 @@ The dependency map, the three highest-risk coupling points (**cell ID drift**, *
 
 ## 13. Testing and Development Workflow
 
-**Tests and CI** [Verified]: no project test assemblies or test scripts (only third-party RTLTMPro tests); no CI (`.github` absent); no build scripts. Verification is manual and needs **two clients** on Photon Cloud (e.g. Editor + build, or two WebGL tabs). *Tools → Live Game Data Monitor* shows live values in Play Mode.
+**Tests and CI** [Verified]: no project test assemblies or test scripts (only third-party RTLTMPro tests); no CI (`.github` absent); no build scripts. Verification is manual and needs **two clients** (§13.2). *Tools → Live Game Data Monitor* shows live values in Play Mode.
 
-**Repository**: `https://github.com/LIADN7/FairDivision2d`; default branch `main`; feature branches merged via PR (PR 1 merged `AITutorial`). Generated folders (`Library`, `Temp`, `obj`, `*.csproj`) are ignored.
+**Repository**: `https://github.com/LIADN7/FairDivision2d`; default branch `main`; feature branches merged via reviewed PR only. Generated folders (`Library`, `Temp`, `obj`, `*.csproj`) are ignored.
 
-**Environment (inspected 2026-11-01, read-only):**
+### 13.1 Environment and Editor access (verified 2026-11-01)
 
 | Capability | Status |
 |---|---|
 | Repo root | `C:\Users\liadn\OneDrive\StudyProjects\UnityProjects\FairDivision2d` (inside OneDrive; sync can interfere with Unity's `Library`) |
-| Branch | `AITutorial`, tracking `origin/AITutorial` |
-| Shell | Git Bash and Windows PowerShell; Python 3 available |
-| Unity Editor | 6000.2.10f1 installed (`C:\Program Files\Unity\Hub\Editor\6000.2.10f1`, modules Web/Windows); also 6000.5.5f1; Unity Hub installed |
-| Unity CLI | `unity` 1.0.0-beta.5 at `%LOCALAPPDATA%\Unity\bin\unity.exe` — `open`, `build`, `test`, `run`, `status`, `mcp`, `pipeline`, `command`, `skill` |
-| Live Editor connection | `unity status` lists no connected Editor |
-| Unity Pipeline / MCP | No Pipeline or MCP package in `Packages/manifest.json`; no Unity MCP server configured for Claude |
+| Unity Editor | 6000.2.10f1 (`C:\Program Files\Unity\Hub\Editor\6000.2.10f1`, modules Web/Windows) |
+| Unity CLI | `unity` 1.0.0-beta.5 (`%LOCALAPPDATA%\Unity\bin\unity.exe`) |
+| Unity Pipeline | `com.unity.pipeline` **0.9.1-exp.1** installed (commit `b591fc3`; experimental; it also raised `com.unity.nuget.mono-cecil` to 1.11.6). Whether it is stripped from WebGL builds is unverified. |
+| Claude ↔ Editor | Official Unity plugin for Claude Code (`unity@claude-plugins-official`, skills only) + Pipeline: `unity status` shows the open Editor `ready`; `unity command "<group> <name>"` drives it. Quote the command name as one argument (unquoted names log Console errors). Use `script eval_file` for C# containing backslashes. |
+| Quirks | The Editor refreshes packages/scripts only when focused: use `unity command "script recompile"`. Editing a scene file on disk while it is open triggers a blocking "modified externally → Reload" dialog. |
 
-**Setup needed for Claude to drive Unity directly** (not performed; needs owner approval): add Unity's Pipeline/MCP integration package (exact package ID to be confirmed from Unity's documentation); open the project in 6000.2.10f1; register the MCP server for Claude Code (`unity mcp` / `unity skill`). `unity test` / `unity build` run in batch mode and cannot run while the project is open in another Editor.
+### 13.2 Test mode (isolation from participants)
+
+Compiled only into the **Editor and Development builds** (`#if UNITY_EDITOR || DEVELOPMENT_BUILD`); Release code paths are the original lines. Verified at runtime in Editor Play Mode and a local WebGL Development build:
+
+| Concern | Test mode | Release |
+|---|---|---|
+| Photon matchmaking (`Launcher.cs`) | AppVersion **`uxtest_2.42`** (copy of the settings, same App ID and region `eu`) | `_2.42` |
+| Unity Services (`DatabaseManager.cs`) | Environment **`development`**, auth profile **`uxtest`**; on failure nothing is saved (no fallback) | `production`, profile `default` |
+| Survey redirect (`Config.RedirectToSurvey`) | Suppressed; logs `TEST MODE: survey redirect suppressed` | Opens panel4all |
+| Visual marker (`TestModeBadge.cs`) | Red "TEST MODE - not research data" badge, top-right | Not compiled |
+
+**Two-client recipe:** Editor Play Mode (from `MainScene`) + a WebGL Development build served on `127.0.0.1` (the project uses Brotli without decompression fallback; a plain local server needs a build with compression temporarily disabled, then restore Brotli and confirm `ProjectSettings` is unchanged). Use test URL parameters such as `?userID=TEST_x&surveyID=TEST_y`. Browser-automation limits: the WebGL player pauses when its tab is hidden (`runInBackground` off); keystrokes do not reach Unity's legacy `InputField` (set the name via `unityInstance.SendMessage("NameField","set_text",…)` from a test page); clicks need a press-and-release with a small move. Never press Next simultaneously on both clients (known deadlock).
+
+### 13.3 Release checklist (participant builds)
+
+Not yet performed or verified on any build. Before deploying to participants:
+
+1. Build with the **Release** profile (`Assets/Settings/Build Profiles/Web - Desktop - Release`) and **Development Build OFF**. The current Editor WebGL platform setting has Development Build **ON**, and the previously deployed itch.io build showed a "Development Build" label — a Development build now runs in **test mode** (separate Photon pool, `development` data, no survey redirect).
+2. Launch the release build once (without real participants): the **TEST MODE badge must be absent** and the browser console must **not** contain `TEST MODE:` lines.
+3. Confirm production services: Photon AppVersion `_2.42` and Unity Services environment `production` (e.g. via a short check on a non-public URL before announcing).
+4. Never publish a Development or test build to participants, and never reuse a test build URL for recruiting.
+5. Record the build profile, commit hash and deployment date with the research team.
 
 ---
 
@@ -278,7 +299,7 @@ Authoritative list: [Reference §14](CUT_AND_CHOOSE_REFERENCE.md#14-research-inv
 - Round Robin exists (`RRScene`, `RRScripts`) but is unreachable from the active lobby and was not analyzed.
 - "If cuts overlap, a predefined selection process resolves the division" — the code always applies 1-2-1; the hook (`isIntuitive`) is a stub.
 
-**Unknown:** deployed WebGL host and build settings; production Photon configuration; whether winnings are real currency; how Cloud Save records are exported and joined to survey IDs; whether anonymous sign-in reuses a player ID in the same browser (possible key overwrite on repeat play); whether `Start()` order — and therefore cell keys — is identical on both clients.
+**Unknown:** deployed WebGL host and which build profile was used (it showed a "Development Build" label); whether winnings are real currency; how Cloud Save records are exported and joined to survey IDs; whether anonymous sign-in reuses a player ID in the same browser (possible key overwrite on repeat play); whether cell keys always match between clients (they matched — keys 0–473 — in the 2026-11-01 two-client run).
 
 **Open questions for the research owners:**
 1. Should the Player 1 role (first chooser, receives the remainder) and valuation profile 1 stay fixed per participant for all rounds, or be counterbalanced?
@@ -313,3 +334,33 @@ Authoritative list: [Reference §14](CUT_AND_CHOOSE_REFERENCE.md#14-research-inv
 | Prefabs | `Assets/Objects/*.prefab`, `Assets/Objects/CutUtilsObj/RandArrays.prefab` |
 | Packages / versions | `Packages/manifest.json`, `Packages/packages-lock.json`, `ProjectSettings/ProjectVersion.txt`, `ProjectSettings/EditorBuildSettings.asset` |
 | Project description | `README.md` |
+
+---
+
+## 17. Current Status and Handoff
+
+**As of 2026-11-01.** Work branch `feat/ux-batch-1` (pushed; not merged; no PR), based on `tooling/unity-pipeline` (Pipeline package + docs), itself based on `AITutorial`. `main` is untouched. Owner priority: **player UX with minimum regression risk; no general refactoring.** Agents may commit and push feature branches; agents never merge into `main` or push to it.
+
+**UX Batch 1 — done** (IDs from the owner's UX report; display-only, no scoring/networking/saving changes):
+
+| ID | Change | Runtime evidence (two-client smoke test, test mode) |
+|---|---|---|
+| UX-002 | Hebrew notes show numbers/% and brackets correctly (`Manager.PrepareRtlNote`; tutorial intro text "50%" fixed) | PASS — "(…50%)", colour legend, "38.1%" results in Editor and WebGL |
+| UX-008 | Next moved away from Cut/Submit (top-right) | PASS |
+| UX-009 | End-of-round results shown with one decimal; stored/payment values unrounded | PASS — shown 48.3%, stored 48.27935 (read back from `development`) |
+| UX-011 | Round label larger, bold, readable | PASS |
+| UX-015 | Lobby panel (title, 3 steps) and "Room N (k/2 players)" labels | PASS — occupancy updated live |
+| UX-020 | Notes auto-size to stay inside the note paper | PASS |
+| UX-023 | Readable loading text; clearer messages; room-full message | PARTIAL — room-full path untested |
+| UX-027 | Name field accepts digits and underscores | PARTIAL — value set programmatically (browser typing limit); real keyboard untested |
+
+Also verified in that run: practice vs PC on both clients, 1-2-1 selection across clients with identical region maps, round 1 → round 2 progression, Cloud Save writes only to `development`.
+
+**Known issues / not yet verified:**
+- Stale note: the second player to cut sees "wait for the other player to cut" after both cuts (`Player.CutView` writes it after `setAllState`) — pre-existing.
+- The CutScene/tutorial **Help Page** static Hebrew text still shows "%50" (instruction text; candidate for Batch 2, needs owner approval of wording/visual changes).
+- Room-full message, real keyboard name entry, a full six-round run (including `EndGameFlow` and the suppressed redirect at the end) and **any Release build** are unverified.
+- Exposed historical service-account credentials in `UnityCloudDataScraper.cs` still need owner review/rotation (§11).
+- Open research questions: §15.
+
+**Next planned batch (Batch 2):** tutorial and instruction improvements (help page, tutorial panels, in-game instructions). Instruction wording is participant-facing protocol: get research-owner approval before changing it.

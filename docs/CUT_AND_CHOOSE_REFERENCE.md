@@ -2,7 +2,7 @@
 
 > Detailed implementation reference for the core algorithm. For the project overview, experiment schedule, data schema and environment see [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md); this file does not repeat them.
 >
-> **Last verified:** 2026-11-01, branch `AITutorial` @ `d1cc192`, static code and scene-data inspection only (Unity was not run). Evidence tags follow PROJECT_CONTEXT: **[Verified]**, **[Inferred]**, **[Unknown]**. Paths are relative to `Assets/Script/` unless stated otherwise.
+> **Last verified:** 2026-11-01 — static inspection on `AITutorial` @ `d1cc192`, plus one two-client runtime smoke test on `feat/ux-batch-1` (see PROJECT_CONTEXT §17). Batch 1 changed display only; the rules, sync and persistence described here are unchanged. Evidence tags follow PROJECT_CONTEXT: **[Verified]**, **[Inferred]**, **[Unknown]**. Paths are relative to `Assets/Script/` unless stated otherwise.
 
 ## Contents
 
@@ -374,6 +374,7 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 - **Mechanism** [Verified]: `PointOfState.myKey = key++` in `Start`, with `key` a static field that is never reset; in a player build, static state persists across scene loads for the whole browser session.
 - **Practice offset** [Verified scene data]: in `CutSceneAITutorial.unity`, the 71 Tyrone cells have **both** `PointOfState` and `PointOfStateAITutorial`. Their `PointOfState.Start` consumes keys 0–70 during practice.
 - **Consequence** [Inferred]: in real round r (0-based) cell keys are approximately `71 + 474·r … 71 + 474·r + 473`, provided the client ran practice once and `Start` order is the same. `Unknown`: Unity does not document `Start` order as deterministic across clients.
+- **Runtime observation (2026-11-01, Editor + WebGL Development build):** after practice, round 1 keys on the Editor client were `0…473` (the +71 offset did **not** occur), and both clients showed identical region maps. So the drift did not appear in this run; the mechanism above remains a risk for any change to scene composition or load order.
 - **Why it matters**: the `Cut` RPC sends the sender's key → status map, and `createSumRGYB` looks up `player1[myKey]` and `player2[myKey]` using the receiver's keys. Different offsets → `KeyNotFoundException` (round cannot proceed); same range but different order → **silently different regions on each client**, so each player's percentages refer to a different allocation. Nothing detects this.
 - **Data impact**: `playerCutSquares` keys are not stable cell IDs across rounds, sessions or players. County + status per key remain usable (counties are value-uniform), cell geometry is not recoverable.
 - **Triggers to avoid**: adding/removing/reordering `PointOfState` objects in any scene a client loads before or during the rounds, skipping or repeating practice for one player, adding scenes with `PointOfState`, reloading a round on one client only.
@@ -455,5 +456,6 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 | Cloud Save initialization or save fails | Logged only; data lost | Verified |
 | Submit without a line / zero-length line | 100/0 cut or arbitrary split; drawing still possible after submit | Inferred |
 | Empty or fragmented regions | Selectable, 0% if empty | Inferred |
-| Cell keys differ between clients | Exception or silently inconsistent allocation (§13.1) | Inferred |
+| Cell keys differ between clients | Exception or silently inconsistent allocation (§13.1) | Inferred (not observed 2026-11-01) |
+| Second player to cut | After both cuts, sees "wait for the other player to cut" instead of the colour legend (`CutView` sets that note after `setAllState`) | Observed 2026-11-01 |
 | Repeat play without page reload | Stale `RandArrays` used for payment | Inferred |
