@@ -108,8 +108,13 @@ public class Config : MonoBehaviour
     {
         string status = isFinish ? "finish" : "filterout";
         string url = $"http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID={surveyID}&userID={userID}&status={status}&winnings={winnings}";
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Test isolation: never report a test session to the survey panel.
+        Debug.Log("TEST MODE: survey redirect suppressed (status=" + status + ").");
+#else
         Debug.Log("Redirecting to survey URL: " + url);
         Application.OpenURL(url);
+#endif
         return true;
     }
 

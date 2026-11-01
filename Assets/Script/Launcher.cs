@@ -61,7 +61,16 @@ public class Launcher : MonoBehaviourPunCallbacks
             //PhotonNetwork.AutomaticallySyncScene = true;
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // Test isolation: Editor and Development builds join a separate Photon matchmaking pool
+            // (same App ID and region, different AppVersion) so tests never meet research participants.
+            AppSettings testSettings = PhotonNetwork.PhotonServerSettings.AppSettings.CopyTo(new AppSettings());
+            testSettings.AppVersion = "uxtest";
+            PhotonNetwork.ConnectUsingSettings(testSettings);
+            Debug.Log("TEST MODE: Photon AppVersion = " + PhotonNetwork.AppVersion);
+#else
             PhotonNetwork.ConnectUsingSettings();
+#endif
         }
         else
         {
