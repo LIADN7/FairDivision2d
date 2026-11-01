@@ -556,13 +556,13 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     private string getExplanationPlayer(int color, float value)
     {
         string[] strColors = { "Red", "Green", "Yellow", "Blue" };
-        return "" + strColors[color] + " with value: " + value + "%\n";
+        return "" + strColors[color] + " with value: " + value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "%\n";
     }
 
     private string getExplanationPlayerRTL(int color, float value)
     {
         string[] strColors = { "אדום", "ירוק", "צהוב", "כחול" };
-        string valueText = new string(value.ToString().Reverse().ToArray());
+        string valueText = new string(value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Reverse().ToArray());
         return "" + strColors[color] + " בערך: " + valueText + "%\n";
     }
 

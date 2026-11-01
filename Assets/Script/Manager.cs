@@ -125,7 +125,8 @@ public class Manager : MonoBehaviour
 
     public void setEndGameLayer(float sum,bool isReelGame=true)
     {
-        this.textEndGameStatus.text = "You get total: " + sum + "%";
+        // Display only: one decimal. The unrounded sum is still passed to RandArrays below.
+        this.textEndGameStatus.text = "You get total: " + sum.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "%";
         this.viewTotalValueEndGame.SetActive(true);
         NextButton.SetActive(true);
         this.cutBt.SetActive(false);
