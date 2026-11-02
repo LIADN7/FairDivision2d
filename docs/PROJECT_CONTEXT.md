@@ -2,7 +2,7 @@
 
 > Overview for developers and AI agents joining the project. The full implementation reference for the core algorithm — cells, cuts, regions, selection, synchronization, state machines, dependency map, coupling risks and research invariants — is **[CUT_AND_CHOOSE_REFERENCE.md](CUT_AND_CHOOSE_REFERENCE.md)**. This file does not repeat it.
 >
-> **Last verified:** 2026-11-02 on `dev` after the Batch 2 merge `0f3f99d` (earlier baseline `1f7b01d`): static inspection plus Editor checks through Unity Pipeline and one two-client smoke test in test mode. **New agent? Start with [§17 Current Status and Handoff](#17-current-status-and-handoff).**
+> **Last verified:** 2026-11-02 on `dev` after the Batch 3 merge `8b29582` (earlier baselines `0f3f99d`, `1f7b01d`): static inspection plus Editor checks through Unity Pipeline and two-client tests in test mode. **New agent? Start with [§17 Current Status and Handoff](#17-current-status-and-handoff).**
 >
 > **Evidence tags used in both documents**
 > - **[Verified]** — confirmed in C# source or serialized scene/prefab data.
@@ -339,7 +339,7 @@ Authoritative list: [Reference §14](CUT_AND_CHOOSE_REFERENCE.md#14-research-inv
 
 ## 17. Current Status and Handoff
 
-**As of 2026-11-02.** UX Batches 1 and 2 are accepted by the owner and merged into the shared integration branch **`dev`** (created from `AITutorial` `d1cc192`; Batch 1: merge commit `44772cb` of `feat/ux-batch-1` `56dfd5b`, which contains `tooling/unity-pipeline`; Batch 2: merge commit `0f3f99d` of `feat/ux-batch-2` `d78dd4c`). Start new batches from `dev`. `main` is untouched and human-controlled; before any `main` integration a full regression run (including six rounds) and Release validation (§13.3) are required. Owner priority: **player UX with minimum regression risk; no general refactoring.** Agent Git rules: `CLAUDE.md`.
+**As of 2026-11-02.** UX Batches 1–3 are accepted by the owner and merged into the shared integration branch **`dev`** (created from `AITutorial` `d1cc192`; Batch 1: merge commit `44772cb` of `feat/ux-batch-1` `56dfd5b`, which contains `tooling/unity-pipeline`; Batch 2: merge commit `0f3f99d` of `feat/ux-batch-2` `d78dd4c`; Batch 3: merge commit `8b29582` of `feat/ux-batch-3` `663c56f`). Start new batches from `dev`. `main` is untouched and human-controlled; before any `main` integration a full regression run (including six rounds) and Release validation (§13.3) are required. Owner priority: **player UX with minimum regression risk; no general refactoring.** Agent Git rules: `CLAUDE.md`.
 
 **UX Batch 1 — done** (IDs from the owner's UX report; display-only, no scoring/networking/saving changes):
 
@@ -370,21 +370,26 @@ Verified in test mode (Editor + WebGL Development): practice on both roles, full
 
 Note for agents: all Hebrew TMP text uses the `segoeui SDF Hebrew` material, whose face colour is green (0.55, 1, 0.14) — vertex colours are multiplied by it (white text renders green). Digits/punctuation come from the TMP fallback font.
 
+**UX Batch 3 — done** (accepted and merged into `dev` 2026-11-02, merge commit `8b29582`). Owner-approved wording; presentation only (no RPC, scoring, data or condition changes). Both scenes and the practice forks.
+
+| ID | Change |
+|---|---|
+| B3-A | `CutView` shows "wait for the other player's cut" only while that cut is missing (fixes the stale note for the second cutter). Display-only turn label (`TurnLabelPlate`/`TurnLabelRTL` under `ViewAfterCut`) derived from role and `chooseNum`, updated in `setAllState`/`Choose`/`GetValues`. Approved turn notes ("המחשב" in practice). The final breakdown stays visible: `SetNoteForOtherPlayer` ignores notes once `chooseNum >= 3`, and the second chooser no longer writes a local note after `GetValues`. |
+| UX-003 / UX-006 / UX-024 | Hebrew TMP label per region button (`buttonsValueTextRTL`; legacy `Text` kept hidden and still written): "חלק N - צבע" + "שווה לכם: x.xx%" (two decimals, display only), taken/remainder states, X/O no longer shown. Cut readouts "הצד האדום/הירוק" (precision unchanged), Info readouts "שווה לשחקן השני:" (F5). Value caption under the buttons (choose phase). Lighter blue button and subtler disabled tint. |
+| B3-B / B3-C | `CutBT` is a rounded text-first button (built-in UISprite, Help-page cyan), outside the map drawing area and the region-button slots; Button/OnClick unchanged. |
+| UX-022 | County labels darker with a white `Outline`; Hebrew legend title and levels; `EndGameStatusObject` centre-anchored (no note overlap at 960×600). |
+
+Verified in test mode (Editor 1600×900 + WebGL Development 960×600): practice in both roles, round 1 (Player 2 cuts first), round 2 (Player 1 cuts first), round 3 Info see-other readouts; region values, ownership and the Player 2 record consistent across clients; saves only to `development`. Not run: rounds 4–6, Chat, EndGameFlow.
+
 **Known issues / not yet verified:**
-- Stale note: the second player to cut sees "wait for the other player to cut" after both cuts (`Player.CutView` writes it after `setAllState`) — pre-existing.
-- End-of-choice note: in real rounds the per-colour breakdown is immediately overwritten by "Player 1 got the last remaining part" / "You got the last remaining part" — pre-existing (observed 2026-11-02).
-- Region buttons, cut readouts, "You get total", "Taken By Player" and the round label are still English legacy `Text` set from code (Hebrew needs component swaps; deferred).
+- **CONFIRMED (2026-11-02, test mode): Player 2's heat shading switches to Player 1's valuation after both cuts** (choose phase and result), in Normal, Info and practice; Player 1 is unaffected. Cause: `createSumRGYB` calls `setSpriteStatus(status, 1)` (`Player.cs`, `PlayerAITutorial.cs`), while `PointOfState.setSpriteStatus` treats `iPower == currentPlayerNum` as "own values" since `45bb1e8` (2026-07-31). Visual only: region percentages, scores, saved records and payment use `getMyVal(own)` (independently checked). **Not fixed — needs separate owner/research approval** (research-information impact). See [Reference §15](CUT_AND_CHOOSE_REFERENCE.md#15-edge-cases-and-failure-scenarios).
+- Hypothesis (unverified): after returning to `MainScene` while still connected (e.g. Home), `Launcher.Awake` re-sets `GameVersion = "0.0.1"`, so a later re-authentication may use AppVersion `0.0.1_2.42` instead of `uxtest_2.42` (an Editor session read `0.0.1_2.42`). Not the production pool, but test isolation should not be assumed after a lobby return.
+- Cut readouts, "You get total" and the round label are still English legacy `Text` (region buttons are Hebrew since Batch 3). Help Page images still show English "Low/High".
 - `EndGameFlow` intro text: the first lines are clipped at the top of the screen — pre-existing.
 - Room-full message, real keyboard name entry and **any Release build** are unverified.
 - Exposed historical service-account credentials in `UnityCloudDataScraper.cs` still need owner review/rotation (§11).
 - Open research questions: §15.
 
-**UX Batch 3 backlog** (owner-approved deferrals from Batch 2; plan only, not implemented):
+Test-tool notes: WebGL clicks need a hover before the press (Unity reads the last mouse-move position, so a bare press can start a line at the old cursor position); Editor `capture game_view` must save under the project and lands in `Assets/Temp` — move the file out and delete that folder via `AssetDatabase.DeleteAsset`.
 
-| ID | Issue | Expected improvement |
-|---|---|---|
-| B3-A | Player 1 may lack a clear instruction when it becomes their turn to choose a region (after Player 2's first pick / at the start of choosing). | Clear, role-aware turn guidance. New or changed note wording is participant-facing: get owner approval of the exact Hebrew text. |
-| B3-B | The Hebrew "אישור החלוקה" label on `CutBT` extends outside the confirmation button and approaches the note panel. | Fit the label inside an appropriately sized button. |
-| B3-C | The cut confirmation button (`CutBT`, scissors sprite) is visually unclear. | Improve clarity with existing UI assets, without changing the interaction (still calls `Player.CutView`). |
-
-**Next:** a new session starts from `dev` and plans UX Batch 3 (items above plus any owner additions) on a new feature branch. Instruction wording is participant-facing protocol: get research-owner approval before changing it.
+**Next:** UX Batch 4 (cut interaction and feedback: UX-001, UX-004, UX-019, UX-021, UX-026) — plan only, awaiting owner approval; start it on a new feature branch from `dev`. The shading correction is a separate owner decision. Instruction wording is participant-facing protocol: get research-owner approval before changing it.

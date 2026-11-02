@@ -113,7 +113,7 @@ When both entries of `playerCut[]` are true, each client independently runs `Pla
 | 3 | Yellow | Red | Green | 2 `BackYellowValue` | Part 3 (O) | `RedO` |
 | 4 | Blue | Green | Red | 3 `BackBlueValue` | Part 4 (X) | `GreenX` |
 
-Side effects of `createSumRGYB`: recolors every cell (`setSpriteStatus(status, 1)`), stores per-region cell counts (`AmountOfColor`) in the record. The comment in `PointOfState.setSpriteStatus` swaps Yellow/Blue; `createSumRGYB` is authoritative.
+Side effects of `createSumRGYB`: recolors every cell (`setSpriteStatus(status, 1)`), stores per-region cell counts (`AmountOfColor`) in the record. The comment in `PointOfState.setSpriteStatus` swaps Yellow/Blue; `createSumRGYB` is authoritative. Because `setSpriteStatus` treats its second argument as a **player number** (`iPower == currentPlayerNum` → own shading, since `45bb1e8`), the literal `1` makes **Player 2's heat shading show Player 1's valuation** from this point on (confirmed at runtime 2026-11-02; see §15). The region status and all sums are unaffected: `val = getMyVal(j)` with `j` = local player.
 
 Regions are color classes, not connected shapes. They can be empty (lines that do not cross inside the map, identical cuts) or fragmented by the map outline; all four buttons are always offered [Inferred]. The README's "overlap" special case is not implemented — `isIntuitive` (L364) always returns false.
 
@@ -441,6 +441,7 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 4. Identical map and valuations in all six rounds — intended?
 5. Payment formula and currency confirmation.
 6. Required behavior on disconnect or Home (currently: session ends for both, round unsaved).
+7. Player 2's heat shading during choosing shows Player 1's valuation (§15): approve a correction, and decide how to treat data collected with builds that include `45bb1e8`.
 
 ---
 
@@ -457,6 +458,8 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 | Submit without a line / zero-length line | 100/0 cut or arbitrary split; drawing still possible after submit | Inferred |
 | Empty or fragmented regions | Selectable, 0% if empty | Inferred |
 | Cell keys differ between clients | Exception or silently inconsistent allocation (§13.1) | Inferred (not observed 2026-11-01) |
-| Second player to cut | After both cuts, sees "wait for the other player to cut" instead of the colour legend (`CutView` sets that note after `setAllState`) | Observed 2026-11-01 |
+| Second player to cut | Before Batch 3: after both cuts, saw "wait for the other player to cut" instead of the turn note (`CutView` set that note after `setAllState`). Fixed in Batch 3 (`dev` `8b29582`): the note is shown only while the other cut is missing | Observed 2026-11-01; fix verified in test mode (both cut orders) |
+| End of choosing | Before Batch 3: the result breakdown was overwritten by "…last remaining part" notes. Fixed in Batch 3: `SetNoteForOtherPlayer` ignores notes once `chooseNum >= 3` | Fix verified in test mode on both clients |
+| Player 2 heat shading after both cuts | Switches from Player 2's to **Player 1's** valuation (overlay colour) for the choose phase and result, in Normal, Info and practice; Player 1 unaffected; county titles, region %, scores, records and payment still use Player 2's own values. Cause: `createSumRGYB` → `setSpriteStatus(status, 1)` with player-number semantics (`45bb1e8`, 2026-07-31). Before `45bb1e8` the literal `1` meant "own", but Player 2's Info "see other" view would then have shown its own shading [Inferred from history]. **Not fixed — owner/research decision** | Confirmed 2026-11-02 (overlay colours vs. both valuations, 8 distinguishing counties) |
 | Repeat play without page reload | Stale `RandArrays` used for payment | Inferred |
 | Help Page closed after the cut (Info rounds) | Before Batch 2: `SeeOtherPlayerBT` reappeared; one click showed the opponent's heat map and region values during choosing and added to `CountPlayerSeeOther`. Fixed in Batch 2 (`dev` `0f3f99d`): hidden layers are restored to their pre-open state and `getOtherView` is a no-op after the own cut | Observed 2026-11-02; fix verified in test mode |
