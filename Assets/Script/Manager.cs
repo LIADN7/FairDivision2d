@@ -167,7 +167,8 @@ public class Manager : MonoBehaviour
     // textNoteRTL is a TextMeshPro text with "Right To Left" enabled, which mirrors the whole string.
     // Display only: pre-reverse number runs ("50%", "30.1%") so they read left-to-right, and swap
     // brackets so they are mirrored. Single digits and Hebrew words are unaffected.
-    private static string PrepareRtlNote(string text)
+    // Also used by Player / PlayerAITutorial for the Hebrew region-button labels.
+    public static string PrepareRtlNote(string text)
     {
         if (string.IsNullOrEmpty(text))
         {

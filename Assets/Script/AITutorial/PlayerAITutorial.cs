@@ -9,6 +9,7 @@ using System.Linq;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using TMPro;
 //using static UnityEditor.Experimental.GraphView.GraphView;
 
 
@@ -23,6 +24,13 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     [SerializeField] protected Text chatText;
     [SerializeField] protected InputField chatInput;
     [SerializeField] protected GameObject[] colorsValueObj; // {red, green, yellow, blue}
+    // Display only: Hebrew labels shown on the region buttons (the legacy buttonsValueText stay hidden but are still written)
+    [SerializeField] protected TextMeshProUGUI[] buttonsValueTextRTL; // {red, green, yellow, blue}
+    // Display only: turn status under the region buttons, derived from the role and chooseNum
+    [SerializeField] protected Image turnLabelPlate;
+    [SerializeField] protected TextMeshProUGUI turnLabelRTL;
+    private static readonly string[] regionNamesRTL = { "חלק 1 - אדום", "חלק 2 - ירוק", "חלק 3 - צהוב", "חלק 4 - כחול" };
+    private static readonly string[] cutSideNamesRTL = { "הצד האדום", "הצד הירוק" };
 
 
     private float[] sumPlayer = { 0f, 0f }; // sum of all the squares for player 1 and 2 -> {1, 2}
@@ -414,6 +422,10 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         buttonsValueText[1].text = "Part 2 (O) value: " + (sumRGYB[1]) + "%";
         buttonsValueText[2].text = "Part 3 (O) value: " + (sumRGYB[2]) + "%";
         buttonsValueText[3].text = "Part 4 (X) value: " + (sumRGYB[3]) + "%";
+        for (int k = 0; k < sumRGYB.Length; k++)
+        {
+            SetRegionLabelRTL(k, "שווה לכם: " + sumRGYB[k].ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%");
+        }
         Manager.inst.initialSeeOtherPlayerBT();
         if (isIntuitive(sumRGYB))
         {
@@ -424,13 +436,69 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
 
             if (playerNum == 1)
             {
-                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease choose one color", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nאנא בחרו חלק אחד");
+                Manager.inst.setNote(-1, "It is your turn to choose one part.\nClick one of the four buttons.\nThe percentage on each button is the part's value to you.", false, "תורכם לבחור חלק אחד.\nלחצו על אחד מארבעת הכפתורים.\nהאחוז בכל כפתור הוא שווי החלק עבורכם.");
             }
             else if (playerNum == 2)
             {
-                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease wait for player 1 to choose one color,\nafter that choose 2 colors", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nהמתינו ששחקן 1 יבחר חלק אחד,\nולאחר מכן בחרו שני חלקים");
+                Manager.inst.setNote(-1, "Please wait for the computer to choose.\nThe computer chooses one part, then it is your turn to choose two parts.\nThe percentage on each button is the part's value to you.", false, "המתינו לבחירת המחשב.\nהמחשב בוחר חלק אחד, ואחר כך תורכם לבחור שני חלקים.\nהאחוז בכל כפתור הוא שווי החלק עבורכם.");
             }
         }
+        UpdateTurnLabel();
+    }
+
+    // Display only: Hebrew region label "חלק N - צבע" plus a second line (value or who took it).
+    private void SetRegionLabelRTL(int i, string secondLine)
+    {
+        SetButtonLabelRTL(i, regionNamesRTL[i] + "\n" + secondLine);
+    }
+
+    // Display only: cut-phase readout on the red/green buttons (0, 1) with the unchanged value precision.
+    private void SetCutSideLabelRTL(int i, string secondLine)
+    {
+        SetButtonLabelRTL(i, (i < cutSideNamesRTL.Length ? cutSideNamesRTL[i] : regionNamesRTL[i]) + "\n" + secondLine);
+    }
+
+    private void SetButtonLabelRTL(int i, string text)
+    {
+        if (buttonsValueTextRTL == null || i < 0 || i >= buttonsValueTextRTL.Length || buttonsValueTextRTL[i] == null)
+        {
+            return;
+        }
+        buttonsValueTextRTL[i].text = Manager.PrepareRtlNote(text);
+    }
+
+    // Display only: turn status derived from the local role and chooseNum. It does not gate any choice.
+    private void UpdateTurnLabel()
+    {
+        if (turnLabelPlate == null || turnLabelRTL == null)
+        {
+            return;
+        }
+        bool isChoosing = isAllTrue() && chooseNum < 3;
+        turnLabelPlate.gameObject.SetActive(isChoosing);
+        if (!isChoosing)
+        {
+            return;
+        }
+        string text = "המתינו לבחירת המחשב";
+        bool isMyTurn = false;
+        if (myPlayerNum == 1 && chooseNum == 0)
+        {
+            text = "תורכם לבחור חלק אחד";
+            isMyTurn = true;
+        }
+        else if (myPlayerNum == 2 && chooseNum == 1)
+        {
+            text = "תורכם לבחור שני חלקים";
+            isMyTurn = true;
+        }
+        else if (myPlayerNum == 2 && chooseNum == 2)
+        {
+            text = "תורכם לבחור חלק אחד נוסף";
+            isMyTurn = true;
+        }
+        turnLabelRTL.text = text;
+        turnLabelPlate.color = isMyTurn ? new Color(1f, 1f, 1f, 0.95f) : new Color(0.75f, 0.75f, 0.75f, 0.85f);
     }
 
 
@@ -491,7 +559,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             ExecuteLocalChoose(i, playerNum);
             buttonsValueText[i].text += " (You)";
 
-            Manager.inst.setNote(-1, "Player 1 choose, please wait for player 2 to pick 2 parts", false, "המתינו ששחקן 2 יבחר שני חלקים");
+            Manager.inst.setNote(-1, "Please wait for the computer to choose.\nThe computer chooses two parts.", false, "המתינו לבחירת המחשב.\nהמחשב בוחר שני חלקים.");
 
             // PC is Player 2 and makes 2 choices after 1s simulated delay
             if (PCPlayerAITutorial.inst != null)
@@ -505,7 +573,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             ExecuteLocalChoose(i, playerNum);
             buttonsValueText[i].text += " (You)";
 
-            Manager.inst.setNote(-1, "Please pick one more part", false, "אנא בחרו חלק אחד נוסף");
+            Manager.inst.setNote(-1, "It is your turn to choose one more part.", false, "תורכם לבחור חלק אחד נוסף.");
         }
         else if (playerNum == 2 && chooseNum == 2)
         {
@@ -543,8 +611,10 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         }
 
         buttonsValueText[i].text = "Taken By Player " + playerNum;
+        SetRegionLabelRTL(i, playerNum == myPlayerNum ? "נבחר על ידכם" : "נבחר על ידי המחשב");
         colorsValueObj[i].GetComponent<Button>().interactable = false;
         chooseNum++;
+        UpdateTurnLabel();
 
         // Internal count check: If exactly 3 pieces have been chosen, automatically assign 4th piece after 0.5s
         if (GetChosenCount() == 3)
@@ -583,6 +653,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         float tempSum = Manager.inst.getSumRGYB(last);
 
         buttonsValueText[last].text = "Taken By Player 1";
+        SetRegionLabelRTL(last, myPlayerNum == 1 ? "החלק שנשאר - שלכם" : "החלק שנשאר - למחשב");
         endExplanationPlayers[p1Index] += getExplanationPlayer(last, tempSum);
         endExplanationPlayersRTL[p1Index] += getExplanationPlayerRTL(last, tempSum);
         choosePlayer[p1Index] += tempSum;
@@ -599,6 +670,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         Manager.inst.setNote(-1, endExplanationPlayers[myPlayerNum - 1], false, endExplanationPlayersRTL[myPlayerNum - 1]);
         Manager.inst.setEndGameLayer(choosePlayer[myPlayerNum - 1],false);
         this.gameDatabase.SumOfMyPart = choosePlayer[myPlayerNum - 1];
+        UpdateTurnLabel();
 
         if (TutorialFplanManager.Instance != null)
         {
@@ -703,11 +775,15 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             {
                 buttonsValueText[0].text = "Other player Part 1: " + ((1 - greenVal) * 100) + "%";
                 buttonsValueText[1].text = "Other player Part 2: " + (greenVal * 100) + "%";
+                SetCutSideLabelRTL(0, "שווה למחשב: " + ((1 - greenVal) * 100) + "%");
+                SetCutSideLabelRTL(1, "שווה למחשב: " + (greenVal * 100) + "%");
             }
             else
             {
                 buttonsValueText[0].text = "Part 1 value: " + ((1 - greenVal) * 100) + "%";
                 buttonsValueText[1].text = "Part 2 value: " + (greenVal * 100) + "%";
+                SetCutSideLabelRTL(0, "שווה לכם: " + ((1 - greenVal) * 100) + "%");
+                SetCutSideLabelRTL(1, "שווה לכם: " + (greenVal * 100) + "%");
             }
             if ((greenVal * 100) == 50)
             {
@@ -813,6 +889,10 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             buttonsValueText[1].text = "Other player val: " + sumRGYB[1].ToString("F5") + "%";
             buttonsValueText[2].text = "Other player val: " + sumRGYB[2].ToString("F5") + "%";
             buttonsValueText[3].text = "Other player val: " + sumRGYB[3].ToString("F5") + "%";
+            for (int k = 0; k < sumRGYB.Length; k++)
+            {
+                SetCutSideLabelRTL(k, "שווה למחשב: " + sumRGYB[k].ToString("F5") + "%");
+            }
         }
 
         Manager.inst.changeSeeOtherPlayerBT();
