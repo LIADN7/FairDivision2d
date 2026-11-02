@@ -2,7 +2,7 @@
 
 > Overview for developers and AI agents joining the project. The full implementation reference for the core algorithm — cells, cuts, regions, selection, synchronization, state machines, dependency map, coupling risks and research invariants — is **[CUT_AND_CHOOSE_REFERENCE.md](CUT_AND_CHOOSE_REFERENCE.md)**. This file does not repeat it.
 >
-> **Last verified:** 2026-11-02 on branch `feat/ux-batch-2` (Batch 2; earlier baseline `1f7b01d`): static inspection plus Editor checks through Unity Pipeline and one two-client smoke test in test mode. **New agent? Start with [§17 Current Status and Handoff](#17-current-status-and-handoff).**
+> **Last verified:** 2026-11-02 on `dev` after the Batch 2 merge `0f3f99d` (earlier baseline `1f7b01d`): static inspection plus Editor checks through Unity Pipeline and one two-client smoke test in test mode. **New agent? Start with [§17 Current Status and Handoff](#17-current-status-and-handoff).**
 >
 > **Evidence tags used in both documents**
 > - **[Verified]** — confirmed in C# source or serialized scene/prefab data.
@@ -339,7 +339,7 @@ Authoritative list: [Reference §14](CUT_AND_CHOOSE_REFERENCE.md#14-research-inv
 
 ## 17. Current Status and Handoff
 
-**As of 2026-11-01.** UX Batch 1 is accepted by the owner and merged into the shared integration branch **`dev`** (created from `AITutorial` `d1cc192`; merge commit `44772cb` of `feat/ux-batch-1` `56dfd5b`, which contains `tooling/unity-pipeline`). Start new batches from `dev`. `main` is untouched and human-controlled; before any `main` integration a full regression run (including six rounds) and Release validation (§13.3) are required. Owner priority: **player UX with minimum regression risk; no general refactoring.** Agent Git rules: `CLAUDE.md`.
+**As of 2026-11-02.** UX Batches 1 and 2 are accepted by the owner and merged into the shared integration branch **`dev`** (created from `AITutorial` `d1cc192`; Batch 1: merge commit `44772cb` of `feat/ux-batch-1` `56dfd5b`, which contains `tooling/unity-pipeline`; Batch 2: merge commit `0f3f99d` of `feat/ux-batch-2` `d78dd4c`). Start new batches from `dev`. `main` is untouched and human-controlled; before any `main` integration a full regression run (including six rounds) and Release validation (§13.3) are required. Owner priority: **player UX with minimum regression risk; no general refactoring.** Agent Git rules: `CLAUDE.md`.
 
 **UX Batch 1 — done** (IDs from the owner's UX report; display-only, no scoring/networking/saving changes):
 
@@ -356,7 +356,7 @@ Authoritative list: [Reference §14](CUT_AND_CHOOSE_REFERENCE.md#14-research-inv
 
 Also verified in that run: practice vs PC on both clients, 1-2-1 selection across clients with identical region maps, round 1 → round 2 progression, Cloud Save writes only to `development`.
 
-**UX Batch 2 — implemented on `feat/ux-batch-2` (2026-11-02), awaiting owner review; not merged into `dev`.** Owner-approved wording; details and old/new texts in the batch report.
+**UX Batch 2 — done** (accepted and merged into `dev` 2026-11-02, merge commit `0f3f99d`). Owner-approved wording; details and old/new texts in the batch report.
 
 | ID | Change |
 |---|---|
@@ -379,4 +379,12 @@ Note for agents: all Hebrew TMP text uses the `segoeui SDF Hebrew` material, who
 - Exposed historical service-account credentials in `UnityCloudDataScraper.cs` still need owner review/rotation (§11).
 - Open research questions: §15.
 
-**Next:** owner review of Batch 2 on `feat/ux-batch-2`; merge into `dev` only after approval. Instruction wording is participant-facing protocol: get research-owner approval before changing it.
+**UX Batch 3 backlog** (owner-approved deferrals from Batch 2; plan only, not implemented):
+
+| ID | Issue | Expected improvement |
+|---|---|---|
+| B3-A | Player 1 may lack a clear instruction when it becomes their turn to choose a region (after Player 2's first pick / at the start of choosing). | Clear, role-aware turn guidance. New or changed note wording is participant-facing: get owner approval of the exact Hebrew text. |
+| B3-B | The Hebrew "אישור החלוקה" label on `CutBT` extends outside the confirmation button and approaches the note panel. | Fit the label inside an appropriately sized button. |
+| B3-C | The cut confirmation button (`CutBT`, scissors sprite) is visually unclear. | Improve clarity with existing UI assets, without changing the interaction (still calls `Player.CutView`). |
+
+**Next:** a new session starts from `dev` and plans UX Batch 3 (items above plus any owner additions) on a new feature branch. Instruction wording is participant-facing protocol: get research-owner approval before changing it.
