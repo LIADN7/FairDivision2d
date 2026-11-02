@@ -595,7 +595,7 @@ public class Player : MonoBehaviourPunCallbacks
             // p.setChildText(colorText);
             sumRGYB[spriteStatus - 1] += val;
             statusCounter[spriteStatus - 1]++;
-            p.setSpriteStatus(spriteStatus, 1);
+            p.setSpriteStatus(spriteStatus, j);
 
         }
         this.gameDatabase.SetAmountOfColor(statusCounter);
