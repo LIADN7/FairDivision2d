@@ -37,7 +37,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     [SerializeField] protected SumSquaresAITutorial[] stateObjects; // All the state obj with square childs
     private int chooseNum = 0;
     private string[] endExplanationPlayers = { "You get:\n", "You get:\n" };
-    private string[] endExplanationPlayersRTL = { "קיבלת:\n", "קיבלת:\n" };
+    private string[] endExplanationPlayersRTL = { "קיבלתם:\n", "קיבלתם:\n" };
     private bool[] playerCut = { false, false };
     private bool[] palyersGameOver = { false, false };
 
@@ -54,7 +54,9 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         string palyerId = PhotonNetwork.IsMasterClient ? "Player 1" : "Player 2";
         this.myPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         PCPlayerAITutorial.inst.pcPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
-        palyerName.text = PhotonNetwork.NickName + ", " + palyerId + "\nThis is round number " + ((int)(Config.inst.getRoundNumber()) + 1);
+        // Display only: the second line shows the Hebrew "practice round" label (PracticeRoundLabelRTL in the scene)
+        // instead of "This is round number 1". Config round numbers are unchanged.
+        palyerName.text = PhotonNetwork.NickName + ", " + palyerId + "\n ";
         if (PhotonNetwork.IsMasterClient)
         {
             view.RPC("InitSquares", RpcTarget.AllBufferedViaServer);
@@ -422,11 +424,11 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
 
             if (playerNum == 1)
             {
-                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease choose one color", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nאנא בחרו צבע אחד");
+                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease choose one color", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nאנא בחרו חלק אחד");
             }
             else if (playerNum == 2)
             {
-                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease wait for player 1 to choose one color,\nafter that choose 2 colors", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nהמתינו ששחקן 1 יבחר צבע אחד,\nולאחר מכן בחרו שני צבעים");
+                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease wait for player 1 to choose one color,\nafter that choose 2 colors", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nהמתינו ששחקן 1 יבחר חלק אחד,\nולאחר מכן בחרו שני חלקים");
             }
         }
     }
@@ -489,7 +491,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             ExecuteLocalChoose(i, playerNum);
             buttonsValueText[i].text += " (You)";
 
-            Manager.inst.setNote(-1, "Player 1 choose, please wait for player 2 to pick 2 parts", false, "שחקן 1 בחר, המתינו ששחקן 2 יבחר שני חלקים");
+            Manager.inst.setNote(-1, "Player 1 choose, please wait for player 2 to pick 2 parts", false, "המתינו ששחקן 2 יבחר שני חלקים");
 
             // PC is Player 2 and makes 2 choices after 1s simulated delay
             if (PCPlayerAITutorial.inst != null)
@@ -564,7 +566,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         string[] strColors = { "אדום", "ירוק", "צהוב", "כחול" };
         // Digit order in the RTL note is handled by Manager.PrepareRtlNote; no manual reversal here.
         string valueText = value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
-        return "" + strColors[color] + " בערך: " + valueText + "%\n";
+        return "" + strColors[color] + ": " + valueText + "%\n";
     }
 
     /// <summary>

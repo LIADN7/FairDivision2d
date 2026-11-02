@@ -45,7 +45,7 @@ public class EndGamePlayerDataManager : MonoBehaviour
         {
             winningsText.text = $"You won: {amount} ₪ from round " + (roundIndex + 1);
             string valueText = new string(amount.ToString().Reverse().ToArray());
-            winningsTextRTL.text = $"ניצחת: {valueText} ₪ מהסיבוב " + (roundIndex + 1);
+            winningsTextRTL.text = $"הזכייה שלכם: {valueText} ₪ מהסיבוב " + (roundIndex + 1);
 
         }
     }
