@@ -571,6 +571,11 @@ public class Player : MonoBehaviourPunCallbacks
     // This method is used to retrieve the other player's Heatmap.
     public void getOtherView()
     {
+        // Info rule: the other player's valuation may be viewed only before this player's own cut.
+        if (!Config.inst.getSeeOtherEnable() || Manager.inst.getIsCut())
+        {
+            return;
+        }
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
         this.gameDatabase.AddCountPlayerSeeOther();
