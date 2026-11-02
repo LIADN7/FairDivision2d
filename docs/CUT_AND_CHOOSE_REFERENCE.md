@@ -459,3 +459,4 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 | Cell keys differ between clients | Exception or silently inconsistent allocation (§13.1) | Inferred (not observed 2026-11-01) |
 | Second player to cut | After both cuts, sees "wait for the other player to cut" instead of the colour legend (`CutView` sets that note after `setAllState`) | Observed 2026-11-01 |
 | Repeat play without page reload | Stale `RandArrays` used for payment | Inferred |
+| Help Page closed after the cut (Info rounds) | Before Batch 2: `SeeOtherPlayerBT` reappeared; one click showed the opponent's heat map and region values during choosing and added to `CountPlayerSeeOther`. Fixed on `feat/ux-batch-2`: hidden layers are restored to their pre-open state and `getOtherView` is a no-op after the own cut | Observed 2026-11-02; fix verified in test mode |
