@@ -9,6 +9,7 @@ using System.Linq;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using TMPro;
 //using static UnityEditor.Experimental.GraphView.GraphView;
 
 
@@ -23,6 +24,13 @@ public class Player : MonoBehaviourPunCallbacks
     [SerializeField] protected Text chatText;
     [SerializeField] protected InputField chatInput;
     [SerializeField] protected GameObject[] colorsValueObj; // {red, green, yellow, blue}
+    // Display only: Hebrew labels shown on the region buttons (the legacy buttonsValueText stay hidden but are still written)
+    [SerializeField] protected TextMeshProUGUI[] buttonsValueTextRTL; // {red, green, yellow, blue}
+    // Display only: turn status under the region buttons, derived from the role and chooseNum
+    [SerializeField] protected Image turnLabelPlate;
+    [SerializeField] protected TextMeshProUGUI turnLabelRTL;
+    private static readonly string[] regionNamesRTL = { "חלק 1 - אדום", "חלק 2 - ירוק", "חלק 3 - צהוב", "חלק 4 - כחול" };
+    private static readonly string[] cutSideNamesRTL = { "הצד האדום", "הצד הירוק" };
 
 
     private float[] sumPlayer = { 0f, 0f }; // sum of all the squares for player 1 and 2 -> {1, 2}
@@ -253,7 +261,11 @@ public class Player : MonoBehaviourPunCallbacks
             this.gameDatabase.playerCutSquares = tempPlayerWithParentName;
             view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
             Manager.inst.setViewAfterCut();
-            Manager.inst.setNote(-1, "Please wait for the other player to cut", false, "אנא המתינו שהשחקן השני יבצע את החיתוך");
+            // RpcTarget.All runs Cut locally at once: for the second cutter setAllState has already shown the turn note.
+            if (!isAllTrue())
+            {
+                Manager.inst.setNote(-1, "Please wait for the other player to cut", false, "אנא המתינו שהשחקן השני יבצע את החיתוך");
+            }
         }
         else
         {
@@ -340,6 +352,10 @@ public class Player : MonoBehaviourPunCallbacks
         buttonsValueText[1].text = "Part 2 (O) value: " + (sumRGYB[1]) + "%";
         buttonsValueText[2].text = "Part 3 (O) value: " + (sumRGYB[2]) + "%";
         buttonsValueText[3].text = "Part 4 (X) value: " + (sumRGYB[3]) + "%";
+        for (int k = 0; k < sumRGYB.Length; k++)
+        {
+            SetRegionLabelRTL(k, "שווה לכם: " + sumRGYB[k].ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%");
+        }
         Manager.inst.initialSeeOtherPlayerBT();
         if (isIntuitive(sumRGYB))
         {
@@ -350,13 +366,70 @@ public class Player : MonoBehaviourPunCallbacks
 
             if (playerNum == 1)
             {
-                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease choose one color", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nאנא בחרו חלק אחד");
+                Manager.inst.setNote(-1, "It is your turn to choose one part.\nClick one of the four buttons.\nThe percentage on each button is the part's value to you.", false, "תורכם לבחור חלק אחד.\nלחצו על אחד מארבעת הכפתורים.\nהאחוז בכל כפתור הוא שווי החלק עבורכם.");
             }
             else if (playerNum == 2)
             {
-                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease wait for player 1 to choose one color,\nafter that choose 2 colors", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nהמתינו ששחקן 1 יבחר חלק אחד,\nולאחר מכן בחרו שני חלקים");
+                Manager.inst.setNote(-1, "Please wait for the other player to choose.\nPlayer 1 chooses one part, then it is your turn to choose two parts.\nThe percentage on each button is the part's value to you.", false, "המתינו לבחירת השחקן השני.\nשחקן 1 בוחר חלק אחד, ואחר כך תורכם לבחור שני חלקים.\nהאחוז בכל כפתור הוא שווי החלק עבורכם.");
             }
         }
+        UpdateTurnLabel();
+    }
+
+    // Display only: Hebrew region label "חלק N - צבע" plus a second line (value or who took it).
+    private void SetRegionLabelRTL(int i, string secondLine)
+    {
+        SetButtonLabelRTL(i, regionNamesRTL[i] + "\n" + secondLine);
+    }
+
+    // Display only: cut-phase readout on the red/green buttons (0, 1) with the unchanged value precision.
+    private void SetCutSideLabelRTL(int i, string secondLine)
+    {
+        SetButtonLabelRTL(i, (i < cutSideNamesRTL.Length ? cutSideNamesRTL[i] : regionNamesRTL[i]) + "\n" + secondLine);
+    }
+
+    private void SetButtonLabelRTL(int i, string text)
+    {
+        if (buttonsValueTextRTL == null || i < 0 || i >= buttonsValueTextRTL.Length || buttonsValueTextRTL[i] == null)
+        {
+            return;
+        }
+        buttonsValueTextRTL[i].text = Manager.PrepareRtlNote(text);
+    }
+
+    // Display only: turn status derived from the local role and chooseNum. It does not gate any choice.
+    private void UpdateTurnLabel()
+    {
+        if (turnLabelPlate == null || turnLabelRTL == null)
+        {
+            return;
+        }
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        bool isChoosing = isAllTrue() && chooseNum < 3;
+        turnLabelPlate.gameObject.SetActive(isChoosing);
+        if (!isChoosing)
+        {
+            return;
+        }
+        string text = "המתינו לבחירת השחקן השני";
+        bool isMyTurn = false;
+        if (playerNum == 1 && chooseNum == 0)
+        {
+            text = "תורכם לבחור חלק אחד";
+            isMyTurn = true;
+        }
+        else if (playerNum == 2 && chooseNum == 1)
+        {
+            text = "תורכם לבחור שני חלקים";
+            isMyTurn = true;
+        }
+        else if (playerNum == 2 && chooseNum == 2)
+        {
+            text = "תורכם לבחור חלק אחד נוסף";
+            isMyTurn = true;
+        }
+        turnLabelRTL.text = text;
+        turnLabelPlate.color = isMyTurn ? new Color(1f, 1f, 1f, 0.95f) : new Color(0.75f, 0.75f, 0.75f, 0.85f);
     }
 
 
@@ -381,8 +454,8 @@ public class Player : MonoBehaviourPunCallbacks
                 this.gameDatabase.SetPlayerChoosenColors(0, i);
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 1 choose, please pick 2 parts", "שחקן 1 בחר, אנא בחרו שני חלקים");
-                Manager.inst.setNote(-1, "Please wait for player 2 to pick 2 parts)", false, "המתינו ששחקן 2 יבחר שני חלקים");
+                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 1 chose one part.\nIt is your turn to choose two parts.", "שחקן 1 בחר חלק אחד.\nתורכם לבחור שני חלקים.");
+                Manager.inst.setNote(-1, "Please wait for the other player to choose.\nPlayer 2 chooses two parts.", false, "המתינו לבחירת השחקן השני.\nשחקן 2 בוחר שני חלקים.");
 
 
             }
@@ -394,8 +467,8 @@ public class Player : MonoBehaviourPunCallbacks
                 this.gameDatabase.SetPlayerChoosenColors(0, i);
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 2 choose 1 part", "שחקן 2 בחר חלק אחד");
-                Manager.inst.setNote(-1, "Please pick one more part)", false, "אנא בחרו חלק אחד נוסף");
+                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 2 chose one part.\nPlease wait for the other player to choose.", "שחקן 2 בחר חלק אחד.\nהמתינו לבחירת השחקן השני.");
+                Manager.inst.setNote(-1, "It is your turn to choose one more part.", false, "תורכם לבחור חלק אחד נוסף.");
             }
             else if (playerNum == 2 && chooseNum == 2)
             {
@@ -407,7 +480,8 @@ public class Player : MonoBehaviourPunCallbacks
                 buttonsValueText[i].text += " (You)";
                 view.RPC("GetValues", RpcTarget.All);
                 view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "You got the last remaining part", "קיבלתם את החלק האחרון שנשאר");
-                Manager.inst.setNote(-1, "Player 1 got the last remaining part)", false, "שחקן 1 קיבל את החלק האחרון שנשאר");
+                // No local note here: GetValues (already run locally via RpcTarget.All) shows the result breakdown,
+                // which must stay visible. The remainder is shown on its region button.
             }
 
         }
@@ -417,14 +491,22 @@ public class Player : MonoBehaviourPunCallbacks
     private void Choose(int i, int playerNum)
     {
         buttonsValueText[i].text = "Taken By Player " + playerNum;
+        int localPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        SetRegionLabelRTL(i, playerNum == localPlayerNum ? "נבחר על ידכם" : "נבחר על ידי שחקן " + playerNum);
         colorsValueObj[i].GetComponent<Button>().interactable = false;
         //colorsValueObj[i].SetActive(false);
         chooseNum++;
+        UpdateTurnLabel();
 
     }
     [PunRPC]
     private void SetNoteForOtherPlayer(string message, string messageRTL)
     {
+        // Display only: once allocation is complete (GetValues ran), keep the result breakdown visible.
+        if (chooseNum >= 3)
+        {
+            return;
+        }
         Manager.inst.setNote(-1, message, false, messageRTL);
 
     }
@@ -448,6 +530,7 @@ public class Player : MonoBehaviourPunCallbacks
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         int last = GetLast();
         buttonsValueText[last].text = "Taken By Player 1";
+        SetRegionLabelRTL(last, PhotonNetwork.IsMasterClient ? "החלק שנשאר - שלכם" : "החלק שנשאר - לשחקן 1");
         if (PhotonNetwork.IsMasterClient)
         {
             this.gameDatabase.SetPlayerChoosenColors(1, last);
@@ -463,6 +546,7 @@ public class Player : MonoBehaviourPunCallbacks
         Manager.inst.setNote(-1, endExplanationPlayers[playerNum - 1], false, endExplanationPlayersRTL[playerNum - 1]);
         Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
         this.gameDatabase.SumOfMyPart = choosePlayer[playerNum - 1];
+        UpdateTurnLabel();
     }
 
     // Get the last number of the remaining color
@@ -553,11 +637,15 @@ public class Player : MonoBehaviourPunCallbacks
             {
                 buttonsValueText[0].text = "Other player Part 1: " + ((1 - greenVal) * 100) + "%";
                 buttonsValueText[1].text = "Other player Part 2: " + (greenVal * 100) + "%";
+                SetCutSideLabelRTL(0, "שווה לשחקן השני: " + ((1 - greenVal) * 100) + "%");
+                SetCutSideLabelRTL(1, "שווה לשחקן השני: " + (greenVal * 100) + "%");
             }
             else
             {
                 buttonsValueText[0].text = "Part 1 value: " + ((1 - greenVal) * 100) + "%";
                 buttonsValueText[1].text = "Part 2 value: " + (greenVal * 100) + "%";
+                SetCutSideLabelRTL(0, "שווה לכם: " + ((1 - greenVal) * 100) + "%");
+                SetCutSideLabelRTL(1, "שווה לכם: " + (greenVal * 100) + "%");
             }
             if ((greenVal * 100) == 50)
             {
@@ -663,6 +751,10 @@ public class Player : MonoBehaviourPunCallbacks
             buttonsValueText[1].text = "Other player val: " + sumRGYB[1].ToString("F5") + "%";
             buttonsValueText[2].text = "Other player val: " + sumRGYB[2].ToString("F5") + "%";
             buttonsValueText[3].text = "Other player val: " + sumRGYB[3].ToString("F5") + "%";
+            for (int k = 0; k < sumRGYB.Length; k++)
+            {
+                SetCutSideLabelRTL(k, "שווה לשחקן השני: " + sumRGYB[k].ToString("F5") + "%");
+            }
         }
 
         Manager.inst.changeSeeOtherPlayerBT();

@@ -213,7 +213,7 @@ public class PCPlayerAITutorial : MonoBehaviour
 
         if (pcPlayerNum == 1)
         {
-            Manager.inst.setNote(-1, "Player 1 choose, please pick 2 parts", false, "שחקן 1 בחר, אנא בחרו שני חלקים");
+            Manager.inst.setNote(-1, "The computer chose one part.\nIt is your turn to choose two parts.", false, "המחשב בחר חלק אחד.\nתורכם לבחור שני חלקים.");
         }
 
         // // When PC is Player 2 and completes its 2 choices (making 3 chosen total), wait 0.5s and assign 4th piece to Player 1
