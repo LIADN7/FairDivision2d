@@ -2,7 +2,7 @@
 
 > Overview for developers and AI agents joining the project. The full implementation reference for the core algorithm — cells, cuts, regions, selection, synchronization, state machines, dependency map, coupling risks and research invariants — is **[CUT_AND_CHOOSE_REFERENCE.md](CUT_AND_CHOOSE_REFERENCE.md)**. This file does not repeat it.
 >
-> **Last verified:** 2026-11-01 on branch `feat/ux-batch-1` (code baseline `1f7b01d`): static inspection plus Editor checks through Unity Pipeline and one two-client smoke test in test mode. **New agent? Start with [§17 Current Status and Handoff](#17-current-status-and-handoff).**
+> **Last verified:** 2026-11-02 on branch `feat/ux-batch-2` (Batch 2; earlier baseline `1f7b01d`): static inspection plus Editor checks through Unity Pipeline and one two-client smoke test in test mode. **New agent? Start with [§17 Current Status and Handoff](#17-current-status-and-handoff).**
 >
 > **Evidence tags used in both documents**
 > - **[Verified]** — confirmed in C# source or serialized scene/prefab data.
@@ -356,11 +356,27 @@ Authoritative list: [Reference §14](CUT_AND_CHOOSE_REFERENCE.md#14-research-inv
 
 Also verified in that run: practice vs PC on both clients, 1-2-1 selection across clients with identical region maps, round 1 → round 2 progression, Cloud Save writes only to `development`.
 
+**UX Batch 2 — implemented on `feat/ux-batch-2` (2026-11-02), awaiting owner review; not merged into `dev`.** Owner-approved wording; details and old/new texts in the batch report.
+
+| ID | Change |
+|---|---|
+| UX-005 | Help Page: dark panel, fixed text box (auto-size 22–30), Hebrew title "הוראות המשחק" (legacy `Title` kept hidden; `HelpPageCountdown` still writes to it), "חזרה למשחק" button calling the existing `HelpPageBT` `ShowAndHide`. Auto-open timing/frequency unchanged. "50%" stored as `%05` (was shown "%50"). |
+| UX-018 | Approved Help text in both scenes; practice copy has its own H1/H4/H6 wording ("המחשב"); H7 (identical cuts) removed. |
+| UX-017 | Practice Step0 text, "המחשב" in Step1 panels, dark tutorial text, on-screen widths at 960×600, "סבב תרגול" label (display only). |
+| UX-014 | Hebrew labels via the TextRTL pattern (Submit/Next/Exit/Send/Chat/placeholder/agreement, EndGameFlow "שלח"/"יציאה"); notes "בחרו חלק אחד", "אדום: 30.1%", "קיבלתם:"; EndGameFlow heading "הזכייה שלכם:". |
+| Fix | Closing the Help Page re-activated `SeeOtherPlayerBT` after the cut; in Info rounds one click showed the opponent's values during choosing and raised `CountPlayerSeeOther` (reproduced in test mode). Now `ShowAndHideOnClick` restores pre-open states and `Player.getOtherView` returns unless see-other is enabled and the player has not cut (both mirrored in the practice forks). |
+
+Verified in test mode (Editor + WebGL Development): practice on both roles, full six-round run to `EndGameFlow` with suppressed redirect, region values identical to a pre-change run with the same cuts, 1-2-1 unchanged, saved record schema unchanged.
+
+Note for agents: all Hebrew TMP text uses the `segoeui SDF Hebrew` material, whose face colour is green (0.55, 1, 0.14) — vertex colours are multiplied by it (white text renders green). Digits/punctuation come from the TMP fallback font.
+
 **Known issues / not yet verified:**
 - Stale note: the second player to cut sees "wait for the other player to cut" after both cuts (`Player.CutView` writes it after `setAllState`) — pre-existing.
-- The CutScene/tutorial **Help Page** static Hebrew text still shows "%50" (instruction text; candidate for Batch 2, needs owner approval of wording/visual changes).
-- Room-full message, real keyboard name entry, a full six-round run (including `EndGameFlow` and the suppressed redirect at the end) and **any Release build** are unverified.
+- End-of-choice note: in real rounds the per-colour breakdown is immediately overwritten by "Player 1 got the last remaining part" / "You got the last remaining part" — pre-existing (observed 2026-11-02).
+- Region buttons, cut readouts, "You get total", "Taken By Player" and the round label are still English legacy `Text` set from code (Hebrew needs component swaps; deferred).
+- `EndGameFlow` intro text: the first lines are clipped at the top of the screen — pre-existing.
+- Room-full message, real keyboard name entry and **any Release build** are unverified.
 - Exposed historical service-account credentials in `UnityCloudDataScraper.cs` still need owner review/rotation (§11).
 - Open research questions: §15.
 
-**Next planned batch (Batch 2):** tutorial and instruction improvements (help page, tutorial panels, in-game instructions). Instruction wording is participant-facing protocol: get research-owner approval before changing it.
+**Next:** owner review of Batch 2 on `feat/ux-batch-2`; merge into `dev` only after approval. Instruction wording is participant-facing protocol: get research-owner approval before changing it.

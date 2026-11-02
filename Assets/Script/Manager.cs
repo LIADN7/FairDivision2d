@@ -241,6 +241,11 @@ public class Manager : MonoBehaviour
         return this.isShowView;
     }
 
+    public bool getIsCut()
+    {
+        return this.isCut;
+    }
+
     // Legacy function - no longer needed with line drawing system
 
 
