@@ -106,7 +106,7 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
 
     /// <summary>
     /// Display only: keeps a wider black or white copy behind every cut line of this manager, so the black and
-    /// white lines stay readable on any cell colour. Outlines live outside this object's hierarchy, copy the
+    /// white lines stay readable on any cell colour. Outlines live beside this object (not under it), copy the
     /// line points every frame and are never read by drawing, classification or networking code.
     /// </summary>
     private void SyncLineOutlines()
@@ -117,11 +117,18 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         }
         if (outlineRoot == null)
         {
+            // Sibling of this manager (not a child, so line clean-up never touches it): when the Help Page hides
+            // the map hierarchy, the outlines are hidden together with the lines. Positions are world space.
             outlineRoot = new GameObject(gameObject.name + "Outlines").transform;
+            outlineRoot.SetParent(transform.parent, false);
         }
 
+        // Display only: while an input-blocking panel (Help Page) is open, the cut lines render in front of it,
+        // so they are not drawn. forceRenderingOff leaves enabled, points and all line state untouched.
+        bool hideForPanel = IsBlockingPanelOpen();
         foreach (LineRenderer line in GetComponentsInChildren<LineRenderer>(true))
         {
+            line.forceRenderingOff = hideForPanel;
             if (!lineOutlines.TryGetValue(line, out LineRenderer outline) || outline == null)
             {
                 GameObject outlineObj = new GameObject(line.gameObject.name + "Outline");
@@ -134,6 +141,7 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
             }
 
             outline.enabled = line.enabled && line.gameObject.activeInHierarchy;
+            outline.forceRenderingOff = hideForPanel;
             if (!outline.enabled)
             {
                 continue;
@@ -174,6 +182,22 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
                 lineOutlines.Remove(key);
             }
         }
+    }
+
+    private bool IsBlockingPanelOpen()
+    {
+        if (inputBlockingPanels == null)
+        {
+            return false;
+        }
+        foreach (GameObject panel in inputBlockingPanels)
+        {
+            if (panel != null && panel.activeInHierarchy)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>
