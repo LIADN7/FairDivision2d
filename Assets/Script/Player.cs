@@ -35,6 +35,9 @@ public class Player : MonoBehaviourPunCallbacks
     // Display only: which revealed line belongs to whom, from the actual line colours
     [SerializeField] protected Image lineOwnerPlate;
     [SerializeField] protected TextMeshProUGUI lineOwnerRTL;
+    // Display only: dim tint plus a centred message while the other player has to act (no raycast targets)
+    [SerializeField] protected GameObject waitingOverlay;
+    [SerializeField] protected TextMeshProUGUI waitingOverlayRTL;
     private const string cutReadoutPlaceholderRTL = "שרטטו קו כדי לראות את השווי";
     private static readonly string[] regionNamesRTL = { "חלק 1 - אדום", "חלק 2 - ירוק", "חלק 3 - צהוב", "חלק 4 - כחול" };
     private static readonly string[] cutSideNamesRTL = { "הצד האדום", "הצד הירוק" };
@@ -74,7 +77,7 @@ public class Player : MonoBehaviourPunCallbacks
         }
 
         this.InitDatabaseAsync();
-        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)\n\nDrag a straight line across the map with the mouse.\nYou can redraw it until you click the confirm button.", false, "אנא חלקו את המפה לשני חלקים (אם תחלקו לשני חלקים שווים, מובטח שתקבלו לפחות 50%)\n\nגררו עם העכבר קו ישר על המפה.\nאפשר לשרטט מחדש עד שתלחצו על אישור החלוקה.");
+        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)\n\nYou can redraw it until you click the confirm button.", false, "אנא חלקו את המפה לשני חלקים (אם תחלקו לשני חלקים שווים, מובטח שתקבלו לפחות 50%)\n\nאפשר לשרטט מחדש עד שתלחצו על אישור החלוקה.");
 
 
     }
@@ -216,7 +219,7 @@ public class Player : MonoBehaviourPunCallbacks
     {
         yield return new WaitForSeconds(sec);
         Manager.inst?.cutBt.SetActive(true);
-        UpdateCutStatusLabel();
+        UpdatePhaseInstruction();
     }
 
     public void setAllStateTitle(int playerNum)
@@ -276,11 +279,12 @@ public class Player : MonoBehaviourPunCallbacks
             {
                 SetCutReadoutRTL(lastOwnGreenVal, false);
             }
-            UpdateCutStatusLabel();
+            UpdatePhaseInstruction();
             // RpcTarget.All runs Cut locally at once: for the second cutter setAllState has already shown the turn note.
             if (!isAllTrue())
             {
-                Manager.inst.setNote(-1, "Please wait for the other player to cut", false, "אנא המתינו שהשחקן השני יבצע את החיתוך");
+                // Display only: the waiting overlay shows this; the note paper is cleared (hidden while empty).
+                Manager.inst.setNote(-1, "", false, "");
             }
         }
         else
@@ -382,15 +386,14 @@ public class Player : MonoBehaviourPunCallbacks
 
             if (playerNum == 1)
             {
-                Manager.inst.setNote(-1, "It is your turn to choose one part.\nClick one of the four buttons.\nThe percentage on each button is the part's value to you.", false, "תורכם לבחור חלק אחד.\nלחצו על אחד מארבעת הכפתורים.\nהאחוז בכל כפתור הוא שווי החלק עבורכם.");
+                Manager.inst.setNote(-1, "", false, "");
             }
             else if (playerNum == 2)
             {
-                Manager.inst.setNote(-1, "Please wait for the other player to choose.\nPlayer 1 chooses one part, then it is your turn to choose two parts.\nThe percentage on each button is the part's value to you.", false, "המתינו לבחירת השחקן השני.\nשחקן 1 בוחר חלק אחד, ואחר כך תורכם לבחור שני חלקים.\nהאחוז בכל כפתור הוא שווי החלק עבורכם.");
+                Manager.inst.setNote(-1, "", false, "");
             }
         }
-        UpdateTurnLabel();
-        UpdateCutStatusLabel();
+        UpdatePhaseInstruction();
         UpdateLineOwnerLabel(FindLineManager());
     }
 
@@ -424,31 +427,73 @@ public class Player : MonoBehaviourPunCallbacks
         return cachedLineManager;
     }
 
-    // Display only: cut-phase status derived from the line state, the own cut (Manager.isCut) and both cuts.
-    // It gates nothing; drawing and submitting keep their own rules.
-    public void UpdateCutStatusLabel()
+    // Display only: the single phase instruction ("what do I do now?") and the waiting overlay, derived from the
+    // line state, Manager.isCut, isAllTrue, the local role and chooseNum. It gates nothing; all rules keep their own checks.
+    // Cut phase uses the plate above the cut button, choose phase the plate under the region buttons; at most one shows.
+    public void UpdatePhaseInstruction()
     {
-        if (cutStatusPlate == null || cutStatusRTL == null || Manager.inst == null)
+        if (Manager.inst == null)
         {
             return;
         }
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        bool bothCut = isAllTrue();
+        string action = null;
+        string waiting = null;
         LineDrawingManager lineManager = FindLineManager();
-        bool show = lineManager != null && !isAllTrue() && !Manager.inst.getIsShowView();
-        cutStatusPlate.gameObject.SetActive(show);
-        if (!show)
+        if (!bothCut)
+        {
+            if (Manager.inst.getIsCut())
+            {
+                waiting = "ממתינים לחיתוך של השחקן השני";
+            }
+            else if (lineManager != null && !Manager.inst.getIsShowView())
+            {
+                action = lineManager.HasDrawnLine() ? "לחצו על אישור החלוקה" : "שרטטו קו על המפה";
+            }
+        }
+        else if (chooseNum < 3)
+        {
+            if (playerNum == 1 && chooseNum == 0)
+            {
+                action = "בחרו חלק אחד";
+            }
+            else if (playerNum == 2 && chooseNum == 1)
+            {
+                action = "בחרו שני חלקים";
+            }
+            else if (playerNum == 2 && chooseNum == 2)
+            {
+                action = "בחרו חלק נוסף";
+            }
+            else
+            {
+                waiting = "ממתינים לבחירת השחקן השני";
+            }
+        }
+        SetInstructionPlate(cutStatusPlate, cutStatusRTL, bothCut ? null : action);
+        SetInstructionPlate(turnLabelPlate, turnLabelRTL, bothCut ? action : null);
+        if (waitingOverlay != null && waitingOverlayRTL != null)
+        {
+            waitingOverlay.SetActive(waiting != null);
+            if (waiting != null)
+            {
+                waitingOverlayRTL.text = waiting;
+            }
+        }
+    }
+
+    private static void SetInstructionPlate(Image plate, TextMeshProUGUI label, string text)
+    {
+        if (plate == null || label == null)
         {
             return;
         }
-        string text = "שרטטו קו על המפה";
-        if (Manager.inst.getIsCut())
+        plate.gameObject.SetActive(text != null);
+        if (text != null)
         {
-            text = "ממתינים לחיתוך של השחקן השני";
+            label.text = text;
         }
-        else if (lineManager.HasDrawnLine())
-        {
-            text = "לחצו על אישור החלוקה כשתסיימו";
-        }
-        cutStatusRTL.text = text;
     }
 
     // Display only: names the revealed lines by their actual colours (own line renderer, other player's colour).
@@ -512,43 +557,6 @@ public class Player : MonoBehaviourPunCallbacks
         buttonsValueTextRTL[i].text = Manager.PrepareRtlNote(text);
     }
 
-    // Display only: turn status derived from the local role and chooseNum. It does not gate any choice.
-    private void UpdateTurnLabel()
-    {
-        if (turnLabelPlate == null || turnLabelRTL == null)
-        {
-            return;
-        }
-        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
-        bool isChoosing = isAllTrue() && chooseNum < 3;
-        turnLabelPlate.gameObject.SetActive(isChoosing);
-        if (!isChoosing)
-        {
-            return;
-        }
-        string text = "המתינו לבחירת השחקן השני";
-        bool isMyTurn = false;
-        if (playerNum == 1 && chooseNum == 0)
-        {
-            text = "תורכם לבחור חלק אחד";
-            isMyTurn = true;
-        }
-        else if (playerNum == 2 && chooseNum == 1)
-        {
-            text = "תורכם לבחור שני חלקים";
-            isMyTurn = true;
-        }
-        else if (playerNum == 2 && chooseNum == 2)
-        {
-            text = "תורכם לבחור חלק אחד נוסף";
-            isMyTurn = true;
-        }
-        turnLabelRTL.text = text;
-        turnLabelPlate.color = isMyTurn ? new Color(1f, 1f, 1f, 0.95f) : new Color(0.75f, 0.75f, 0.75f, 0.85f);
-    }
-
-
-
     private bool isIntuitive(float[] sumRGYB)
     {
         bool flag = sumRGYB[2] + sumRGYB[3] == 0 || sumRGYB[0] + sumRGYB[1] == 0;
@@ -570,7 +578,7 @@ public class Player : MonoBehaviourPunCallbacks
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
                 view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 1 chose one part.\nIt is your turn to choose two parts.", "שחקן 1 בחר חלק אחד.\nתורכם לבחור שני חלקים.");
-                Manager.inst.setNote(-1, "Please wait for the other player to choose.\nPlayer 2 chooses two parts.", false, "המתינו לבחירת השחקן השני.\nשחקן 2 בוחר שני חלקים.");
+                Manager.inst.setNote(-1, "", false, "");
 
 
             }
@@ -583,7 +591,7 @@ public class Player : MonoBehaviourPunCallbacks
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
                 view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 2 chose one part.\nPlease wait for the other player to choose.", "שחקן 2 בחר חלק אחד.\nהמתינו לבחירת השחקן השני.");
-                Manager.inst.setNote(-1, "It is your turn to choose one more part.", false, "תורכם לבחור חלק אחד נוסף.");
+                Manager.inst.setNote(-1, "", false, "");
             }
             else if (playerNum == 2 && chooseNum == 2)
             {
@@ -611,18 +619,14 @@ public class Player : MonoBehaviourPunCallbacks
         colorsValueObj[i].GetComponent<Button>().interactable = false;
         //colorsValueObj[i].SetActive(false);
         chooseNum++;
-        UpdateTurnLabel();
+        UpdatePhaseInstruction();
 
     }
     [PunRPC]
     private void SetNoteForOtherPlayer(string message, string messageRTL)
     {
-        // Display only: once allocation is complete (GetValues ran), keep the result breakdown visible.
-        if (chooseNum >= 3)
-        {
-            return;
-        }
-        Manager.inst.setNote(-1, message, false, messageRTL);
+        // Display only: the RPC and its texts are unchanged, but turn notes are no longer shown. The phase
+        // instruction and the waiting overlay show whose turn it is, and the result breakdown must stay visible.
 
     }
     private string getExplanationPlayer(int color, float value)
@@ -661,7 +665,7 @@ public class Player : MonoBehaviourPunCallbacks
         Manager.inst.setNote(-1, endExplanationPlayers[playerNum - 1], false, endExplanationPlayersRTL[playerNum - 1]);
         Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
         this.gameDatabase.SumOfMyPart = choosePlayer[playerNum - 1];
-        UpdateTurnLabel();
+        UpdatePhaseInstruction();
     }
 
     // Get the last number of the remaining color
@@ -891,7 +895,7 @@ public class Player : MonoBehaviourPunCallbacks
         }
 
         Manager.inst.changeSeeOtherPlayerBT();
-        UpdateCutStatusLabel();
+        UpdatePhaseInstruction();
     }
 
 

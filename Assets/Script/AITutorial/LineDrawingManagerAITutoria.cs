@@ -385,7 +385,7 @@ public class LineDrawingManagerAITutoria : MonoBehaviourPunCallbacks
             playerLineRenderer.enabled = false;
         }
         Debug.Log("Line drawing canceled");
-        PlayerAITutorial.inst?.UpdateCutStatusLabel();
+        PlayerAITutorial.inst?.UpdatePhaseInstruction();
     }
 
     /// <summary>
@@ -421,7 +421,7 @@ public class LineDrawingManagerAITutoria : MonoBehaviourPunCallbacks
             playerLineRenderer.enabled = true;
             playerLineRenderer.SetPosition(0, startPoint);
             playerLineRenderer.SetPosition(1, startPoint);
-            PlayerAITutorial.inst?.UpdateCutStatusLabel();
+            PlayerAITutorial.inst?.UpdatePhaseInstruction();
         }
         else
         {
@@ -500,7 +500,7 @@ public class LineDrawingManagerAITutoria : MonoBehaviourPunCallbacks
         // Only notify local systems that line is complete
         // DO NOT send to other players yet - they will see it after submit
         OnLineCompleted?.Invoke(startPoint, endPoint, playerNumber);
-        PlayerAITutorial.inst?.UpdateCutStatusLabel();
+        PlayerAITutorial.inst?.UpdatePhaseInstruction();
 
     }
 
