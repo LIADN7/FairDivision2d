@@ -29,6 +29,9 @@ public class Launcher : MonoBehaviourPunCallbacks
     private string sceneToLoad = "CutSceneAITutorial";
     //public Room[] rooms = {null, null, null };
     private int roomCounter = 0;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    private const string TestGameVersion = "uxtest"; // Photon AppVersion becomes "uxtest_<PUN version>"
+#endif
 
 
     private void Awake()
@@ -43,7 +46,14 @@ public class Launcher : MonoBehaviourPunCallbacks
         LauncherInst = this;
         if (!PhotonNetwork.IsConnected)
             PhotonNetwork.AutomaticallySyncScene = true;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Test isolation: MainScene also loads while still connected (Home/Leave). Setting GameVersion
+        // rewrites the AppVersion used for every later authentication, so keep the test pool here too.
+        PhotonNetwork.GameVersion = TestGameVersion;
+        Debug.Log("TEST MODE: Photon AppVersion = " + PhotonNetwork.AppVersion + " (lobby load, connected=" + PhotonNetwork.IsConnected + ")");
+#else
         PhotonNetwork.GameVersion = "0.0.1";
+#endif
 
 
 
@@ -65,7 +75,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             // Test isolation: Editor and Development builds join a separate Photon matchmaking pool
             // (same App ID and region, different AppVersion) so tests never meet research participants.
             AppSettings testSettings = PhotonNetwork.PhotonServerSettings.AppSettings.CopyTo(new AppSettings());
-            testSettings.AppVersion = "uxtest";
+            testSettings.AppVersion = TestGameVersion;
             PhotonNetwork.ConnectUsingSettings(testSettings);
             Debug.Log("TEST MODE: Photon AppVersion = " + PhotonNetwork.AppVersion);
 #else
