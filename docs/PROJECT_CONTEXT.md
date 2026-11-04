@@ -270,7 +270,9 @@ Compiled only into the **Editor and Development builds** (`#if UNITY_EDITOR || D
 | Survey redirect (`Config.RedirectToSurvey`) | Suppressed; logs `TEST MODE: survey redirect suppressed` | Opens panel4all |
 | Visual marker (`TestModeBadge.cs`) | Red "TEST MODE - not research data" badge, top-right | Not compiled |
 
-**Two-client recipe:** Editor Play Mode (from `MainScene`) + a WebGL Development build served on `127.0.0.1` (the project uses Brotli without decompression fallback; a plain local server needs a build with compression temporarily disabled, then restore Brotli and confirm `ProjectSettings` is unchanged). Use test URL parameters such as `?userID=TEST_x&surveyID=TEST_y`. Browser-automation limits: the WebGL player pauses when its tab is hidden (`runInBackground` off); keystrokes do not reach Unity's legacy `InputField` (set the name via `unityInstance.SendMessage("NameField","set_text",…)` from a test page); clicks need a press-and-release with a small move. Never press Next simultaneously on both clients (known deadlock).
+**Lobby-return isolation (fixed for test mode 2026-11-04, `cb831a4`):** `Launcher.Awake` runs on every `MainScene` load, including after Home/Leave while still connected (when `Start` skips the connect). It used to set `PhotonNetwork.GameVersion = "0.0.1"`, which rewrites the AppVersion for every later authentication (`0.0.1_2.42`). Editor and Development builds now set the test version there too (shared `TestGameVersion` constant), so test clients stay on `uxtest_2.42`. Verified at runtime: fresh launch, Home → lobby (`connected=True`) on both clients, then rejoining a room with both clients. **Release is unchanged** (`#else` keeps the original line): participants who return to the lobby while connected still move to `0.0.1_2.42`, now a pool without test clients. Whether that production behaviour should change is an owner decision. Safe practice: still confirm `uxtest_2.42` in the room before a test.
+
+**Two-client recipe:** Editor Play Mode (from `MainScene`) + a WebGL Development build served on `127.0.0.1` (the project uses Brotli without decompression fallback; a plain local server needs a build with compression temporarily disabled, then restore Brotli and confirm `ProjectSettings` is unchanged). Use test URL parameters such as `?userID=TEST_x&surveyID=TEST_y`. Browser-automation limits: the WebGL player pauses when its tab is hidden (`runInBackground` off); keystrokes do not reach Unity's legacy `InputField` (set the name via `unityInstance.SendMessage("NameField","set_text",…)` from a test page); clicks need a press-and-release with a small move. Never press Next simultaneously on both clients (known deadlock). The first client to join a room is Player 1 (master); join with the Editor second to make it Player 2 (its overlay colours, record and region values can then be read exactly via `script eval`). Saving a script while in Play Mode makes Unity stop Play Mode and recompile, which drops the Editor client, so finish code edits before a run. Leave a stale room (reload the page, stop Play Mode) before restarting a test, or the next client joins it with the wrong role.
 
 ### 13.3 Release checklist (participant builds)
 
@@ -339,7 +341,7 @@ Authoritative list: [Reference §14](CUT_AND_CHOOSE_REFERENCE.md#14-research-inv
 
 ## 17. Current Status and Handoff
 
-**As of 2026-11-02.** UX Batches 1–3 are accepted by the owner and merged into the shared integration branch **`dev`** (created from `AITutorial` `d1cc192`; Batch 1: merge commit `44772cb` of `feat/ux-batch-1` `56dfd5b`, which contains `tooling/unity-pipeline`; Batch 2: merge commit `0f3f99d` of `feat/ux-batch-2` `d78dd4c`; Batch 3: merge commit `8b29582` of `feat/ux-batch-3` `663c56f`). Start new batches from `dev`. `main` is untouched and human-controlled; before any `main` integration a full regression run (including six rounds) and Release validation (§13.3) are required. Owner priority: **player UX with minimum regression risk; no general refactoring.** Agent Git rules: `CLAUDE.md`.
+**As of 2026-11-04.** UX Batch 4 and its owner-requested follow-up are implemented on **`feat/ux-batch-4`** (from `dev` `cb87437`; pushed, **not merged**, awaiting owner approval; details below). UX Batches 1–3 are accepted by the owner and merged into the shared integration branch **`dev`** (created from `AITutorial` `d1cc192`; Batch 1: merge commit `44772cb` of `feat/ux-batch-1` `56dfd5b`, which contains `tooling/unity-pipeline`; Batch 2: merge commit `0f3f99d` of `feat/ux-batch-2` `d78dd4c`; Batch 3: merge commit `8b29582` of `feat/ux-batch-3` `663c56f`). Start new batches from `dev`. `main` is untouched and human-controlled; before any `main` integration a full regression run (including six rounds) and Release validation (§13.3) are required. Owner priority: **player UX with minimum regression risk; no general refactoring.** Agent Git rules: `CLAUDE.md`.
 
 **UX Batch 1 — done** (IDs from the owner's UX report; display-only, no scoring/networking/saving changes):
 
@@ -381,9 +383,57 @@ Note for agents: all Hebrew TMP text uses the `segoeui SDF Hebrew` material, who
 
 Verified in test mode (Editor 1600×900 + WebGL Development 960×600): practice in both roles, round 1 (Player 2 cuts first), round 2 (Player 1 cuts first), round 3 Info see-other readouts; region values, ownership and the Player 2 record consistent across clients; saves only to `development`. Not run: rounds 4–6, Chat, EndGameFlow.
 
+**UX Batch 4 — implemented, awaiting owner approval** (`feat/ux-batch-4`; owner-approved scope and wording; both scenes and the practice forks):
+
+| ID | Change |
+|---|---|
+| Shading fix (`75c54b0`) | `createSumRGYB` passes the local player index `j` to `setSpriteStatus` instead of the literal `1` (`Player.cs`, `PlayerAITutorial.cs`). Player 2 now keeps its own heat shading after both cuts. Colour only. |
+| UX-001 | Approved instruction "גררו עם העכבר קו ישר על המפה. / אפשר לשרטט מחדש עד שתלחצו על אישור החלוקה." appended to the initial cut note (50% text unchanged). Cut-status label `CutStatusPlate` (copy of the turn-label style, above `CutBT`): "שרטטו קו על המפה" → "לחצו על אישור החלוקה כשתסיימו" → "ממתינים לחיתוך של השחקן השני" ("…של המחשב" in practice). Derived from the line state, `Manager.isCut` and `isAllTrue`; hidden when both cuts exist, while viewing the other map and (practice) while the tutorial locks gameplay. Tutorial steps and timing unchanged. |
+| UX-019 | Before the first line, the red/green readouts show "שרטטו קו כדי לראות את השווי" (also in the Info see-other readout). Values, precision and the 50 ms update are unchanged; after the own cut the submitted split is shown. |
+| UX-021 | Display-only outline behind each cut line (white behind black, black behind white). Ownership label `LineOwnerPlate` under the value caption after both cuts, built from the actual line colours and naming only lines that are shown, e.g. "הקו השחור: החיתוך שלכם / הקו הלבן: החיתוך של השחקן השני". Wording chosen by the agent: **needs owner confirmation**. |
+| UX-026 | Line start ignores presses whose topmost UI hit is interactive or inside the open Help Page (`inputBlockingPanels`); county labels and notes still start a line. |
+| UX-004 | Investigation only, nothing changed: see [Reference §2](CUT_AND_CHOOSE_REFERENCE.md#2-line-drawing-validation-and-cell-classification). Owner decision needed. |
+
+Verified 2026-11-03 in test mode (Editor 1280×720 as Player 2 + WebGL Development 960×600 as Player 1; both `uxtest_2.42`, `development`/`uxtest`):
+- Practice, then rounds 1–4 (Normal, Normal, Chat, Chat) and round 5 (InfoAChat) up to the choose phase.
+- Player 2's overlay matches its own valuation in all 375 distinguishing cells before and after both cuts (0 matching Player 1).
+- Info pre-cut see-other shows Player 1's valuation and restores; after the cut, the button is gone and `getOtherView` is a no-op (`CountPlayerSeeOther` 2).
+- On both clients, region values for five rounds equal an independent recomputation from the transmitted cuts.
+- 1-2-1 sequence and results are consistent; round 1–4 records were saved to `development`, and Player 2's round-1 record read back unchanged (schema unchanged).
+- UI guard: Help Page drags, the see-other edge inside the bounds and the "?" button drew nothing; drawing from a county label, redraw, and the post-submit drawing lock work.
+- Not run: round 6, EndGameFlow, a Release build, 1600×900 at runtime (edit-mode captures only).
+
+**UX Batch 4 follow-up (2026-11-04, owner-approved, same branch)** — commits `cb831a4` (Photon test isolation), `0bba188` (instruction and waiting UX), `349f6e2` (Help Page lines):
+
+| Item | Change |
+|---|---|
+| One instruction surface | `UpdatePhaseInstruction` (Player and practice fork) replaces the separate cut-status and turn labels. One dark banner at a time: cut phase above `CutBT` ("שרטטו קו על המפה" / "לחצו על אישור החלוקה"), choose phase under the region buttons ("בחרו חלק אחד" / "בחרו שני חלקים" / "בחרו חלק נוסף"). Derived from the line state, `Manager.isCut`, `isAllTrue`, role and `chooseNum`; hidden while the practice tutorial locks gameplay (refreshed from `TutorialFplanManager.SetGameplayLock`). |
+| Note paper | Shows the unchanged 50% guarantee plus "אפשר לשרטט מחדש עד שתלחצו על אישור החלוקה.", the 50% split note, system messages and the result breakdown. Turn/waiting notes are no longer written; `SetNoteForOtherPlayer` keeps its RPC payload but shows nothing. The paper (`NoteObject/RawImage`) hides while empty (`Manager.SetNotePaperVisible`). 1-2-1, personal values and 50/50 remain in the Help Page, the value caption and the tutorial. |
+| Waiting overlay | `ViewItems/WaitingOverlay` (last child): tint 35% plus a centred message over the map ("ממתינים לחיתוך של השחקן השני" / "ממתינים לבחירת השחקן השני", "המחשב" in practice), shown only while the other player must act. No raycast targets; non-blocking `CanvasGroup`. Hidden with `ViewItems` while Help is open. The message plate has its own canvas with `overrideSorting` and an order one above the root canvas (1 in `CutScene`, 3 in `CutSceneAITutorial`, whose root canvas is order 2) because `MapBoundaries` (32% white sprite) and cut lines are world objects at z = 0, in front of the UI plane (z = 5). |
+| Help Page and lines | The Help Page hides `States`, which hid the lines but not the Batch 4 outlines. The outline holder is now a sibling of the line manager, and lines and outlines use `forceRenderingOff` while a blocking panel is open. |
+| Info vs. buttons | Instruction plates: flat dark banner (Help Page style). Value caption and line-owner box: flat pale, regular weight. Buttons unchanged. |
+| Tutorial texts | Step0, Step1 P1/P2, Step2 shortened with the same meaning (straight cut, 50/50 by own values, goal sentence kept verbatim, "בסיום לחצו על אישור החלוקה."; 1-2-1 with "המחשב"; result by own values). |
+
+Verified 2026-11-04 in test mode (WebGL Development 960×600 as Player 1 + Editor as Player 2):
+- Photon checks A–C (fresh launch, lobby return, rejoin).
+- Practice and round 1: instruction texts, overlay shown only while waiting (both roles), Help over lines (lines and outlines hidden, restored after closing), region values equal to the independent recomputation.
+- A local raycast probe showed the overlay is never hit.
+
+Follow-up fixes were re-verified in a single-client Editor practice session: refresh on tutorial unlock, the plate drawn above lines and the map box, and the overlay hidden under Help. Not verified at runtime: chat input during a waiting state (no Chat round reached) and the Release build.
+
+**UX Batch 4 final UI fixes (2026-11-04, owner-requested, same branch):**
+- **Result box over the Help Page:** `EndGameStatusObject` ("You get total: …") was a direct child of `Canvas`, outside every layer the Help Page hides. It now lives under `ViewItems`, placed just before `WaitingOverlay`. Its on-screen position is unchanged (both are centre-anchored), and the `Manager` references are unchanged. Help hides it and restores its previous state on close. Value and calculations are untouched.
+- **Waiting message under the cut lines:** the plate canvas had been saved with `m_OverrideSorting: 0`. The `overrideSorting` setter is ignored while the overlay is inactive, so the earlier fix never reached the scene file. It is now set through the serialized property in both scenes.
+- **Verified in test mode** (WebGL Development as Player 1 + Editor as Player 2, practice and round 1):
+  - Help at start, after drawing, during selection and after the result: nothing but the Help button is drawn outside the Help Page.
+  - The result returns with the same value after repeated open/close.
+  - The waiting message stays above both cut lines and outlines at 960×600 and 1600×900.
+  - Region values equal the independent recomputation.
+
 **Known issues / not yet verified:**
-- **CONFIRMED (2026-11-02, test mode): Player 2's heat shading switches to Player 1's valuation after both cuts** (choose phase and result), in Normal, Info and practice; Player 1 is unaffected. Cause: `createSumRGYB` calls `setSpriteStatus(status, 1)` (`Player.cs`, `PlayerAITutorial.cs`), while `PointOfState.setSpriteStatus` treats `iPower == currentPlayerNum` as "own values" since `45bb1e8` (2026-07-31). Visual only: region percentages, scores, saved records and payment use `getMyVal(own)` (independently checked). **Not fixed — needs separate owner/research approval** (research-information impact). See [Reference §15](CUT_AND_CHOOSE_REFERENCE.md#15-edge-cases-and-failure-scenarios).
-- Hypothesis (unverified): after returning to `MainScene` while still connected (e.g. Home), `Launcher.Awake` re-sets `GameVersion = "0.0.1"`, so a later re-authentication may use AppVersion `0.0.1_2.42` instead of `uxtest_2.42` (an Editor session read `0.0.1_2.42`). Not the production pool, but test isolation should not be assumed after a lobby return.
+- **Player 2 heat shading (history):** confirmed 2026-11-02 in test mode. After both cuts, Player 2's heat shading switched to Player 1's valuation (choose phase and result), in Normal, Info and practice; Player 1 was unaffected. Cause: `createSumRGYB` called `setSpriteStatus(status, 1)` (`Player.cs`, `PlayerAITutorial.cs`), while `PointOfState.setSpriteStatus` treats `iPower == currentPlayerNum` as "own values" since `45bb1e8` (2026-07-31). Region percentages, scores, saved records and payment always used `getMyVal(own)`. **Fixed on `feat/ux-batch-4` (`75c54b0`), not yet in `dev`/`main`.** Participants who played builds containing `45bb1e8` saw Player 1's shading as Player 2 during choosing; their stored numbers are correct, but the information condition differed. How to treat that data is an open research decision ([Reference §14.3](CUT_AND_CHOOSE_REFERENCE.md#143-open-questions-requiring-owner-decision) Q7, §15).
+- **Photon isolation after a lobby return:** fixed for test mode on `feat/ux-batch-4` (§13.2). Release participants still move to `0.0.1_2.42` after a lobby return while connected (unchanged production behaviour; owner decision).
+- UX-004: a cut can be submitted without a line (100/0); drawing remains possible after such a cut; a Player 1 no-line cut leaves two empty regions. Owner decision (Reference §2, §14.3 Q3).
 - Cut readouts, "You get total" and the round label are still English legacy `Text` (region buttons are Hebrew since Batch 3). Help Page images still show English "Low/High".
 - `EndGameFlow` intro text: the first lines are clipped at the top of the screen — pre-existing.
 - Room-full message, real keyboard name entry and **any Release build** are unverified.
@@ -392,4 +442,6 @@ Verified in test mode (Editor 1600×900 + WebGL Development 960×600): practice 
 
 Test-tool notes: WebGL clicks need a hover before the press (Unity reads the last mouse-move position, so a bare press can start a line at the old cursor position); Editor `capture game_view` must save under the project and lands in `Assets/Temp` — move the file out and delete that folder via `AssetDatabase.DeleteAsset`.
 
-**Next:** UX Batch 4 (cut interaction and feedback: UX-001, UX-004, UX-019, UX-021, UX-026) — plan only, awaiting owner approval; start it on a new feature branch from `dev`. The shading correction is a separate owner decision. Instruction wording is participant-facing protocol: get research-owner approval before changing it.
+Test-tool note (Batch 4): the WebGL canvas can be sampled with `gl.readPixels` inside a `requestAnimationFrame` callback (the drawing buffer is not preserved otherwise). Cell screen positions at 960×600 are `x = 480 + wx·600/11.4`, `y = 300 + wy·600/11.4` (bottom-left origin).
+
+**Next:** owner review of UX Batch 4 including the follow-up on `feat/ux-batch-4` (wording, tutorial texts, waiting overlay), and the data-handling decision for pre-fix Player 2 records. Merge into `dev` only after approval. Open owner decisions: UX-004, and the Release lobby-return AppVersion. Do not start Batch 5 before that.

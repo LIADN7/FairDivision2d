@@ -2,7 +2,7 @@
 
 > Detailed implementation reference for the core algorithm. For the project overview, experiment schedule, data schema and environment see [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md); this file does not repeat them.
 >
-> **Last verified:** 2026-11-01 — static inspection on `AITutorial` @ `d1cc192`, plus two-client runtime smoke tests on `feat/ux-batch-1` and (2026-11-02, six rounds) `feat/ux-batch-2` (see PROJECT_CONTEXT §17). Batches 1–2 changed display only, plus the Batch 2 see-other guard (§15); the rules, sync and persistence described here are unchanged. Evidence tags follow PROJECT_CONTEXT: **[Verified]**, **[Inferred]**, **[Unknown]**. Paths are relative to `Assets/Script/` unless stated otherwise.
+> **Last verified:** 2026-11-01 — static inspection on `AITutorial` @ `d1cc192`, plus two-client runtime smoke tests on `feat/ux-batch-1` and (2026-11-02, six rounds) `feat/ux-batch-2` (see PROJECT_CONTEXT §17). Batches 1–3 changed display only, plus the Batch 2 see-other guard (§15). Batch 4 (`feat/ux-batch-4`, 2026-11-03, not yet integrated) adds the Player 2 shading fix (§3), a UI-click guard on line start, line outlines (§2) and cut-phase labels. The rules, sync and persistence described here are unchanged. Evidence tags follow PROJECT_CONTEXT: **[Verified]**, **[Inferred]**, **[Unknown]**. Paths are relative to `Assets/Script/` unless stated otherwise.
 
 ## Contents
 
@@ -76,12 +76,12 @@
 | Step | Method | Behavior [Verified] |
 |---|---|---|
 | Gate | `CanDrawLine` (L181) | `!isSubmitted` (practice copy also requires `!TutorialFplanManager.IsGameplayLocked`). `IsMyTurnToDraw` always returns true. |
-| Start | `StartDrawing` (L246) | Only if the mouse is inside `mapSize` 8.5 × 6.8 around (−5, 1.5) (scene values). Replaces any previous line. |
+| Start | `StartDrawing` (L246) | Only if the mouse is inside `mapSize` 8.5 × 6.8 around (−5, 1.5) (scene values). Replaces any previous line. Since Batch 4 (`feat/ux-batch-4`, UX-026): not started when the topmost EventSystem raycast hit is interactive (has a pointer-down/click handler: buttons, toggles, input fields) or lies inside an active `inputBlockingPanels` entry (`HelpPageLayer`). County labels and notes (raycast targets without handlers) do not block. Before this, a press on the part of `SeeOtherPlayerBT` that overlaps the bounds at 960×600, or on the open Help Page, started a line. |
 | Drag | `UpdateDrawing` | End point clamped to bounds; every 50 ms `SquareLineCalculator.ColorAllSquaresByLine` recolors all cells and `Player.statusChange` updates the readout. |
 | Release | `FinishDrawing` (L326) | Final recolor; `hasDrawnLine = true`. Nothing is sent. |
 | Cancel | `Esc` while dragging | Hides the line; cell colors from the last update remain. |
 | Submit | `SubmitLine` (L476) | If no line or already submitted → warning and return. Otherwise `isSubmitted = true` and RPC `ReceiveSubmittedLine` (Others) with the coordinates (stored, not drawn). |
-| Reveal | `ShowBothLines` (L554) | Called from `Player.setAllState` once both cuts exist; draws P1 black, P2 white. |
+| Reveal | `ShowBothLines` (L554) | Called from `Player.setAllState` once both cuts exist; draws P1 black, P2 white. Batch 4 (UX-021): `SyncLineOutlines` (LateUpdate) keeps a display-only outline (white behind black, black behind white, width × `outlineWidthFactor` 2, 0.05 further from the camera) for every line renderer under the manager; outlines live under a holder beside the manager (same parent, so the Help Page hides them with the lines) and are never read by drawing, classification or networking. While a blocking panel is open, lines and outlines also use `forceRenderingOff` (follow-up `349f6e2`). The practice copy does not call `ShowBothLines` (its `GameObject.Find("LineDrawingManager")` misses the object named `LineDrawingManagerAITutoria`); the own line stays visible from drawing and the computer's line comes from `PCPlayerAITutorial` [Verified, pre-existing]. |
 
 **Classification** — `SquareLineCalculator.GetSquareColorByLine` ([RefactoredUI/SquareLineCalculator.cs:16](../Assets/Script/RefactoredUI/SquareLineCalculator.cs#L16)) [Verified]:
 
@@ -98,7 +98,14 @@ The segment acts as an infinite line through its two points; the cell's `transfo
 2. If `PhotonNetwork.InRoom && PlayerCount > 1`: records `PlayerTimeCut`, `PlayerCutValues {Red: 100 − g, Green: g}` (g = `statusChange()`), `playerCutSquares`, then sends RPC `Cut(Dictionary<int,int> key→status, playerNum)` to All, hides the Cut and see-other buttons (`Manager.setViewAfterCut`).
 3. Otherwise shows "Waiting for the other player to connect!"; the line is already locked, the Cut button stays, and pressing it again later sends the cut.
 
-There is **no geometric or value validation** [Verified]: no requirement that a line was drawn, that both sides are non-empty, or that the split is near 50%. Without a line the default all-Red cut (100/0) is sent, and because `isSubmitted` stays false the player can keep drawing locally afterwards [Inferred].
+There is **no geometric or value validation** [Verified]: no requirement that a line was drawn, that both sides are non-empty, or that the split is near 50%.
+
+**Submission without a line (UX-004, investigated 2026-11-03, unchanged)** [Verified in test mode unless marked]:
+- `SubmitLine` logs "Cannot submit: No line has been drawn yet" and returns, but `CutView` continues: it records `PlayerCutValues {Red: 100, Green: 0}` and sends the current cell statuses (all Red by default) via `Cut`. `isSubmitted` stays false, so the player **can keep drawing after the cut**. Drawing then recolours the local cells and rewrites the red/green button readouts (also during choosing), but changes nothing that was sent or stored [Inferred from code].
+- The submitter sends no `ReceiveSubmittedLine`, so neither client shows a line for that player.
+- With an all-Red cut by Player 1, the regions are Red (P1 Red ∩ P2 Red) and Yellow (P1 Red ∩ P2 Green), together the whole map; Green and Blue are empty (0 %) but still selectable. Observed in practice: the computer (Player 2) picked the two empty parts and Player 1 received 100 %. With an all-Red cut by Player 2, the empty regions are Yellow and Blue.
+- Variant: after a completed line, starting a redraw and pressing `Esc` clears `hasDrawnLine` and hides the line, but the cells keep the colours of the last drag update. Pressing Cut then sends those colours, without a line [Inferred from code].
+- Smallest future corrections (owner decision; none implemented): (a) display integrity only, with no outcome change: set `isSubmitted = true` (or lock drawing) whenever `CutView` sends a cut, so no local redrawing happens after a no-line cut; (b) behaviour change: keep `CutBT` non-interactable until `HasDrawnLine()`, which would remove no-line and Esc-variant submissions. That is a protocol decision (§14.3 Q3).
 
 ---
 
@@ -113,7 +120,7 @@ When both entries of `playerCut[]` are true, each client independently runs `Pla
 | 3 | Yellow | Red | Green | 2 `BackYellowValue` | Part 3 (O) | `RedO` |
 | 4 | Blue | Green | Red | 3 `BackBlueValue` | Part 4 (X) | `GreenX` |
 
-Side effects of `createSumRGYB`: recolors every cell (`setSpriteStatus(status, 1)`), stores per-region cell counts (`AmountOfColor`) in the record. The comment in `PointOfState.setSpriteStatus` swaps Yellow/Blue; `createSumRGYB` is authoritative. Because `setSpriteStatus` treats its second argument as a **player number** (`iPower == currentPlayerNum` → own shading, since `45bb1e8`), the literal `1` makes **Player 2's heat shading show Player 1's valuation** from this point on (confirmed at runtime 2026-11-02; see §15). The region status and all sums are unaffected: `val = getMyVal(j)` with `j` = local player.
+Side effects of `createSumRGYB`: recolors every cell (`setSpriteStatus(status, j)` since Batch 4; before that `setSpriteStatus(status, 1)`), stores per-region cell counts (`AmountOfColor`) in the record. The comment in `PointOfState.setSpriteStatus` swaps Yellow/Blue; `createSumRGYB` is authoritative. `setSpriteStatus` treats its second argument as a **player number** (`iPower == currentPlayerNum` → own shading, since `45bb1e8`). With the literal `1`, **Player 2's heat shading showed Player 1's valuation** from this point on (confirmed at runtime 2026-11-02; history in §15). Owner-approved fix on `feat/ux-batch-4` (`75c54b0`): pass `j` (the local player, the same index used for `getMyVal`) in `Player.cs` and `PlayerAITutorial.cs`. The region status and all sums were never affected: `val = getMyVal(j)`.
 
 Regions are color classes, not connected shapes. They can be empty (lines that do not cross inside the map, identical cuts) or fragmented by the map outline; all four buttons are always offered [Inferred]. The README's "overlap" special case is not implemented — `isIntuitive` (L364) always returns false.
 
@@ -437,11 +444,11 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 
 1. Fixed Player 1 role and valuation profile per participant vs. counterbalancing.
 2. Opponent valuations hidden during the choose phase in Info conditions — intended?
-3. Allow submission without a drawn line, and empty regions?
+3. Allow submission without a drawn line, and empty regions? (UX-004: current behaviour and the two smallest corrections are documented in §2; nothing changed in Batch 4.)
 4. Identical map and valuations in all six rounds — intended?
 5. Payment formula and currency confirmation.
 6. Required behavior on disconnect or Home (currently: session ends for both, round unsaved).
-7. Player 2's heat shading during choosing shows Player 1's valuation (§15): approve a correction, and decide how to treat data collected with builds that include `45bb1e8`.
+7. Player 2's heat shading during choosing shows Player 1's valuation (§15). The correction was approved for Batch 4 and is implemented on `feat/ux-batch-4` (`75c54b0`, not yet integrated). Still open: how to treat data collected with builds that include `45bb1e8`.
 
 ---
 
@@ -455,11 +462,14 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 | Late join to practice after partner pressed Next | Missed `GameOverClicked` → permanent wait | Inferred |
 | Player never presses Next | Round record never saved | Verified |
 | Cloud Save initialization or save fails | Logged only; data lost | Verified |
-| Submit without a line / zero-length line | 100/0 cut or arbitrary split; drawing still possible after submit | Inferred |
+| Submit without a line / zero-length line | 100/0 cut (or the colours of an `Esc`-cancelled redraw); no line shown for that player; drawing still possible after submit; Player 1's no-line cut leaves Green and Blue empty (details §2, UX-004) | Observed 2026-11-03 in test mode (practice, Player 1 role, Editor and WebGL); Player 2 case and Esc variant Inferred |
+| Help Page open over the result | Before the final Batch 4 fixes, `EndGameStatusObject` (a direct `Canvas` child) stayed visible over the Help Page; it now sits under `ViewItems` | Verified 2026-11-04 (practice and round 1, WebGL and Editor; same value after closing) |
+| Help Page open over drawn lines | Before the Batch 4 follow-up, the Batch 4 outlines (outside `States`) stayed visible over the Help Page. Fixed in `349f6e2` | Verified 2026-11-04 (practice and round 1, WebGL and Editor; restored after closing) |
+| Press on UI over the map | Before Batch 4, a press on an open Help Page or on the part of `SeeOtherPlayerBT` that overlaps the drawable bounds started a line. Fixed on `feat/ux-batch-4` (UX-026); county labels still start a line | Fix verified 2026-11-03 (WebGL 960×600: Help Page, see-other edge at world (−0.90, 4.26), Tyrone label) |
 | Empty or fragmented regions | Selectable, 0% if empty | Inferred |
 | Cell keys differ between clients | Exception or silently inconsistent allocation (§13.1) | Inferred (not observed 2026-11-01) |
 | Second player to cut | Before Batch 3: after both cuts, saw "wait for the other player to cut" instead of the turn note (`CutView` set that note after `setAllState`). Fixed in Batch 3 (`dev` `8b29582`): the note is shown only while the other cut is missing | Observed 2026-11-01; fix verified in test mode (both cut orders) |
 | End of choosing | Before Batch 3: the result breakdown was overwritten by "…last remaining part" notes. Fixed in Batch 3: `SetNoteForOtherPlayer` ignores notes once `chooseNum >= 3` | Fix verified in test mode on both clients |
-| Player 2 heat shading after both cuts | Switches from Player 2's to **Player 1's** valuation (overlay colour) for the choose phase and result, in Normal, Info and practice; Player 1 unaffected; county titles, region %, scores, records and payment still use Player 2's own values. Cause: `createSumRGYB` → `setSpriteStatus(status, 1)` with player-number semantics (`45bb1e8`, 2026-07-31). Before `45bb1e8` the literal `1` meant "own", but Player 2's Info "see other" view would then have shown its own shading [Inferred from history]. **Not fixed — owner/research decision** | Confirmed 2026-11-02 (overlay colours vs. both valuations, 8 distinguishing counties) |
+| Player 2 heat shading after both cuts | Switches from Player 2's to **Player 1's** valuation (overlay colour) for the choose phase and result, in Normal, Info and practice; Player 1 unaffected; county titles, region %, scores, records and payment still use Player 2's own values. Cause: `createSumRGYB` → `setSpriteStatus(status, 1)` with player-number semantics (`45bb1e8`, 2026-07-31). Before `45bb1e8` the literal `1` meant "own", but Player 2's Info "see other" view would then have shown its own shading [Inferred from history]. Records saved with builds containing `45bb1e8` and not `75c54b0` were collected while Player 2 saw Player 1's shading during choosing; their numbers are correct, but the information shown to Player 2 differed from the intended protocol. **Fix (owner-approved): `feat/ux-batch-4` `75c54b0`, `setSpriteStatus(status, j)`** | Defect confirmed 2026-11-02. Fix verified 2026-11-03 in test mode: Editor as Player 2, overlay of all 375 distinguishing cells matches Player 2's valuation before and after both cuts (practice and rounds 1–5; 0 match Player 1). Info pre-cut view still shows Player 1's valuation (375/375) and restores. Region values on both clients equal an independent recomputation |
 | Repeat play without page reload | Stale `RandArrays` used for payment | Inferred |
 | Help Page closed after the cut (Info rounds) | Before Batch 2: `SeeOtherPlayerBT` reappeared; one click showed the opponent's heat map and region values during choosing and added to `CountPlayerSeeOther`. Fixed in Batch 2 (`dev` `0f3f99d`): hidden layers are restored to their pre-open state and `getOtherView` is a no-op after the own cut | Observed 2026-11-02; fix verified in test mode |

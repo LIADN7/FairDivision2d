@@ -29,12 +29,23 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     // Display only: turn status under the region buttons, derived from the role and chooseNum
     [SerializeField] protected Image turnLabelPlate;
     [SerializeField] protected TextMeshProUGUI turnLabelRTL;
+    // Display only: cut-phase status derived from the line state and the cuts; hidden once both cuts exist
+    [SerializeField] protected Image cutStatusPlate;
+    [SerializeField] protected TextMeshProUGUI cutStatusRTL;
+    // Display only: which revealed line belongs to whom, from the actual line colours
+    [SerializeField] protected Image lineOwnerPlate;
+    [SerializeField] protected TextMeshProUGUI lineOwnerRTL;
+    // Display only: dim tint plus a centred message while the other player has to act (no raycast targets)
+    [SerializeField] protected GameObject waitingOverlay;
+    [SerializeField] protected TextMeshProUGUI waitingOverlayRTL;
+    private const string cutReadoutPlaceholderRTL = "שרטטו קו כדי לראות את השווי";
     private static readonly string[] regionNamesRTL = { "חלק 1 - אדום", "חלק 2 - ירוק", "חלק 3 - צהוב", "חלק 4 - כחול" };
     private static readonly string[] cutSideNamesRTL = { "הצד האדום", "הצד הירוק" };
 
 
     private float[] sumPlayer = { 0f, 0f }; // sum of all the squares for player 1 and 2 -> {1, 2}
     private float[] choosePlayer = { 0f, 0f }; // sum of all the squares that the player choose (1 and 2) -> {1, 2}
+    private LineDrawingManagerAITutoria cachedLineManager;
     public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
     private Dictionary<int, int> player1 = new Dictionary<int, int>();
     private Dictionary<int, int> player2 = new Dictionary<int, int>();
@@ -71,7 +82,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         }
 
         // this.InitDatabaseAsync();
-        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)", false, "אנא חלקו את המפה לשני חלקים (אם תחלקו לשני חלקים שווים, מובטח שתקבלו לפחות 50%)");
+        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)\n\nYou can redraw it until you click the confirm button.", false, "אנא חלקו את המפה לשני חלקים (אם תחלקו לשני חלקים שווים, מובטח שתקבלו לפחות 50%)\n\nאפשר לשרטט מחדש עד שתלחצו על אישור החלוקה.");
     }
 
     /// <summary>
@@ -222,6 +233,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     {
         yield return new WaitForSeconds(sec);
         Manager.inst?.cutBt.SetActive(true);
+        UpdatePhaseInstruction();
     }
 
     public void setAllStateTitle(int playerNum)
@@ -278,6 +290,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         {
             TutorialFplanManager.Instance.NextStep();
         }
+        UpdatePhaseInstruction();
     }
 
     /// <summary>
@@ -436,14 +449,15 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
 
             if (playerNum == 1)
             {
-                Manager.inst.setNote(-1, "It is your turn to choose one part.\nClick one of the four buttons.\nThe percentage on each button is the part's value to you.", false, "תורכם לבחור חלק אחד.\nלחצו על אחד מארבעת הכפתורים.\nהאחוז בכל כפתור הוא שווי החלק עבורכם.");
+                Manager.inst.setNote(-1, "", false, "");
             }
             else if (playerNum == 2)
             {
-                Manager.inst.setNote(-1, "Please wait for the computer to choose.\nThe computer chooses one part, then it is your turn to choose two parts.\nThe percentage on each button is the part's value to you.", false, "המתינו לבחירת המחשב.\nהמחשב בוחר חלק אחד, ואחר כך תורכם לבחור שני חלקים.\nהאחוז בכל כפתור הוא שווי החלק עבורכם.");
+                Manager.inst.setNote(-1, "", false, "");
             }
         }
-        UpdateTurnLabel();
+        UpdatePhaseInstruction();
+        UpdateLineOwnerLabel(FindLineManager());
     }
 
     // Display only: Hebrew region label "חלק N - צבע" plus a second line (value or who took it).
@@ -458,6 +472,141 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         SetButtonLabelRTL(i, (i < cutSideNamesRTL.Length ? cutSideNamesRTL[i] : regionNamesRTL[i]) + "\n" + secondLine);
     }
 
+    private LineDrawingManagerAITutoria FindLineManager()
+    {
+        if (cachedLineManager == null)
+        {
+            cachedLineManager = UnityEngine.Object.FindAnyObjectByType<LineDrawingManagerAITutoria>();
+        }
+        return cachedLineManager;
+    }
+
+    // Display only: the single phase instruction ("what do I do now?") and the waiting overlay, derived from the
+    // line state, Manager.isCut, isAllTrue, the local role and chooseNum. It gates nothing; all rules keep their own checks.
+    // Cut phase uses the plate above the cut button, choose phase the plate under the region buttons; at most one shows.
+    public void UpdatePhaseInstruction()
+    {
+        if (Manager.inst == null)
+        {
+            return;
+        }
+        int playerNum = myPlayerNum;
+        bool bothCut = isAllTrue();
+        string action = null;
+        string waiting = null;
+        LineDrawingManagerAITutoria lineManager = FindLineManager();
+        if (!bothCut)
+        {
+            if (Manager.inst.getIsCut())
+            {
+                waiting = "ממתינים לחיתוך של המחשב";
+            }
+            else if (lineManager != null && !Manager.inst.getIsShowView())
+            {
+                action = lineManager.HasDrawnLine() ? "לחצו על אישור החלוקה" : "שרטטו קו על המפה";
+            }
+        }
+        else if (chooseNum < 3)
+        {
+            if (playerNum == 1 && chooseNum == 0)
+            {
+                action = "בחרו חלק אחד";
+            }
+            else if (playerNum == 2 && chooseNum == 1)
+            {
+                action = "בחרו שני חלקים";
+            }
+            else if (playerNum == 2 && chooseNum == 2)
+            {
+                action = "בחרו חלק נוסף";
+            }
+            else
+            {
+                waiting = "ממתינים לבחירת המחשב";
+            }
+        }
+        if (TutorialFplanManager.Instance != null && TutorialFplanManager.Instance.IsGameplayLocked)
+        {
+            action = null;
+            waiting = null;
+        }
+        SetInstructionPlate(cutStatusPlate, cutStatusRTL, bothCut ? null : action);
+        SetInstructionPlate(turnLabelPlate, turnLabelRTL, bothCut ? action : null);
+        if (waitingOverlay != null && waitingOverlayRTL != null)
+        {
+            waitingOverlay.SetActive(waiting != null);
+            if (waiting != null)
+            {
+                waitingOverlayRTL.text = waiting;
+            }
+        }
+    }
+
+    private static void SetInstructionPlate(Image plate, TextMeshProUGUI label, string text)
+    {
+        if (plate == null || label == null)
+        {
+            return;
+        }
+        plate.gameObject.SetActive(text != null);
+        if (text != null)
+        {
+            label.text = text;
+        }
+    }
+
+    // Display only: names the revealed lines by their actual colours (own line renderer, the computer's colour).
+    private void UpdateLineOwnerLabel(LineDrawingManagerAITutoria lineManager)
+    {
+        if (lineOwnerPlate == null || lineOwnerRTL == null)
+        {
+            return;
+        }
+        int pcPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
+        string mine = null, other = null;
+        if (lineManager != null && lineManager.playerLineRenderer != null)
+        {
+            // Name a line only if it is actually shown (a cut submitted without a line has none).
+            if (lineManager.playerLineRenderer.enabled)
+            {
+                mine = LineColorNameRTL(lineManager.playerLineRenderer.startColor);
+            }
+            foreach (LineRenderer line in lineManager.GetComponentsInChildren<LineRenderer>())
+            {
+                if (line != lineManager.playerLineRenderer && line.enabled)
+                {
+                    other = LineColorNameRTL(pcPlayerNum == 1 ? lineManager.player1LineColor : lineManager.player2LineColor);
+                }
+            }
+        }
+        if (mine != null && mine == other)
+        {
+            mine = other = null;
+        }
+        string text = "";
+        if (mine != null)
+        {
+            text = "הקו " + mine + ": החיתוך שלכם";
+        }
+        if (other != null)
+        {
+            text += (text.Length > 0 ? "\n" : "") + "הקו " + other + ": החיתוך של המחשב";
+        }
+        bool show = isAllTrue() && text.Length > 0;
+        lineOwnerPlate.gameObject.SetActive(show);
+        if (show)
+        {
+            lineOwnerRTL.text = text;
+        }
+    }
+
+    private static string LineColorNameRTL(Color c)
+    {
+        if (c.r < 0.2f && c.g < 0.2f && c.b < 0.2f) return "השחור";
+        if (c.r > 0.8f && c.g > 0.8f && c.b > 0.8f) return "הלבן";
+        return null;
+    }
+
     private void SetButtonLabelRTL(int i, string text)
     {
         if (buttonsValueTextRTL == null || i < 0 || i >= buttonsValueTextRTL.Length || buttonsValueTextRTL[i] == null)
@@ -466,42 +615,6 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         }
         buttonsValueTextRTL[i].text = Manager.PrepareRtlNote(text);
     }
-
-    // Display only: turn status derived from the local role and chooseNum. It does not gate any choice.
-    private void UpdateTurnLabel()
-    {
-        if (turnLabelPlate == null || turnLabelRTL == null)
-        {
-            return;
-        }
-        bool isChoosing = isAllTrue() && chooseNum < 3;
-        turnLabelPlate.gameObject.SetActive(isChoosing);
-        if (!isChoosing)
-        {
-            return;
-        }
-        string text = "המתינו לבחירת המחשב";
-        bool isMyTurn = false;
-        if (myPlayerNum == 1 && chooseNum == 0)
-        {
-            text = "תורכם לבחור חלק אחד";
-            isMyTurn = true;
-        }
-        else if (myPlayerNum == 2 && chooseNum == 1)
-        {
-            text = "תורכם לבחור שני חלקים";
-            isMyTurn = true;
-        }
-        else if (myPlayerNum == 2 && chooseNum == 2)
-        {
-            text = "תורכם לבחור חלק אחד נוסף";
-            isMyTurn = true;
-        }
-        turnLabelRTL.text = text;
-        turnLabelPlate.color = isMyTurn ? new Color(1f, 1f, 1f, 0.95f) : new Color(0.75f, 0.75f, 0.75f, 0.85f);
-    }
-
-
 
     private bool isIntuitive(float[] sumRGYB)
     {
@@ -559,7 +672,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             ExecuteLocalChoose(i, playerNum);
             buttonsValueText[i].text += " (You)";
 
-            Manager.inst.setNote(-1, "Please wait for the computer to choose.\nThe computer chooses two parts.", false, "המתינו לבחירת המחשב.\nהמחשב בוחר שני חלקים.");
+            Manager.inst.setNote(-1, "", false, "");
 
             // PC is Player 2 and makes 2 choices after 1s simulated delay
             if (PCPlayerAITutorial.inst != null)
@@ -573,7 +686,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             ExecuteLocalChoose(i, playerNum);
             buttonsValueText[i].text += " (You)";
 
-            Manager.inst.setNote(-1, "It is your turn to choose one more part.", false, "תורכם לבחור חלק אחד נוסף.");
+            Manager.inst.setNote(-1, "", false, "");
         }
         else if (playerNum == 2 && chooseNum == 2)
         {
@@ -614,7 +727,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         SetRegionLabelRTL(i, playerNum == myPlayerNum ? "נבחר על ידכם" : "נבחר על ידי המחשב");
         colorsValueObj[i].GetComponent<Button>().interactable = false;
         chooseNum++;
-        UpdateTurnLabel();
+        UpdatePhaseInstruction();
 
         // Internal count check: If exactly 3 pieces have been chosen, automatically assign 4th piece after 0.5s
         if (GetChosenCount() == 3)
@@ -670,7 +783,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         Manager.inst.setNote(-1, endExplanationPlayers[myPlayerNum - 1], false, endExplanationPlayersRTL[myPlayerNum - 1]);
         Manager.inst.setEndGameLayer(choosePlayer[myPlayerNum - 1],false);
         this.gameDatabase.SumOfMyPart = choosePlayer[myPlayerNum - 1];
-        UpdateTurnLabel();
+        UpdatePhaseInstruction();
 
         if (TutorialFplanManager.Instance != null)
         {
@@ -733,7 +846,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             // p.setChildText(colorText);
             sumRGYB[spriteStatus - 1] += val;
             statusCounter[spriteStatus - 1]++;
-            p.setSpriteStatus(spriteStatus, 1);
+            p.setSpriteStatus(spriteStatus, j);
 
         }
         this.gameDatabase.SetAmountOfColor(statusCounter);
@@ -775,15 +888,24 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             {
                 buttonsValueText[0].text = "Other player Part 1: " + ((1 - greenVal) * 100) + "%";
                 buttonsValueText[1].text = "Other player Part 2: " + (greenVal * 100) + "%";
-                SetCutSideLabelRTL(0, "שווה למחשב: " + ((1 - greenVal) * 100) + "%");
-                SetCutSideLabelRTL(1, "שווה למחשב: " + (greenVal * 100) + "%");
             }
             else
             {
                 buttonsValueText[0].text = "Part 1 value: " + ((1 - greenVal) * 100) + "%";
                 buttonsValueText[1].text = "Part 2 value: " + (greenVal * 100) + "%";
-                SetCutSideLabelRTL(0, "שווה לכם: " + ((1 - greenVal) * 100) + "%");
-                SetCutSideLabelRTL(1, "שווה לכם: " + (greenVal * 100) + "%");
+            }
+            // Display only: before the first line the default all-red split is not shown as a result.
+            LineDrawingManagerAITutoria lineManager = FindLineManager();
+            if (lineManager != null && !lineManager.HasLineStarted() && !Manager.inst.getIsCut())
+            {
+                SetButtonLabelRTL(0, cutReadoutPlaceholderRTL);
+                SetButtonLabelRTL(1, cutReadoutPlaceholderRTL);
+            }
+            else
+            {
+                string prefix = showingOtherPlayer ? "שווה למחשב: " : "שווה לכם: ";
+                SetCutSideLabelRTL(0, prefix + ((1 - greenVal) * 100) + "%");
+                SetCutSideLabelRTL(1, prefix + (greenVal * 100) + "%");
             }
             if ((greenVal * 100) == 50)
             {
@@ -889,13 +1011,24 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             buttonsValueText[1].text = "Other player val: " + sumRGYB[1].ToString("F5") + "%";
             buttonsValueText[2].text = "Other player val: " + sumRGYB[2].ToString("F5") + "%";
             buttonsValueText[3].text = "Other player val: " + sumRGYB[3].ToString("F5") + "%";
+            // Display only: before the first line the default all-red split is not shown as a result.
+            LineDrawingManagerAITutoria lineManager = FindLineManager();
+            bool noLineYet = lineManager != null && !lineManager.HasLineStarted();
             for (int k = 0; k < sumRGYB.Length; k++)
             {
-                SetCutSideLabelRTL(k, "שווה למחשב: " + sumRGYB[k].ToString("F5") + "%");
+                if (noLineYet && k < 2)
+                {
+                    SetButtonLabelRTL(k, cutReadoutPlaceholderRTL);
+                }
+                else
+                {
+                    SetCutSideLabelRTL(k, "שווה למחשב: " + sumRGYB[k].ToString("F5") + "%");
+                }
             }
         }
 
         Manager.inst.changeSeeOtherPlayerBT();
+        UpdatePhaseInstruction();
     }
 
 

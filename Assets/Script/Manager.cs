@@ -151,6 +151,7 @@ public class Manager : MonoBehaviour
         this.textNote.text = massage;
         this.textNoteRTL.color = isError ? Color.red : Color.black;
         this.textNoteRTL.text = PrepareRtlNote(massageRTL);
+        SetNotePaperVisible(!string.IsNullOrEmpty(massageRTL));
 
         if (sec < 0)
         {
@@ -161,6 +162,18 @@ public class Manager : MonoBehaviour
             yield return new WaitForSeconds(sec);
             this.textNote.text = "";
             this.textNoteRTL.text = "";
+            SetNotePaperVisible(false);
+        }
+    }
+
+    // Display only: the note paper (parent of both note texts) is shown only while it has something to say,
+    // so an empty paper does not compete with the phase instruction. The note objects themselves stay in place.
+    private void SetNotePaperVisible(bool visible)
+    {
+        Transform paper = this.textNoteRTL != null ? this.textNoteRTL.transform.parent : null;
+        if (paper != null && paper.gameObject.activeSelf != visible)
+        {
+            paper.gameObject.SetActive(visible);
         }
     }
 
