@@ -463,6 +463,7 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 | Player never presses Next | Round record never saved | Verified |
 | Cloud Save initialization or save fails | Logged only; data lost | Verified |
 | Submit without a line / zero-length line | 100/0 cut (or the colours of an `Esc`-cancelled redraw); no line shown for that player; drawing still possible after submit; Player 1's no-line cut leaves Green and Blue empty (details §2, UX-004) | Observed 2026-11-03 in test mode (practice, Player 1 role, Editor and WebGL); Player 2 case and Esc variant Inferred |
+| Help Page open over the result | Before the final Batch 4 fixes, `EndGameStatusObject` (a direct `Canvas` child) stayed visible over the Help Page; it now sits under `ViewItems` | Verified 2026-11-04 (practice and round 1, WebGL and Editor; same value after closing) |
 | Help Page open over drawn lines | Before the Batch 4 follow-up, the Batch 4 outlines (outside `States`) stayed visible over the Help Page. Fixed in `349f6e2` | Verified 2026-11-04 (practice and round 1, WebGL and Editor; restored after closing) |
 | Press on UI over the map | Before Batch 4, a press on an open Help Page or on the part of `SeeOtherPlayerBT` that overlaps the drawable bounds started a line. Fixed on `feat/ux-batch-4` (UX-026); county labels still start a line | Fix verified 2026-11-03 (WebGL 960×600: Help Page, see-other edge at world (−0.90, 4.26), Tyrone label) |
 | Empty or fragmented regions | Selectable, 0% if empty | Inferred |
