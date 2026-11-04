@@ -341,7 +341,7 @@ Authoritative list: [Reference §14](CUT_AND_CHOOSE_REFERENCE.md#14-research-inv
 
 ## 17. Current Status and Handoff
 
-**As of 2026-11-04.** UX Batch 4 and its owner-requested follow-up are implemented on **`feat/ux-batch-4`** (from `dev` `cb87437`; pushed, **not merged**, awaiting owner approval; details below). UX Batches 1–3 are accepted by the owner and merged into the shared integration branch **`dev`** (created from `AITutorial` `d1cc192`; Batch 1: merge commit `44772cb` of `feat/ux-batch-1` `56dfd5b`, which contains `tooling/unity-pipeline`; Batch 2: merge commit `0f3f99d` of `feat/ux-batch-2` `d78dd4c`; Batch 3: merge commit `8b29582` of `feat/ux-batch-3` `663c56f`). Start new batches from `dev`. `main` is untouched and human-controlled; before any `main` integration a full regression run (including six rounds) and Release validation (§13.3) are required. Owner priority: **player UX with minimum regression risk; no general refactoring.** Agent Git rules: `CLAUDE.md`.
+**As of 2026-11-04.** UX Batches 1–4 are accepted by the owner and merged into the shared integration branch **`dev`** (created from `AITutorial` `d1cc192`; Batch 1: merge commit `44772cb` of `feat/ux-batch-1` `56dfd5b`, which contains `tooling/unity-pipeline`; Batch 2: merge commit `0f3f99d` of `feat/ux-batch-2` `d78dd4c`; Batch 3: merge commit `8b29582` of `feat/ux-batch-3` `663c56f`; Batch 4 including its follow-up and final UI fixes: merge commit `a28656e` of `feat/ux-batch-4` `a39b598`, approved 2026-11-04). Start new batches from `dev`. `main` is untouched and human-controlled; before any `main` integration a full regression run (including six rounds) and Release validation (§13.3) are required. Owner priority: **player UX with minimum regression risk; no general refactoring.** Agent Git rules: `CLAUDE.md`.
 
 **UX Batch 1 — done** (IDs from the owner's UX report; display-only, no scoring/networking/saving changes):
 
@@ -383,7 +383,7 @@ Note for agents: all Hebrew TMP text uses the `segoeui SDF Hebrew` material, who
 
 Verified in test mode (Editor 1600×900 + WebGL Development 960×600): practice in both roles, round 1 (Player 2 cuts first), round 2 (Player 1 cuts first), round 3 Info see-other readouts; region values, ownership and the Player 2 record consistent across clients; saves only to `development`. Not run: rounds 4–6, Chat, EndGameFlow.
 
-**UX Batch 4 — implemented, awaiting owner approval** (`feat/ux-batch-4`; owner-approved scope and wording; both scenes and the practice forks):
+**UX Batch 4 — done, merged into `dev` (`a28656e`)** (`feat/ux-batch-4`; owner-approved scope and wording; both scenes and the practice forks):
 
 | ID | Change |
 |---|---|
@@ -431,12 +431,13 @@ Follow-up fixes were re-verified in a single-client Editor practice session: ref
   - Region values equal the independent recomputation.
 
 **Known issues / not yet verified:**
-- **Player 2 heat shading (history):** confirmed 2026-11-02 in test mode. After both cuts, Player 2's heat shading switched to Player 1's valuation (choose phase and result), in Normal, Info and practice; Player 1 was unaffected. Cause: `createSumRGYB` called `setSpriteStatus(status, 1)` (`Player.cs`, `PlayerAITutorial.cs`), while `PointOfState.setSpriteStatus` treats `iPower == currentPlayerNum` as "own values" since `45bb1e8` (2026-07-31). Region percentages, scores, saved records and payment always used `getMyVal(own)`. **Fixed on `feat/ux-batch-4` (`75c54b0`), not yet in `dev`/`main`.** Participants who played builds containing `45bb1e8` saw Player 1's shading as Player 2 during choosing; their stored numbers are correct, but the information condition differed. How to treat that data is an open research decision ([Reference §14.3](CUT_AND_CHOOSE_REFERENCE.md#143-open-questions-requiring-owner-decision) Q7, §15).
-- **Photon isolation after a lobby return:** fixed for test mode on `feat/ux-batch-4` (§13.2). Release participants still move to `0.0.1_2.42` after a lobby return while connected (unchanged production behaviour; owner decision).
+- **Player 2 heat shading (history):** confirmed 2026-11-02 in test mode. After both cuts, Player 2's heat shading switched to Player 1's valuation (choose phase and result), in Normal, Info and practice; Player 1 was unaffected. Cause: `createSumRGYB` called `setSpriteStatus(status, 1)` (`Player.cs`, `PlayerAITutorial.cs`), while `PointOfState.setSpriteStatus` treats `iPower == currentPlayerNum` as "own values" since `45bb1e8` (2026-07-31). Region percentages, scores, saved records and payment always used `getMyVal(own)`. **Fixed in `75c54b0`, merged into `dev` (`a28656e`); not yet in `main`.** Participants who played builds containing `45bb1e8` saw Player 1's shading as Player 2 during choosing; their stored numbers are correct, but the information condition differed. How to treat that data is an open research decision ([Reference §14.3](CUT_AND_CHOOSE_REFERENCE.md#143-open-questions-requiring-owner-decision) Q7, §15).
+- **Photon isolation after a lobby return:** fixed for test mode (`cb831a4`, in `dev`; §13.2). Release participants still move to `0.0.1_2.42` after a lobby return while connected (unchanged production behaviour; owner decision).
 - UX-004: a cut can be submitted without a line (100/0); drawing remains possible after such a cut; a Player 1 no-line cut leaves two empty regions. Owner decision (Reference §2, §14.3 Q3).
 - Cut readouts, "You get total" and the round label are still English legacy `Text` (region buttons are Hebrew since Batch 3). Help Page images still show English "Low/High".
 - `EndGameFlow` intro text: the first lines are clipped at the top of the screen — pre-existing.
-- Room-full message, real keyboard name entry and **any Release build** are unverified.
+- Room-full message, real keyboard name entry and **any Release build** are unverified. Release verification (§13.3) is required before any participant deployment.
+- Chat input while the waiting overlay is shown has not been tested at runtime (no Chat round reached); a raycast probe showed the overlay itself is never hit.
 - Exposed historical service-account credentials in `UnityCloudDataScraper.cs` still need owner review/rotation (§11).
 - Open research questions: §15.
 
@@ -444,4 +445,11 @@ Test-tool notes: WebGL clicks need a hover before the press (Unity reads the las
 
 Test-tool note (Batch 4): the WebGL canvas can be sampled with `gl.readPixels` inside a `requestAnimationFrame` callback (the drawing buffer is not preserved otherwise). Cell screen positions at 960×600 are `x = 480 + wx·600/11.4`, `y = 300 + wy·600/11.4` (bottom-left origin).
 
-**Next:** owner review of UX Batch 4 including the follow-up on `feat/ux-batch-4` (wording, tutorial texts, waiting overlay), and the data-handling decision for pre-fix Player 2 records. Merge into `dev` only after approval. Open owner decisions: UX-004, and the Release lobby-return AppVersion. Do not start Batch 5 before that.
+**Next — Batch 5, NOT YET APPROVED FOR IMPLEMENTATION.** Proposed scope (owner approval of scope and wording required before any change; start from `dev` on a new feature branch):
+- UX-012: opponent valuation visibility and clear ownership labels.
+- UX-013: chat interface clarity.
+- UX-031: message sender distinction and visual polish.
+- UX-010: final reward presentation.
+- Regression test: chat availability while the waiting overlay is shown.
+
+Still open owner decisions: UX-004 (no-line submission), the Release lobby-return AppVersion (§13.2), and the treatment of pre-fix Player 2 records (Reference §14.3 Q7).

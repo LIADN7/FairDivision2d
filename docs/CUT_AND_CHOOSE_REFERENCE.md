@@ -448,7 +448,7 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 4. Identical map and valuations in all six rounds — intended?
 5. Payment formula and currency confirmation.
 6. Required behavior on disconnect or Home (currently: session ends for both, round unsaved).
-7. Player 2's heat shading during choosing shows Player 1's valuation (§15). The correction was approved for Batch 4 and is implemented on `feat/ux-batch-4` (`75c54b0`, not yet integrated). Still open: how to treat data collected with builds that include `45bb1e8`.
+7. Player 2's heat shading during choosing shows Player 1's valuation (§15). The correction was approved for Batch 4 and is implemented in `75c54b0` and merged into `dev` (`a28656e`, 2026-11-04). Still open: how to treat data collected with builds that include `45bb1e8`.
 
 ---
 
