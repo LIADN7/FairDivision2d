@@ -23,6 +23,14 @@ public class Player : MonoBehaviourPunCallbacks
     [SerializeField] protected Text palyerName;
     [SerializeField] protected Text chatText;
     [SerializeField] protected InputField chatInput;
+    // Display only (UX-013/UX-031): readable Hebrew chat lines with a sender label. The legacy chatText stays hidden
+    // but is still written. chatIsLocal mirrors chatHistory one-to-one and is never sent or saved.
+    [SerializeField] protected TextMeshProUGUI chatMessagesRTL;
+    private readonly List<bool> chatIsLocal = new List<bool>();
+    private bool chatMessagesMaterialReady = false;
+    private const string chatOwnLabelRTL = "אני";
+    private const string chatOtherLabelRTL = "השחקן השני";
+    private const int chatShownMessages = 10; // same as the legacy display (last 10)
     [SerializeField] protected GameObject[] colorsValueObj; // {red, green, yellow, blue}
     // Display only: Hebrew labels shown on the region buttons (the legacy buttonsValueText stay hidden but are still written)
     [SerializeField] protected TextMeshProUGUI[] buttonsValueTextRTL; // {red, green, yellow, blue}
@@ -979,7 +987,7 @@ public class Player : MonoBehaviourPunCallbacks
     {
         if (this.chatInput.text.Length >= 1)
         {
-            addMessageToList(PhotonNetwork.NickName, this.chatInput.text);
+            addMessageToList(PhotonNetwork.NickName, this.chatInput.text, true);
             view.RPC("sendMessageToAll", RpcTarget.Others, PhotonNetwork.NickName, this.chatInput.text);
             this.chatInput.text = "";
             getAllMessages();
@@ -990,15 +998,20 @@ public class Player : MonoBehaviourPunCallbacks
 
     // Adds a new chat message to the chat history list.
     // If the chat history has more than 11 messages, it removes the oldest message.
-    private void addMessageToList(string name, string newMessage)
+    private void addMessageToList(string name, string newMessage, bool isLocal = false)
     {
-        // Save only the last 200 messeges 
+        // Save only the last 200 messeges
         if (this.chatHistory.Count() >= 200)
         {
             this.chatHistory.RemoveAt(0);
+            if (this.chatIsLocal.Count > 0)
+            {
+                this.chatIsLocal.RemoveAt(0);
+            }
         }
         ChatMessage tempMessage = new ChatMessage(name, newMessage);
         this.chatHistory.Add(tempMessage);
+        this.chatIsLocal.Add(isLocal); // Display only: who sent it, from the call site (not from the nickname)
         this.gameDatabase.ChatHistory = this.chatHistory; // Save chat (this func is called twice)
 
     }
@@ -1018,7 +1031,67 @@ public class Player : MonoBehaviourPunCallbacks
             }
             i++;
         }
+        RefreshChatMessagesRTL();
 
+    }
+
+    // Display only (UX-013/UX-031): the same last messages in chronological order, newest at the bottom.
+    // Own lines: "אני" label, right-aligned; other player's lines: "השחקן השני" label, left-aligned.
+    // Oldest lines are left out (not clipped) when they do not fit the panel. The message text is not altered.
+    private void RefreshChatMessagesRTL()
+    {
+        if (this.chatMessagesRTL == null)
+        {
+            return;
+        }
+        if (!this.chatMessagesMaterialReady)
+        {
+            // The shared Hebrew material has a green face colour that tints every vertex colour; this text gets its own
+            // runtime instance with a white face so the sender colours show as set (no asset is changed).
+            this.chatMessagesRTL.fontMaterial.SetColor(ShaderUtilities.ID_FaceColor, Color.white);
+            this.chatMessagesMaterialReady = true;
+        }
+        int first = Math.Max(0, this.chatHistory.Count - chatShownMessages);
+        string shown = BuildChatMessagesRTL(first);
+        Rect box = this.chatMessagesRTL.rectTransform.rect;
+        this.chatMessagesRTL.enableAutoSizing = false; // measure at the normal size
+        float height = this.chatMessagesRTL.GetPreferredValues(shown, box.width, 0).y;
+        while (first < this.chatHistory.Count - 1 && height > box.height)
+        {
+            first++;
+            shown = BuildChatMessagesRTL(first);
+            height = this.chatMessagesRTL.GetPreferredValues(shown, box.width, 0).y;
+        }
+        // Only a single message longer than the whole panel is shrunk (down to fontSizeMin) instead of overflowing.
+        this.chatMessagesRTL.enableAutoSizing = height > box.height;
+        this.chatMessagesRTL.text = shown;
+    }
+
+    private string BuildChatMessagesRTL(int first)
+    {
+        System.Text.StringBuilder lines = new System.Text.StringBuilder();
+        for (int k = first; k < this.chatHistory.Count; k++)
+        {
+            bool isLocal = k < this.chatIsLocal.Count && this.chatIsLocal[k];
+            string line = (isLocal ? "<align=right><color=#8FE3FF><b>" + chatOwnLabelRTL : "<align=left><color=#FFD36B><b>" + chatOtherLabelRTL)
+                + ":</b></color> <noparse>" + this.chatHistory[k].Message + "</noparse></align>";
+            if (lines.Length > 0)
+            {
+                lines.Append('\n');
+            }
+            lines.Append(FixRtlForTmp(line));
+        }
+        return lines.ToString();
+    }
+
+    // RTLTMPro's own conversion (as in RTLTextMeshPro.GetFixedText), for a TMP text with isRightToLeftText enabled:
+    // Hebrew, Latin words and numbers keep their reading order and rich-text tags stay valid.
+    private static string FixRtlForTmp(string input)
+    {
+        RTLTMPro.FastStringBuilder output = new RTLTMPro.FastStringBuilder(RTLTMPro.RTLSupport.DefaultBufferSize);
+        RTLTMPro.RTLSupport.FixRTL(input, output, false, true, true);
+        output.Reverse();
+        return output.ToString();
     }
 
     // Sends the message to the other players
