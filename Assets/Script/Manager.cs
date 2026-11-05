@@ -253,7 +253,7 @@ public class Manager : MonoBehaviour
         if (this.valueOwnerPlate != null)
         {
             this.valueOwnerPlate.color = this.isShowView ? otherValuesPlateColor : ownValuesPlateColor;
-            this.valueOwnerPlate.gameObject.SetActive(this.SeeOtherPlayerBT.activeSelf);
+            this.valueOwnerPlate.gameObject.SetActive(this.SeeOtherPlayerBT.activeSelf && Config.inst.getSeeOtherEnable());
         }
     }
 

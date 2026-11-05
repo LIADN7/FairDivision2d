@@ -1052,19 +1052,24 @@ public class Player : MonoBehaviourPunCallbacks
             this.chatMessagesMaterialReady = true;
         }
         int first = Math.Max(0, this.chatHistory.Count - chatShownMessages);
-        string shown = BuildChatMessagesRTL(first);
-        Rect box = this.chatMessagesRTL.rectTransform.rect;
+        float boxHeight = this.chatMessagesRTL.rectTransform.rect.height;
         this.chatMessagesRTL.enableAutoSizing = false; // measure at the normal size
-        float height = this.chatMessagesRTL.GetPreferredValues(shown, box.width, 0).y;
-        while (first < this.chatHistory.Count - 1 && height > box.height)
+        // Measured on the laid-out text (GetPreferredValues under-measured the paragraph spacing at runtime).
+        float height = SetChatMessagesAndMeasure(first);
+        while (first < this.chatHistory.Count - 1 && height > boxHeight)
         {
             first++;
-            shown = BuildChatMessagesRTL(first);
-            height = this.chatMessagesRTL.GetPreferredValues(shown, box.width, 0).y;
+            height = SetChatMessagesAndMeasure(first);
         }
         // Only a single message longer than the whole panel is shrunk (down to fontSizeMin) instead of overflowing.
-        this.chatMessagesRTL.enableAutoSizing = height > box.height;
-        this.chatMessagesRTL.text = shown;
+        this.chatMessagesRTL.enableAutoSizing = height > boxHeight;
+    }
+
+    private float SetChatMessagesAndMeasure(int first)
+    {
+        this.chatMessagesRTL.text = BuildChatMessagesRTL(first);
+        this.chatMessagesRTL.ForceMeshUpdate();
+        return this.chatMessagesRTL.preferredHeight;
     }
 
     private string BuildChatMessagesRTL(int first)
