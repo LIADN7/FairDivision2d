@@ -66,6 +66,8 @@ public class Player : MonoBehaviourPunCallbacks
     private string[] endExplanationPlayersRTL = { "קיבלתם:\n", "קיבלתם:\n" };
     private bool[] playerCut = { false, false };
     private bool[] palyersGameOver = { false, false };
+    // Display only (UX-025): this client pressed Next in this round (NextGame saved the round record). Gates nothing.
+    private bool localNextPressed = false;
 
     private CutAndChoosePlayerDatabase gameDatabase = new CutAndChoosePlayerDatabase();
     //private Task databaseTask;
@@ -1151,6 +1153,7 @@ public class Player : MonoBehaviourPunCallbacks
         //Manager.inst.setNote(-1,"Other player left the game...", false); // need to send in RPC!
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         this.palyersGameOver[playerNum - 1] = true;
+        this.localNextPressed = true; // display only
         Manager.inst.NextSceneClick();
         this.SaveData();
         if (this.palyersGameOver[0] && this.palyersGameOver[1])
@@ -1162,6 +1165,12 @@ public class Player : MonoBehaviourPunCallbacks
         {
             photonView.RPC("GameOverClicked", RpcTarget.Others, playerNum);
         }
+    }
+
+    // Display only (UX-025): the exit confirmation says "not saved" until this player has pressed Next in this round.
+    public bool HasPressedNext()
+    {
+        return this.localNextPressed;
     }
 
     [PunRPC]
