@@ -33842,6 +33842,9 @@ MonoBehaviour:
   textEndGameStatus: {fileID: 1009004864}
   textNote: {fileID: 66917791}
   textNoteRTL: {fileID: 590819966}
+  valueOwnerPlate: {fileID: 0}
+  valueOwnerRTL: {fileID: 0}
+  legendTitleRTL: {fileID: 604127527}
 --- !u!4 &764684018
 Transform:
   m_ObjectHideFlags: 0

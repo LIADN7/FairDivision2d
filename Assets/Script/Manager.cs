@@ -26,6 +26,10 @@ public class Manager : MonoBehaviour
     [SerializeField] protected TextMeshProUGUI valueOwnerRTL;
     private const string ownValuesLabelRTL = "מוצגים הערכים שלכם";
     private const string otherValuesLabelRTL = "מוצגים הערכים של השחקן השני";
+    // Display only: the map legend title names whose square values the shading shows (same state as the plate).
+    [SerializeField] protected TextMeshProUGUI legendTitleRTL;
+    private const string ownLegendTitleRTL = "שווי המשבצת עבורכם";
+    private const string otherLegendTitleRTL = "שווי המשבצת עבור השחקן השני";
     private static readonly Color ownValuesPlateColor = new Color(0.08f, 0.13f, 0.26f, 0.92f);
     private static readonly Color otherValuesPlateColor = new Color(0.45f, 0.07f, 0.07f, 0.92f);
     //[SerializeField] protected Text textChatAlert;
@@ -249,6 +253,10 @@ public class Manager : MonoBehaviour
         if (this.valueOwnerRTL != null)
         {
             this.valueOwnerRTL.text = this.isShowView ? otherValuesLabelRTL : ownValuesLabelRTL;
+        }
+        if (this.legendTitleRTL != null)
+        {
+            this.legendTitleRTL.text = this.isShowView ? otherLegendTitleRTL : ownLegendTitleRTL;
         }
         if (this.valueOwnerPlate != null)
         {

@@ -32031,6 +32031,7 @@ MonoBehaviour:
   textNoteRTL: {fileID: 1359885534}
   valueOwnerPlate: {fileID: 1509105239}
   valueOwnerRTL: {fileID: 2067041683}
+  legendTitleRTL: {fileID: 1339761571}
 --- !u!4 &764684018
 Transform:
   m_ObjectHideFlags: 0
