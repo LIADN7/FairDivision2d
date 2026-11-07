@@ -2,7 +2,7 @@
 
 > Detailed implementation reference for the core algorithm. For the project overview, experiment schedule, data schema and environment see [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md); this file does not repeat them.
 >
-> **Last verified:** 2026-11-01 — static inspection on `AITutorial` @ `d1cc192`, plus two-client runtime smoke tests on `feat/ux-batch-1` and (2026-11-02, six rounds) `feat/ux-batch-2` (see PROJECT_CONTEXT §17). Batches 1–3 changed display only, plus the Batch 2 see-other guard (§15). Batch 4 (`feat/ux-batch-4`, 2026-11-03, not yet integrated) adds the Player 2 shading fix (§3), a UI-click guard on line start, line outlines (§2) and cut-phase labels. The rules, sync and persistence described here are unchanged. Evidence tags follow PROJECT_CONTEXT: **[Verified]**, **[Inferred]**, **[Unknown]**. Paths are relative to `Assets/Script/` unless stated otherwise.
+> **Last verified:** 2026-11-01 — static inspection on `AITutorial` @ `d1cc192`, plus two-client runtime smoke tests on `feat/ux-batch-1` and (2026-11-02, six rounds) `feat/ux-batch-2` (see PROJECT_CONTEXT §17). Batches 1–3 changed display only, plus the Batch 2 see-other guard (§15). Batch 4 (`feat/ux-batch-4`, 2026-11-03, not yet integrated) adds the Player 2 shading fix (§3), a UI-click guard on line start, line outlines (§2) and cut-phase labels. Batch 6 (`feat/ux-batch-6`, 2026-11-07) adds display-only session dialogs (exit confirmation, connection notice) and Next/transition messages (§7, §8.1, §15). The rules, sync and persistence described here are unchanged. Evidence tags follow PROJECT_CONTEXT: **[Verified]**, **[Inferred]**, **[Unknown]**. Paths are relative to `Assets/Script/` unless stated otherwise.
 
 ## Contents
 
@@ -219,7 +219,7 @@ P1 ChooseView: Choose(i,1) ─ All ───────────────
 | `sendMessageToAll` | `Player` L790 | Others | Chat |
 | `NextGame` (button, local call), `GameOverClicked`, `MasterNextGame`, `RequestSceneLoad`, `SetRandomPaymentRound`, `LeaveGameForAll` | `Player` L827–924 | various | Progression (§8, §9) |
 
-Not handled [Verified absence]: `OnPlayerLeftRoom`, `OnMasterClientSwitched`, `OnDisconnected`, reconnection, late join mid-round.
+Not handled [Verified absence]: reconnection, master-switch handling, late join mid-round. Since Batch 6 (`feat/ux-batch-6`) `GameSessionDialogs` (SessionDialogs prefab, both game scenes) listens to `OnPlayerLeftRoom`, `OnDisconnected` and `OnLeftRoom` for **display only**: a non-modal notice for a confirmed departure or a lost connection, ignored during a normal exit (this client is already `Leaving` when the other player's `LeaveGameForAll` arrives; a normal leave reports `OnLeftRoom` in `DisconnectingFromGameServer`). `OnMasterClientSwitched` is only logged; roles still follow `IsMasterClient` (a master departure flips the remaining client to "Player 1"). See PROJECT_CONTEXT §17.
 
 ---
 
@@ -236,7 +236,8 @@ CutSceneAITutorial (practice) ─both humans click Next→ RequestSceneLoad("Cut
 CutScene round r ─both click Next→ CutScene round r+1      (r = 0…4)
 CutScene round 5 ─both click Next→ SetRandomPaymentRound + LeaveGame("EndGameFlow")
 EndGameFlow ─Finish→ PlayerData saved → survey redirect
-Any game scene ─Home (either player)→ LeaveGameForAll → both return to MainScene (round not saved)
+Any game scene ─Home (either player)→ [Batch 6: confirmation "לצאת מהמשחק?"; "יציאה"] → LeaveGameForAll → both return to MainScene (round not saved)
+Any game scene ─confirmed departure / lost connection→ [Batch 6: notice] ─"חזרה למסך הראשי"→ MainScene (in room: LeaveGame; else direct load)
 ```
 
 ### 8.2 One real round (per client)
@@ -459,9 +460,11 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 
 | Scenario | Behavior | Tag |
 |---|---|---|
-| Opponent disconnects | No handler; remaining player waits; if master left, the other client becomes "Player 1" | Verified absence of handlers; outcome Inferred |
-| Either player presses Home | Both return to `MainScene`; round unsaved | Verified |
-| Simultaneous Next clicks | Possible permanent wait | Inferred |
+| Opponent disconnects | Batch 6: non-modal notice "החיבור לשחקן השני נותק." once Photon reports the departure (socket closed: ~0.25 s; paused/hidden WebGL client: ~65–72 s, PUN background keep-alive 60 s + server timeout); round instruction and waiting overlay hidden; nothing saved or reassigned. If the master left, the remaining client becomes "Player 1" (`IsMasterClient`); game input under the notice is not blocked | Verified 2026-11-07 in test mode (PROJECT_CONTEXT §17); real network cut not reproduced |
+| Own connection lost | Batch 6: notice "החיבור לשרת המשחק נותק." on `OnDisconnected` (paused WebGL client: on its first frame back, `ClientTimeout`); return loads `MainScene`, which connects as on a fresh start | Verified 2026-11-07 in test mode |
+| Either player presses Home | Batch 6: confirmation first ("ביטול" changes nothing). After "יציאה" both return to `MainScene`; round unsaved; the other player sees no notice (silent return) | Verified (Batch 6 in both directions, practice and round 1) |
+| Simultaneous Next clicks | Possible permanent wait; since Batch 6 both show "ממתינים לשחקן השני" | Inferred |
+| New game after a lobby return without page reload | Cell keys keep counting (§13.1): reproduced 2026-11-07 — Editor keys 2844–3317 vs fresh WebGL 0–473, round stalled after both cuts. `RandArrays` also not reset | Verified in test mode (pre-existing) |
 | Late join to practice after partner pressed Next | Missed `GameOverClicked` → permanent wait | Inferred |
 | Player never presses Next | Round record never saved | Verified |
 | Cloud Save initialization or save fails | Logged only; data lost | Verified |
