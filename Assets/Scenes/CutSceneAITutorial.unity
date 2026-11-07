@@ -25884,7 +25884,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 40, y: 205}
-  m_SizeDelta: {x: 700, y: 70}
+  m_SizeDelta: {x: 960, y: 70}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &604127527
 MonoBehaviour:
@@ -33842,6 +33842,9 @@ MonoBehaviour:
   textEndGameStatus: {fileID: 1009004864}
   textNote: {fileID: 66917791}
   textNoteRTL: {fileID: 590819966}
+  valueOwnerPlate: {fileID: 0}
+  valueOwnerRTL: {fileID: 0}
+  legendTitleRTL: {fileID: 604127527}
 --- !u!4 &764684018
 Transform:
   m_ObjectHideFlags: 0

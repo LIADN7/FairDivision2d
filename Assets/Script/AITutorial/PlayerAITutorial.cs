@@ -251,6 +251,8 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         if (lineManager != null)
         {
             lineManager.SubmitLine();
+            // UX-004 (owner-approved): no local drawing after the practice cut, with or without a line.
+            lineManager.LockDrawingAfterCut();
         }
         else
         {

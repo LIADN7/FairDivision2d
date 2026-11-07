@@ -20,6 +20,18 @@ public class Manager : MonoBehaviour
     [SerializeField] protected Text textEndGameStatus;
     [SerializeField] protected Text textNote;
     [SerializeField] protected TextMeshProUGUI textNoteRTL;
+    // Display only (UX-012): whose valuation the map shading and readouts show. The plate sits above the cut readouts
+    // (under ViewItems, so the Help Page hides it) and is shown exactly while the see-other toggle is (Info, before the own cut).
+    [SerializeField] protected Image valueOwnerPlate;
+    [SerializeField] protected TextMeshProUGUI valueOwnerRTL;
+    private const string ownValuesLabelRTL = "מוצגים הערכים שלכם";
+    private const string otherValuesLabelRTL = "מוצגים הערכים של השחקן השני";
+    // Display only: the map legend title names whose square values the shading shows (same state as the plate).
+    [SerializeField] protected TextMeshProUGUI legendTitleRTL;
+    private const string ownLegendTitleRTL = "שווי המשבצת עבורכם";
+    private const string otherLegendTitleRTL = "שווי המשבצת עבור השחקן השני";
+    private static readonly Color ownValuesPlateColor = new Color(0.08f, 0.13f, 0.26f, 0.92f);
+    private static readonly Color otherValuesPlateColor = new Color(0.45f, 0.07f, 0.07f, 0.92f);
     //[SerializeField] protected Text textChatAlert;
     //[SerializeField] protected SpriteRenderer backgraundStatus;
     float[] sumRGYB = { 0, 0, 0, 0 }; //GREEN, RED, YELLOW, BLUE (after cut!)
@@ -58,6 +70,7 @@ public class Manager : MonoBehaviour
         this.SeeOtherPlayerBT.SetActive(Config.inst.getSeeOtherEnable());
         this.chatView.SetActive(Config.inst.getChetEnable());
         NextButton.SetActive(false);
+        UpdateValueOwnerLabel();
 
 
     }
@@ -78,6 +91,7 @@ public class Manager : MonoBehaviour
 
         this.SeeOtherPlayerBT.SetActive(false);
         this.cutBt.SetActive(false);
+        UpdateValueOwnerLabel();
         this.status = 0;
         // No button reset needed - line drawing system handles this
         //backgraundStatus.color = Color.white;
@@ -229,6 +243,26 @@ public class Manager : MonoBehaviour
         {
             this.SeeOtherPlayerBT.SetActive(false);
         }
+        UpdateValueOwnerLabel();
+    }
+
+    // Display only (UX-012): follows isShowView, which flips only after Player.getOtherView has redrawn the shading
+    // and readouts. Gates nothing.
+    private void UpdateValueOwnerLabel()
+    {
+        if (this.valueOwnerRTL != null)
+        {
+            this.valueOwnerRTL.text = this.isShowView ? otherValuesLabelRTL : ownValuesLabelRTL;
+        }
+        if (this.legendTitleRTL != null)
+        {
+            this.legendTitleRTL.text = this.isShowView ? otherLegendTitleRTL : ownLegendTitleRTL;
+        }
+        if (this.valueOwnerPlate != null)
+        {
+            this.valueOwnerPlate.color = this.isShowView ? otherValuesPlateColor : ownValuesPlateColor;
+            this.valueOwnerPlate.gameObject.SetActive(this.SeeOtherPlayerBT.activeSelf && Config.inst.getSeeOtherEnable());
+        }
     }
 
 
@@ -244,6 +278,7 @@ public class Manager : MonoBehaviour
             Image tempSprit = this.SeeOtherPlayerBT.GetComponent<Image>();
             tempSprit.color = Color.white;
         }
+        UpdateValueOwnerLabel();
     }
 
 

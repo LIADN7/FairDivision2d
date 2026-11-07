@@ -75,7 +75,7 @@
 
 | Step | Method | Behavior [Verified] |
 |---|---|---|
-| Gate | `CanDrawLine` (L181) | `!isSubmitted` (practice copy also requires `!TutorialFplanManager.IsGameplayLocked`). `IsMyTurnToDraw` always returns true. |
+| Gate | `CanDrawLine` | `!isSubmitted && !cutSent` (practice copy also requires `!TutorialFplanManager.IsGameplayLocked`). `cutSent` is set by `LockDrawingAfterCut()` from `Player.CutView` after the `Cut` RPC and from `PlayerAITutorial.CutView` (UX-004 owner decision, `feat/ux-batch-5`). `IsMyTurnToDraw` always returns true. |
 | Start | `StartDrawing` (L246) | Only if the mouse is inside `mapSize` 8.5 × 6.8 around (−5, 1.5) (scene values). Replaces any previous line. Since Batch 4 (`feat/ux-batch-4`, UX-026): not started when the topmost EventSystem raycast hit is interactive (has a pointer-down/click handler: buttons, toggles, input fields) or lies inside an active `inputBlockingPanels` entry (`HelpPageLayer`). County labels and notes (raycast targets without handlers) do not block. Before this, a press on the part of `SeeOtherPlayerBT` that overlaps the bounds at 960×600, or on the open Help Page, started a line. |
 | Drag | `UpdateDrawing` | End point clamped to bounds; every 50 ms `SquareLineCalculator.ColorAllSquaresByLine` recolors all cells and `Player.statusChange` updates the readout. |
 | Release | `FinishDrawing` (L326) | Final recolor; `hasDrawnLine = true`. Nothing is sent. |
@@ -105,7 +105,10 @@ There is **no geometric or value validation** [Verified]: no requirement that a 
 - The submitter sends no `ReceiveSubmittedLine`, so neither client shows a line for that player.
 - With an all-Red cut by Player 1, the regions are Red (P1 Red ∩ P2 Red) and Yellow (P1 Red ∩ P2 Green), together the whole map; Green and Blue are empty (0 %) but still selectable. Observed in practice: the computer (Player 2) picked the two empty parts and Player 1 received 100 %. With an all-Red cut by Player 2, the empty regions are Yellow and Blue.
 - Variant: after a completed line, starting a redraw and pressing `Esc` clears `hasDrawnLine` and hides the line, but the cells keep the colours of the last drag update. Pressing Cut then sends those colours, without a line [Inferred from code].
-- Smallest future corrections (owner decision; none implemented): (a) display integrity only, with no outcome change: set `isSubmitted = true` (or lock drawing) whenever `CutView` sends a cut, so no local redrawing happens after a no-line cut; (b) behaviour change: keep `CutBT` non-interactable until `HasDrawnLine()`, which would remove no-line and Esc-variant submissions. That is a protocol decision (§14.3 Q3).
+- **Player 2, real round (verified 2026-11-05, test mode, round 2):** after a no-line `CutView`, `isSubmitted` stayed false, the sent dictionary was 474 Red / 0 Green and `PlayerCutValues` {Red 100, Green 0}. Drawing afterwards recoloured the local cells (267/207) and the readouts (46.78/53.22) while the sent and stored data stayed unchanged. Once both cuts existed, `setAllState` recoloured the cells from the transmitted cuts (474 Red; Player 1 also had no line): region 1 = 100 %, regions 2–4 = 0 %, and the record held the transmitted values. The locally drawn, never-sent line **stayed visible during choosing**, which is misleading. The data stay consistent; only the display diverges.
+- **Owner decision (2026-11-07): option A implemented on `feat/ux-batch-5`.** No-line submission and its 100/0 outcome stay allowed (no Submit block, no confirmation); once a cut has been sent, local drawing is locked (`cutSent`). Verified in test mode for both roles, with and without a line, real round and practice (PROJECT_CONTEXT §17). The points below describe the behaviour before the fix.
+- Policy options considered: **A** keep the rule and add display integrity only (lock drawing after any `CutView`; optionally explain that no line means the whole map in one colour) — no outcome change, removes the misleading unsent line. **B** a confirmation when no line exists — all outcomes stay possible, fewer accidental no-line cuts, one more click. **C** block Submit until a line exists — removes 100/0 cuts and empty regions from the outcome space, so new data would differ on that point from earlier data that contains no-line cuts. Recommended: A now (display only); B or C only as an explicit protocol decision.
+- Smallest corrections considered (a was chosen): (a) display integrity only, with no outcome change: set `isSubmitted = true` (or lock drawing) whenever `CutView` sends a cut, so no local redrawing happens after a no-line cut; (b) behaviour change: keep `CutBT` non-interactable until `HasDrawnLine()`, which would remove no-line and Esc-variant submissions. That is a protocol decision (§14.3 Q3).
 
 ---
 
@@ -444,7 +447,7 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 
 1. Fixed Player 1 role and valuation profile per participant vs. counterbalancing.
 2. Opponent valuations hidden during the choose phase in Info conditions — intended?
-3. Allow submission without a drawn line, and empty regions? (UX-004: current behaviour and the two smallest corrections are documented in §2; nothing changed in Batch 4.)
+3. ~~Allow submission without a drawn line, and empty regions?~~ Decided 2026-11-07: allowed; drawing is locked after the cut (§2).
 4. Identical map and valuations in all six rounds — intended?
 5. Payment formula and currency confirmation.
 6. Required behavior on disconnect or Home (currently: session ends for both, round unsaved).
@@ -462,7 +465,7 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 | Late join to practice after partner pressed Next | Missed `GameOverClicked` → permanent wait | Inferred |
 | Player never presses Next | Round record never saved | Verified |
 | Cloud Save initialization or save fails | Logged only; data lost | Verified |
-| Submit without a line / zero-length line | 100/0 cut (or the colours of an `Esc`-cancelled redraw); no line shown for that player; drawing still possible after submit; Player 1's no-line cut leaves Green and Blue empty (details §2, UX-004) | Observed 2026-11-03 in test mode (practice, Player 1 role, Editor and WebGL); Player 2 case and Esc variant Inferred |
+| Submit without a line / zero-length line | 100/0 cut (or the colours of an `Esc`-cancelled redraw); no line shown for that player; drawing after submit was possible before the `feat/ux-batch-5` lock and is now blocked; Player 1's no-line cut leaves Green and Blue empty (details §2, UX-004) | Observed 2026-11-03 in test mode (practice, Player 1 role, Editor and WebGL); Player 2 in a real round observed 2026-11-05 (the unsent post-submit line stays visible while choosing); Esc variant Inferred |
 | Help Page open over the result | Before the final Batch 4 fixes, `EndGameStatusObject` (a direct `Canvas` child) stayed visible over the Help Page; it now sits under `ViewItems` | Verified 2026-11-04 (practice and round 1, WebGL and Editor; same value after closing) |
 | Help Page open over drawn lines | Before the Batch 4 follow-up, the Batch 4 outlines (outside `States`) stayed visible over the Help Page. Fixed in `349f6e2` | Verified 2026-11-04 (practice and round 1, WebGL and Editor; restored after closing) |
 | Press on UI over the map | Before Batch 4, a press on an open Help Page or on the part of `SeeOtherPlayerBT` that overlaps the drawable bounds started a line. Fixed on `feat/ux-batch-4` (UX-026); county labels still start a line | Fix verified 2026-11-03 (WebGL 960×600: Help Page, see-other edge at world (−0.90, 4.26), Tyrone label) |

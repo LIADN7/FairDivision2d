@@ -46,6 +46,9 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
     private bool isDrawing = false;
     private bool hasDrawnLine = false;
     private bool isSubmitted = false; // New: tracks if player has submitted their line
+    // UX-004 (owner-approved input lock): set once this player's cut has been sent, with or without a line.
+    // isSubmitted stays false for a no-line cut, so it alone does not stop later local drawing. Local input only.
+    private bool cutSent = false;
     private int playerNumber; // 1 or 2
 
     // Real-time coloring optimization
@@ -338,7 +341,17 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
     /// </summary>
     private bool CanDrawLine()
     {
-        return IsMyTurnToDraw() && !isSubmitted; // Cannot draw after submission
+        return IsMyTurnToDraw() && !isSubmitted && !cutSent; // Cannot draw after submission
+    }
+
+    /// <summary>
+    /// UX-004: called by Player.CutView after the cut was sent. Stops any further local drawing for this round
+    /// (the manager is a scene object, so a new round starts unlocked). Nothing is sent or stored.
+    /// </summary>
+    public void LockDrawingAfterCut()
+    {
+        cutSent = true;
+        isDrawing = false;
     }
 
     /// <summary>

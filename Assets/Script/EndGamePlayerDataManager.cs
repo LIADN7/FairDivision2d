@@ -12,6 +12,8 @@ public class EndGamePlayerDataManager : MonoBehaviour
     public InputField idInput;
     public Text winningsText;
     public  TextMeshProUGUI     winningsTextRTL   ;
+    // Display only (UX-010): how the reward was chosen, and which round when that round's result is really in RandArrays.
+    public TextMeshProUGUI rewardInfoRTL;
     public Button submit;
     public TMP_Text errorText;
 
@@ -44,10 +46,30 @@ public class EndGamePlayerDataManager : MonoBehaviour
         if (winningsText != null)
         {
             winningsText.text = $"You won: {amount} ₪ from round " + (roundIndex + 1);
-            string valueText = new string(amount.ToString().Reverse().ToArray());
-            winningsTextRTL.text = $"הזכייה שלכם: {valueText} ₪ מהסיבוב " + (roundIndex + 1);
-
         }
+        // Display only: the stored and redirected amount stays the unrounded PlayerData value.
+        if (winningsTextRTL != null)
+        {
+            winningsTextRTL.text = Manager.PrepareRtlNote(FormatRewardAmount(amount) + " ₪");
+        }
+        if (rewardInfoRTL != null)
+        {
+            string info = "התגמול חושב לפי סבב אחד שנבחר באקראי.";
+            // roundIndex is the 0-based RandArrays index drawn by the master (0-5 = real rounds 1-6; practice is never added).
+            bool roundIsKnown = RandArrays.inst != null && roundIndex >= 0 && roundIndex < RandArrays.inst.GetSize();
+            if (roundIsKnown)
+            {
+                info += "\nסבב " + (roundIndex + 1) + " נבחר לחישוב התגמול.";
+            }
+            rewardInfoRTL.text = Manager.PrepareRtlNote(info);
+        }
+    }
+
+    // Display only: at most two decimals ("30", "37.50", "41.12"); the value itself is not changed.
+    private static string FormatRewardAmount(float amount)
+    {
+        string text = amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+        return text.EndsWith(".00") ? text.Substring(0, text.Length - 3) : text;
     }
 
     public void OnFinishButtonClicked()
