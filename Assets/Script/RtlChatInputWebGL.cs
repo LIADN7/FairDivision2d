@@ -8,14 +8,30 @@ using UnityEngine.UI;
 // selection, paste and IME. Every edit copies the raw string (logical order, unchanged) into InputField.text, and Enter
 // calls the InputField's own onSubmit (Player.sendMessage2), so the send pipeline, ChatMessage/ChatHistory and the RPC
 // payload are unchanged. Clearing InputField.text (after sending) clears the HTML input.
-// In the Editor and other platforms, and while the browser is in fullscreen, it does nothing and the InputField works as before.
+// The HTML input cannot be shown in browser fullscreen (Unity makes the canvas itself the fullscreen element), and it
+// does not exist in the Editor. There the Unity InputField is typed into directly. Its legacy Text has two problems with
+// Hebrew: no RTL layout (reversed), and in WebGL the built-in LegacyRuntime font has no Hebrew glyphs, so typed Hebrew is
+// invisible while English shows. For that path, typedTextRTL (TMP, same style as the RTL placeholder) shows an RTL-correct
+// copy of InputField.text with a caret mark whenever the text contains Hebrew; the legacy text, caret and selection are
+// then made transparent. Display only: InputField.text is never modified here.
 [RequireComponent(typeof(InputField))]
 public class RtlChatInputWebGL : MonoBehaviour
 {
     private const string PlaceholderRTL = "כתבו הודעה כאן...";
+    private const string CaretMark = "|";
+
+    [SerializeField] private TMPro.TextMeshProUGUI typedTextRTL;
 
     private InputField field;
     private bool applyingHtmlValue;
+    private Color legacyTextColor;
+    private Color legacyCaretColor;
+    private Color legacySelectionColor;
+    private bool legacyCustomCaret;
+    private bool mirrorShown;
+    private string lastMirrorText;
+    private int lastMirrorCaret = -2;
+    private readonly RTLTMPro.FastStringBuilder rtlBuffer = new RTLTMPro.FastStringBuilder(RTLTMPro.RTLSupport.DefaultBufferSize);
 
 #if UNITY_WEBGL && !UNITY_EDITOR
     [DllImport("__Internal")] private static extern void RtlInput_Create(string objectName, string placeholder);
@@ -32,6 +48,53 @@ public class RtlChatInputWebGL : MonoBehaviour
     private void Awake()
     {
         field = GetComponent<InputField>();
+        legacyTextColor = field.textComponent.color;
+        legacyCaretColor = field.caretColor;
+        legacySelectionColor = field.selectionColor;
+        legacyCustomCaret = field.customCaretColor;
+        if (typedTextRTL != null)
+        {
+            typedTextRTL.gameObject.SetActive(false);
+        }
+    }
+
+    private void Update()
+    {
+        RefreshTypedMirror();
+    }
+
+    // Display only: RTL-correct copy of the typed text inside the Unity field (Editor, browser fullscreen, no HTML input).
+    private void RefreshTypedMirror()
+    {
+        if (typedTextRTL == null)
+        {
+            return;
+        }
+        string text = field.text ?? "";
+        bool show = RTLTMPro.TextUtils.IsRTLInput(text);
+        int caret = show && field.isFocused ? Mathf.Clamp(field.caretPosition, 0, text.Length) : -1;
+        if (show == mirrorShown && caret == lastMirrorCaret && text == lastMirrorText)
+        {
+            return;
+        }
+        mirrorShown = show;
+        lastMirrorText = text;
+        lastMirrorCaret = caret;
+
+        typedTextRTL.gameObject.SetActive(show);
+        Color clear = new Color(0f, 0f, 0f, 0f);
+        field.textComponent.color = show ? clear : legacyTextColor;
+        field.customCaretColor = show || legacyCustomCaret;
+        field.caretColor = show ? clear : legacyCaretColor;
+        field.selectionColor = show ? clear : legacySelectionColor;
+        if (show)
+        {
+            string shown = caret >= 0 ? text.Insert(caret, CaretMark) : text;
+            rtlBuffer.Clear();
+            RTLTMPro.RTLSupport.FixRTL("<noparse>" + shown + "</noparse>", rtlBuffer, false, true, true);
+            rtlBuffer.Reverse();
+            typedTextRTL.text = rtlBuffer.ToString();
+        }
     }
 
     private void OnEnable()
