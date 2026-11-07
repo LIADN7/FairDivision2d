@@ -59,6 +59,12 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     private string[] endExplanationPlayersRTL = { "קיבלתם:\n", "קיבלתם:\n" };
     private bool[] playerCut = { false, false };
     private bool[] palyersGameOver = { false, false };
+    // Display only (UX-030): this client pressed Next, and the transition message once both humans pressed Next
+    // (mirrors Player; practice always continues to real round 1). Neither gates anything.
+    private bool localNextPressed = false;
+    private string roundTransitionText = null;
+    private const string waitingForNextRTL = "ממתינים לשחקן השני";
+    private const string nextRoundTransitionRTL = "עוברים לסבב הבא";
 
     private CutAndChoosePlayerDatabase gameDatabase = new CutAndChoosePlayerDatabase();
     //private Task databaseTask;
@@ -526,6 +532,16 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             {
                 waiting = "ממתינים לבחירת המחשב";
             }
+        }
+        else if (roundTransitionText != null)
+        {
+            // UX-030: both humans pressed Next; the first real round is being loaded.
+            waiting = roundTransitionText;
+        }
+        else if (localNextPressed)
+        {
+            // UX-030: this player pressed Next and waits for the other human's Next.
+            waiting = waitingForNextRTL;
         }
         if (TutorialFplanManager.Instance != null && TutorialFplanManager.Instance.IsGameplayLocked)
         {
@@ -1206,6 +1222,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         //Manager.inst.setNote(-1,"Other player left the game...", false); // need to send in RPC!
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         this.palyersGameOver[playerNum - 1] = true;
+        this.localNextPressed = true; // display only
         Manager.inst.NextSceneClick();
         if (this.palyersGameOver[0] && this.palyersGameOver[1])
         {
@@ -1216,6 +1233,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         {
             photonView.RPC("GameOverClicked", RpcTarget.Others, playerNum);
         }
+        UpdatePhaseInstruction(); // UX-030, display only: waiting for the other human's Next (or the transition)
     }
 
     [PunRPC]
@@ -1229,10 +1247,25 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     [PunRPC]
     private void MasterNextGame(string sceneName)
     {
+        ShowRoundTransition(); // UX-030, display only; runs before the unchanged logic below and cannot stop it
         // Master client loads the scene on behalf of non-master clients
         if (PhotonNetwork.IsMasterClient)
         {
             photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, 1, 0);
+        }
+    }
+
+    // Display only (UX-030): MasterNextGame reaches both humans once both pressed Next.
+    private void ShowRoundTransition()
+    {
+        try
+        {
+            this.roundTransitionText = nextRoundTransitionRTL;
+            UpdatePhaseInstruction();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("UX-030: transition message failed: " + ex.Message);
         }
     }
 

@@ -66,8 +66,14 @@ public class Player : MonoBehaviourPunCallbacks
     private string[] endExplanationPlayersRTL = { "קיבלתם:\n", "קיבלתם:\n" };
     private bool[] playerCut = { false, false };
     private bool[] palyersGameOver = { false, false };
-    // Display only (UX-025): this client pressed Next in this round (NextGame saved the round record). Gates nothing.
+    // Display only (UX-030 / UX-025): this client pressed Next in this round (NextGame saved the round record), and the
+    // round-transition message once both players pressed Next. Neither gates anything.
     private bool localNextPressed = false;
+    private string roundTransitionText = null;
+    private const string waitingForNextRTL = "ממתינים לשחקן השני";
+    private const string nextRoundTransitionRTL = "עוברים לסבב הבא";
+    private const string endGameTransitionRTL = "עוברים לסיום המשחק";
+    private const int lastRealRoundIndex = 5; // MasterNextGame sends both players to EndGameFlow after round index 5
 
     private CutAndChoosePlayerDatabase gameDatabase = new CutAndChoosePlayerDatabase();
     //private Task databaseTask;
@@ -482,6 +488,16 @@ public class Player : MonoBehaviourPunCallbacks
             {
                 waiting = "ממתינים לבחירת השחקן השני";
             }
+        }
+        else if (roundTransitionText != null)
+        {
+            // UX-030: both players pressed Next; the next scene is being loaded.
+            waiting = roundTransitionText;
+        }
+        else if (localNextPressed)
+        {
+            // UX-030: this player pressed Next and waits for the other player's Next.
+            waiting = waitingForNextRTL;
         }
         if (GameSessionDialogs.IsConnectionLost)
         {
@@ -1165,6 +1181,7 @@ public class Player : MonoBehaviourPunCallbacks
         {
             photonView.RPC("GameOverClicked", RpcTarget.Others, playerNum);
         }
+        UpdatePhaseInstruction(); // UX-030, display only: waiting for the other player's Next (or the transition)
     }
 
     // Display only (UX-025): the exit confirmation says "not saved" until this player has pressed Next in this round.
@@ -1184,6 +1201,7 @@ public class Player : MonoBehaviourPunCallbacks
     [PunRPC]
     private void MasterNextGame(string sceneName)
     {
+        ShowRoundTransition(); // UX-030, display only; runs before the unchanged logic below and cannot stop it
         // Master client loads the scene on behalf of non-master clients
         if (PhotonNetwork.IsMasterClient)
         {
@@ -1216,6 +1234,22 @@ public class Player : MonoBehaviourPunCallbacks
 
                 photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, Config.inst.getScenarioType(), roundNumberConfig);
             }
+        }
+    }
+
+    // Display only (UX-030): MasterNextGame reaches both clients once both pressed Next. The round index is read before the
+    // master advances it; after the last real round both players go to EndGameFlow, so no next round is promised there.
+    private void ShowRoundTransition()
+    {
+        try
+        {
+            bool lastRound = Config.inst != null && Config.inst.getRoundNumber() >= lastRealRoundIndex;
+            this.roundTransitionText = lastRound ? endGameTransitionRTL : nextRoundTransitionRTL;
+            UpdatePhaseInstruction();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("UX-030: transition message failed: " + ex.Message);
         }
     }
 
