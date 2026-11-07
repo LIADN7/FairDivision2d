@@ -46,6 +46,8 @@ public class LineDrawingManagerAITutoria : MonoBehaviourPunCallbacks
     private bool isDrawing = false;
     private bool hasDrawnLine = false;
     private bool isSubmitted = false; // New: tracks if player has submitted their line
+    // UX-004 (owner-approved input lock, mirrors LineDrawingManager): set once the practice cut has been submitted.
+    private bool cutSent = false;
     private int playerNumber; // 1 or 2
 
     // Real-time coloring optimization
@@ -336,9 +338,18 @@ public class LineDrawingManagerAITutoria : MonoBehaviourPunCallbacks
     /// Checks if the current player can draw a line.
     /// Now allows redrawing to replace existing lines, but not after submission.
     /// </summary>
+    /// <summary>
+    /// UX-004: called by PlayerAITutorial.CutView. Stops any further local drawing for this practice cut.
+    /// </summary>
+    public void LockDrawingAfterCut()
+    {
+        cutSent = true;
+        isDrawing = false;
+    }
+
     private bool CanDrawLine()
     {
-        if (isSubmitted)
+        if (isSubmitted || cutSent)
         {
             return false;
         }

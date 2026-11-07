@@ -281,6 +281,8 @@ public class Player : MonoBehaviourPunCallbacks
             }
             this.gameDatabase.playerCutSquares = tempPlayerWithParentName;
             view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
+            // UX-004 (owner-approved): no local drawing after the cut was sent, with or without a line.
+            FindLineManager()?.LockDrawingAfterCut();
             Manager.inst.setViewAfterCut();
             // Display only: after the own cut the readout shows the submitted split (also for a cut without a line).
             if (!isAllTrue())
