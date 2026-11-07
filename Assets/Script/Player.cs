@@ -1270,7 +1270,7 @@ public class Player : MonoBehaviourPunCallbacks
 
     public void LeaveGame(string sceneName, bool isRedirectToSurvey = false)
     {
-
+        GameSessionDialogs.NoteLocalLeave(); // display only: this client started the leave, so it gets no partner-exit notice
         photonView.RPC("LeaveGameForAll", RpcTarget.All, sceneName, isRedirectToSurvey);
     }
     [PunRPC]
@@ -1282,6 +1282,7 @@ public class Player : MonoBehaviourPunCallbacks
     [PunRPC]
     private void LeaveGameForAll(string sceneName, bool isRedirectToSurvey = false)
     {
+        GameSessionDialogs.NoteLeaveGameForAll(sceneName); // display only: remembers a partner's exit for the lobby notice
         // Only for test 
         // Config.inst.RedirectToSurvey(isRedirectToSurvey);
         PhotonNetwork.LeaveRoom();

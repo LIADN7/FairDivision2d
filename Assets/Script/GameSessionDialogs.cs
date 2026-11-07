@@ -2,6 +2,7 @@ using System;
 using Photon.Pun;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -18,12 +19,20 @@ using UnityEngine.UI;
 // cannot continue and offers the existing way back to the main screen. Nothing else changes: no reconnection, no role or
 // master-client change, no saving, no result or payment change. The game UI underneath keeps its existing behaviour
 // (Help, chat, Next and its save); only the round instruction and the waiting overlay are hidden while it is shown.
+//
+// Partner-exit notice (Batch 6 follow-up, owner-approved wording): when the other player confirms Home -> "יציאה", the
+// existing LeaveGameForAll RPC still takes this client back to the main screen 0.2 s later, unchanged. Its body only
+// records that the session ended because of the partner (not for the player who left, not for EndGameFlow); the
+// SessionDialogs instance in MainScene (lobbyScene) then shows the reason once, modal, until it is acknowledged.
+// Local and display only: no RPC payload, room, save, role or matchmaking change.
 public class GameSessionDialogs : MonoBehaviourPunCallbacks
 {
     public static GameSessionDialogs Instance { get; private set; }
 
     [SerializeField] private bool practiceScene = false; // CutSceneAITutorial: exit via PlayerAITutorial, practice wording
     [SerializeField] private string lobbySceneName = "MainScene";
+    // MainScene: shows only the partner-exit notice (modal); no exit dialog, no connection notice, no Photon handling.
+    [SerializeField] private bool lobbyScene = false;
 
     [Header("Exit confirmation (modal)")]
     [SerializeField] private GameObject exitDialog;
@@ -44,6 +53,9 @@ public class GameSessionDialogs : MonoBehaviourPunCallbacks
     private const string RoundCannotContinueRTL = "לא ניתן להמשיך בסבב הנוכחי.";
     // Practice: the practice round itself is played against the computer; it is the game that cannot continue.
     private const string GameCannotContinueRTL = "לא ניתן להמשיך במשחק.";
+    private const string PartnerExitedRTL = "השחקן השני יצא מהמשחק.";
+    private const string PartnerExitBodyRTL = "לא ניתן להמשיך במשחק הנוכחי.";
+    private const string DefaultLobbySceneName = "MainScene";
     private static readonly Vector2 ExitTitleWithBody = new Vector2(0f, 80f);
     private static readonly Vector2 ExitTitleAlone = new Vector2(0f, 40f);
 
@@ -51,6 +63,11 @@ public class GameSessionDialogs : MonoBehaviourPunCallbacks
     private bool exitStarted;   // "יציאה" was pressed: the exit path runs once
     private bool returnStarted; // the notice's return button was pressed
     private bool leavingRoom;   // a normal room exit (Home/exit on either client) is in progress: never a disconnect
+
+    // Partner-exit notice state. Static so it survives the scene change to MainScene; cleared whenever a game scene
+    // starts (a new round or session) and consumed by the lobby, so it can never reach a later session.
+    private static bool localLeaveRequested; // this client sent LeaveGameForAll (its own Home/exit, the notice's return, end of round 6)
+    private static bool partnerExitPending;  // the other player's Home/exit ended the session; shown once in MainScene
 
     // Display only: read by Player / PlayerAITutorial.UpdatePhaseInstruction to hide the round instruction and waiting overlay.
     public static bool IsConnectionLost => Instance != null && Instance.connectionLost;
@@ -68,14 +85,31 @@ public class GameSessionDialogs : MonoBehaviourPunCallbacks
         if (connectionNotice != null) connectionNotice.SetActive(false);
         if (exitCancelButton != null) exitCancelButton.onClick.AddListener(CancelExit);
         if (exitConfirmButton != null) exitConfirmButton.onClick.AddListener(ConfirmExit);
-        if (noticeReturnButton != null) noticeReturnButton.onClick.AddListener(ReturnToLobby);
+        if (noticeReturnButton != null) noticeReturnButton.onClick.AddListener(OnNoticeButton);
         UseWhiteFace();
+        if (!lobbyScene)
+        {
+            // A game scene starts: anything left from an earlier round or session is stale.
+            localLeaveRequested = false;
+            partnerExitPending = false;
+        }
     }
 
     private void Start()
     {
         // Real rounds: both players stay in the room for the whole session. If the other player left while this scene was
         // loading (its Leave event was handled by the previous scene), the room already has one player here.
+        if (lobbyScene)
+        {
+            bool show = partnerExitPending;
+            partnerExitPending = false;
+            localLeaveRequested = false;
+            if (show)
+            {
+                ShowPartnerExitNotice();
+            }
+            return;
+        }
         if (practiceScene)
         {
             return;
@@ -123,7 +157,7 @@ public class GameSessionDialogs : MonoBehaviourPunCallbacks
     // Called by LoadScene from the Home button. Returns false when this scene has no dialog (the caller then exits as before).
     public static bool RequestExit(Action exitAction, bool roundUnsaved)
     {
-        if (Instance == null)
+        if (Instance == null || Instance.lobbyScene)
         {
             return false;
         }
@@ -196,6 +230,10 @@ public class GameSessionDialogs : MonoBehaviourPunCallbacks
         Debug.Log("UX-016: OnPlayerLeftRoom actor=" + (otherPlayer != null ? otherPlayer.ActorNumber.ToString() : "?")
             + " inactive=" + (otherPlayer != null && otherPlayer.IsInactive) + " state=" + PhotonNetwork.NetworkClientState
             + " " + Stamp());
+        if (lobbyScene)
+        {
+            return;
+        }
         // Home/exit by the other player: its LeaveGameForAll RPC arrives before its Leave event and makes this client leave
         // too, so this client is no longer in the room (state Leaving) and no notice is shown.
         if (leavingRoom || exitStarted || returnStarted || !PhotonNetwork.InRoom)
@@ -227,6 +265,10 @@ public class GameSessionDialogs : MonoBehaviourPunCallbacks
     public override void OnDisconnected(Photon.Realtime.DisconnectCause cause)
     {
         Debug.Log("UX-016: OnDisconnected cause=" + cause + " " + Stamp());
+        if (lobbyScene)
+        {
+            return; // the lobby handles its own connection (Launcher), as before
+        }
         if (leavingRoom || exitStarted || returnStarted)
         {
             return;
@@ -276,6 +318,89 @@ public class GameSessionDialogs : MonoBehaviourPunCallbacks
         {
             Debug.LogWarning("UX-016: instruction refresh failed: " + ex.Message);
         }
+    }
+
+    // ---------------------------------------------------------------- Partner exit (intentional)
+
+    // Called by Player / PlayerAITutorial.LeaveGame on the client that starts the leave, just before the RPC is sent.
+    public static void NoteLocalLeave()
+    {
+        localLeaveRequested = true;
+    }
+
+    // Called first in the LeaveGameForAll RPC body on every client in the room. Display only: the RPC itself, its payload and
+    // what it does next (LeaveRoom, then the scene load 0.2 s later) are unchanged.
+    public static void NoteLeaveGameForAll(string sceneName)
+    {
+        string lobby = Instance != null ? Instance.lobbySceneName : DefaultLobbySceneName;
+        bool toLobby = sceneName == lobby;                      // EndGameFlow after round 6 is a normal end, never a partner exit
+        bool startedHere = localLeaveRequested
+            || (Instance != null && (Instance.exitStarted || Instance.returnStarted));
+        if (Instance != null)
+        {
+            Instance.leavingRoom = true;                       // a normal room exit: never shown as a connection loss
+        }
+        if (toLobby && !startedHere)
+        {
+            partnerExitPending = true;
+        }
+        Debug.Log("PARTNER-EXIT: LeaveGameForAll scene=" + sceneName + " startedHere=" + startedHere
+            + " partnerExitPending=" + partnerExitPending + " " + Stamp());
+    }
+
+    private void OnNoticeButton()
+    {
+        if (lobbyScene)
+        {
+            AcknowledgePartnerExit();
+        }
+        else
+        {
+            ReturnToLobby();
+        }
+    }
+
+    // MainScene only. Modal: the dim layer catches clicks so no lobby control can start another game underneath.
+    private void ShowPartnerExitNotice()
+    {
+        if (connectionNotice == null)
+        {
+            return;
+        }
+        noticeTitleRTL.text = PartnerExitedRTL;
+        noticeTitleRTL.color = Color.white;                    // an intentional exit, not a connection warning
+        noticeBodyRTL.text = PartnerExitBodyRTL;
+        foreach (Image image in connectionNotice.GetComponentsInChildren<Image>(true))
+        {
+            if (image.name == "Dim")
+            {
+                Color c = image.color;
+                c.a = 0.75f;
+                image.color = c;
+                image.raycastTarget = true;
+            }
+        }
+        if (noticeReturnButton != null)
+        {
+            noticeReturnButton.navigation = new Navigation { mode = Navigation.Mode.None }; // no keyboard move to lobby buttons
+            SetInteractable(noticeReturnButton, true);
+        }
+        connectionNotice.SetActive(true);
+        if (EventSystem.current != null && noticeReturnButton != null)
+        {
+            EventSystem.current.SetSelectedGameObject(noticeReturnButton.gameObject);
+        }
+        Debug.Log("PARTNER-EXIT: lobby notice shown " + Stamp());
+    }
+
+    private void AcknowledgePartnerExit()
+    {
+        connectionNotice.SetActive(false);
+        if (EventSystem.current != null)
+        {
+            EventSystem.current.SetSelectedGameObject(null);
+        }
+        Debug.Log("PARTNER-EXIT: lobby notice acknowledged " + Stamp());
     }
 
     // The existing way back to the main screen. Still in the room (the other player left): the same exit path as Home.
