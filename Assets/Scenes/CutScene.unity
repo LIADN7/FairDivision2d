@@ -35314,6 +35314,7 @@ GameObject:
   - component: {fileID: 887548047}
   - component: {fileID: 887548046}
   - component: {fileID: 887548045}
+  - component: {fileID: 887548048}
   m_Layer: 5
   m_Name: MessegeInputField
   m_TagString: Untagged
@@ -35461,6 +35462,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 887548043}
   m_CullTransparentMesh: 1
+--- !u!114 &887548048
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 887548043}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78e8682d4d7481c4abaeb3f539dfe6cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RtlChatInputWebGL
 --- !u!1 &891387434
 GameObject:
   m_ObjectHideFlags: 0
