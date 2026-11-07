@@ -532,6 +532,12 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
             action = null;
             waiting = null;
         }
+        if (GameSessionDialogs.IsConnectionLost)
+        {
+            // UX-016: the connection notice explains the state; no round instruction or waiting message under it.
+            action = null;
+            waiting = null;
+        }
         SetInstructionPlate(cutStatusPlate, cutStatusRTL, bothCut ? null : action);
         SetInstructionPlate(turnLabelPlate, turnLabelRTL, bothCut ? action : null);
         if (waitingOverlay != null && waitingOverlayRTL != null)

@@ -137,7 +137,9 @@ public class RtlChatInputWebGL : MonoBehaviour
 #if UNITY_WEBGL && !UNITY_EDITOR
     private void LateUpdate()
     {
-        bool visible = field.IsInteractable();
+        // The HTML input is drawn above the whole WebGL canvas, so it is hidden while a session dialog (Batch 6 exit
+        // confirmation or connection notice) is shown; the Unity field and its RTL mirror remain underneath.
+        bool visible = field.IsInteractable() && !GameSessionDialogs.IsAnyDialogOpen;
         if (visible)
         {
             Rect rect = GetScreenRectTopLeft();
