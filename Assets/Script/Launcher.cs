@@ -126,6 +126,21 @@ public class Launcher : MonoBehaviourPunCallbacks
 
 
 
+    // Batch 6 (owner-approved): the new-experiment boundary on this client. The Cut-and-Choose room buttons
+    // (CreateAITutorialGame1, CreateGame1, CreateTetsGame1) call this before createConfig(..., 0) re-initialises the
+    // condition and round counter. Here the client is in the lobby: not in a room, no map cells loaded, no round
+    // message pending, and the previous session's EndGameFlow (Finish/save) is gone. Session-local state then starts
+    // exactly as after a page load: map-cell keys from 0 (the Cut RPC carries them; both clients must count from the
+    // same start) and an empty result list for the round-6 payment draw. Rounds within the experiment are untouched.
+    private static void ResetExperimentSessionState()
+    {
+        int previousKeys = PointOfState.ResetKeyCounter();
+        int previousPracticeKeys = PointOfStateAITutorial.ResetKeyCounter();
+        int previousResults = RandArrays.inst != null ? RandArrays.inst.Clear() : 0;
+        Debug.Log("SESSION-RESET: new experiment; cell key counter " + previousKeys + " -> 0, practice key counter "
+            + previousPracticeKeys + " -> 0, results cleared " + previousResults);
+    }
+
     //=================================================
     //------------------- GAME AI TUTORIAL 1 ----------------
     //=================================================
@@ -138,6 +153,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             PlayerData.inst.SetPlayerData(this.playerName.text, this.playerEmail.text, "", "");
             PhotonNetwork.NickName = playerName.text;
             int scenarioNumber = 1;
+            ResetExperimentSessionState();
             Config.inst.createConfig(scenarioNumber,0);
             RoomOptions opt = new RoomOptions();
             opt.MaxPlayers = 2;
@@ -164,6 +180,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             PlayerData.inst.SetPlayerData(this.playerName.text, this.playerEmail.text, "", "");
             PhotonNetwork.NickName = playerName.text;
             int scenarioNumber = 1;
+            ResetExperimentSessionState();
             Config.inst.createConfig(scenarioNumber,0);
             //           if (rooms[0] == null)
             //         {
@@ -207,6 +224,7 @@ public class Launcher : MonoBehaviourPunCallbacks
 
             PlayerData.inst.SetPlayerData(this.playerName.text, this.playerEmail.text, "", "");
             PhotonNetwork.NickName = playerName.text;
+            ResetExperimentSessionState();
             Config.inst.createConfig(scenarioNumber, 0);
             RoomOptions opt = new RoomOptions();
             opt.MaxPlayers = 2;

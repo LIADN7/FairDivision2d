@@ -59,6 +59,12 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     private string[] endExplanationPlayersRTL = { "קיבלתם:\n", "קיבלתם:\n" };
     private bool[] playerCut = { false, false };
     private bool[] palyersGameOver = { false, false };
+    // Display only (UX-030): this client pressed Next, and the transition message once both humans pressed Next
+    // (mirrors Player; practice always continues to real round 1). Neither gates anything.
+    private bool localNextPressed = false;
+    private string roundTransitionText = null;
+    private const string waitingForNextRTL = "ממתינים לשחקן השני";
+    private const string nextRoundTransitionRTL = "עוברים לסבב הבא";
 
     private CutAndChoosePlayerDatabase gameDatabase = new CutAndChoosePlayerDatabase();
     //private Task databaseTask;
@@ -176,6 +182,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     {
 
         GameObject[] tempSquares = GameObject.FindGameObjectsWithTag("SquarePoint");
+        tempSquares = IncludeMapCellsHiddenByHelp(tempSquares); // Batch 6 fix: also the cells hidden by the Help page
         int palyerId = PhotonNetwork.IsMasterClient ? 0 : 1;
 
 
@@ -185,9 +192,57 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
 
     }
 
+    // Batch 6 fix (owner-approved): the Help page, auto-opened 1 s after the round scene starts (HelpPageCountdown),
+    // deactivates the shared map parent Canvas/States, and FindGameObjectsWithTag skips inactive objects. An InitSquares
+    // that arrived after that found no cells: empty squares, an empty Cut and a KeyNotFoundException on the partner.
+    // The map cells are exactly the PointOfStateAITutorial children of this scene's Canvas/States (all tagged SquarePoint). They are
+    // active from the scene load until Help opens, so their Start (key, sprites) has already run. The tag search is
+    // kept whenever it already finds every map cell (unchanged behaviour and order); otherwise exactly those cells
+    // are used, including the ones Help has hidden.
+    private GameObject[] IncludeMapCellsHiddenByHelp(GameObject[] activeCells)
+    {
+        Transform states = null;
+        foreach (GameObject root in this.gameObject.scene.GetRootGameObjects())
+        {
+            if (root.name == "Canvas")
+            {
+                states = root.transform.Find("States");
+                if (states != null)
+                {
+                    break;
+                }
+            }
+        }
+        if (states == null)
+        {
+            return activeCells;
+        }
+        List<GameObject> mapCells = new List<GameObject>();
+        foreach (PointOfStateAITutorial cell in states.GetComponentsInChildren<PointOfStateAITutorial>(true))
+        {
+            if (cell.CompareTag("SquarePoint"))
+            {
+                mapCells.Add(cell.gameObject);
+            }
+        }
+        if (mapCells.Count == activeCells.Length)
+        {
+            return activeCells;
+        }
+        Debug.LogWarning("INIT-SQUARES: " + activeCells.Length + " active map cells (Help page open); using the "
+            + mapCells.Count + " map cells under Canvas/States");
+        return mapCells.ToArray();
+    }
+
     private IEnumerator withSec(float sec, GameObject[] tempSquares)
     {
         yield return new WaitForSeconds(sec);
+        if (this.squares.Count > 0)
+        {
+            // Batch 6: the map is set up once per scene; a repeated InitSquares would add every value to sumPlayer twice.
+            Debug.LogWarning("INIT-SQUARES: map already set up (" + this.squares.Count + " cells); repeated call ignored");
+            yield break;
+        }
 
         int j1 = 1, j2 = 2;
         for (int i = 0; i < tempSquares.Length; i++)
@@ -527,8 +582,24 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
                 waiting = "ממתינים לבחירת המחשב";
             }
         }
+        else if (roundTransitionText != null)
+        {
+            // UX-030: both humans pressed Next; the first real round is being loaded.
+            waiting = roundTransitionText;
+        }
+        else if (localNextPressed)
+        {
+            // UX-030: this player pressed Next and waits for the other human's Next.
+            waiting = waitingForNextRTL;
+        }
         if (TutorialFplanManager.Instance != null && TutorialFplanManager.Instance.IsGameplayLocked)
         {
+            action = null;
+            waiting = null;
+        }
+        if (GameSessionDialogs.IsConnectionLost)
+        {
+            // UX-016: the connection notice explains the state; no round instruction or waiting message under it.
             action = null;
             waiting = null;
         }
@@ -1200,6 +1271,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         //Manager.inst.setNote(-1,"Other player left the game...", false); // need to send in RPC!
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         this.palyersGameOver[playerNum - 1] = true;
+        this.localNextPressed = true; // display only
         Manager.inst.NextSceneClick();
         if (this.palyersGameOver[0] && this.palyersGameOver[1])
         {
@@ -1210,6 +1282,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         {
             photonView.RPC("GameOverClicked", RpcTarget.Others, playerNum);
         }
+        UpdatePhaseInstruction(); // UX-030, display only: waiting for the other human's Next (or the transition)
     }
 
     [PunRPC]
@@ -1223,10 +1296,25 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     [PunRPC]
     private void MasterNextGame(string sceneName)
     {
+        ShowRoundTransition(); // UX-030, display only; runs before the unchanged logic below and cannot stop it
         // Master client loads the scene on behalf of non-master clients
         if (PhotonNetwork.IsMasterClient)
         {
             photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, 1, 0);
+        }
+    }
+
+    // Display only (UX-030): MasterNextGame reaches both humans once both pressed Next.
+    private void ShowRoundTransition()
+    {
+        try
+        {
+            this.roundTransitionText = nextRoundTransitionRTL;
+            UpdatePhaseInstruction();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("UX-030: transition message failed: " + ex.Message);
         }
     }
 
@@ -1247,7 +1335,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
 
     public void LeaveGame(string sceneName, bool isRedirectToSurvey = false)
     {
-
+        GameSessionDialogs.NoteLocalLeave(); // display only: this client started the leave, so it gets no partner-exit notice
         photonView.RPC("LeaveGameForAll", RpcTarget.All, sceneName, isRedirectToSurvey);
     }
     [PunRPC]
@@ -1259,6 +1347,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     [PunRPC]
     private void LeaveGameForAll(string sceneName, bool isRedirectToSurvey = false)
     {
+        GameSessionDialogs.NoteLeaveGameForAll(sceneName); // display only: remembers a partner's exit for the lobby notice
         // Only for test 
         // Config.inst.RedirectToSurvey(isRedirectToSurvey);
         PhotonNetwork.LeaveRoom();
