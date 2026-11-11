@@ -613,6 +613,8 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
                 waitingOverlayRTL.text = waiting;
             }
         }
+        // Display only (game-feel batch): region card styling follows the same derived state; it gates nothing.
+        RegionSelectionView.NotifyPhase(bothCut, bothCut && action != null);
     }
 
     private static void SetInstructionPlate(Image plate, TextMeshProUGUI label, string text)
@@ -801,6 +803,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         colorsValueObj[i].GetComponent<Button>().interactable = false;
         chooseNum++;
         UpdatePhaseInstruction();
+        RegionSelectionView.NotifyTaken(i, playerNum == myPlayerNum); // display only, after the unchanged logic
 
         // Internal count check: If exactly 3 pieces have been chosen, automatically assign 4th piece after 0.5s
         if (GetChosenCount() == 3)
@@ -857,6 +860,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         Manager.inst.setEndGameLayer(choosePlayer[myPlayerNum - 1],false);
         this.gameDatabase.SumOfMyPart = choosePlayer[myPlayerNum - 1];
         UpdatePhaseInstruction();
+        RegionSelectionView.NotifyTaken(last, myPlayerNum == 1); // display only: the remainder goes to Player 1
 
         if (TutorialFplanManager.Instance != null)
         {
