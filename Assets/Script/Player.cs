@@ -564,6 +564,8 @@ public class Player : MonoBehaviourPunCallbacks
                 waitingOverlayRTL.text = waiting;
             }
         }
+        // Display only (game-feel batch): region card styling follows the same derived state; it gates nothing.
+        RegionSelectionView.NotifyPhase(bothCut, bothCut && action != null);
     }
 
     private static void SetInstructionPlate(Image plate, TextMeshProUGUI label, string text)
@@ -703,6 +705,7 @@ public class Player : MonoBehaviourPunCallbacks
         //colorsValueObj[i].SetActive(false);
         chooseNum++;
         UpdatePhaseInstruction();
+        RegionSelectionView.NotifyTaken(i, playerNum == localPlayerNum); // display only, after the unchanged logic
 
     }
     [PunRPC]
@@ -749,6 +752,7 @@ public class Player : MonoBehaviourPunCallbacks
         Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
         this.gameDatabase.SumOfMyPart = choosePlayer[playerNum - 1];
         UpdatePhaseInstruction();
+        RegionSelectionView.NotifyTaken(last, PhotonNetwork.IsMasterClient); // display only: the remainder goes to Player 1
     }
 
     // Get the last number of the remaining color
