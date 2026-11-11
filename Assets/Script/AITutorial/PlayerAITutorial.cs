@@ -182,6 +182,7 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     {
 
         GameObject[] tempSquares = GameObject.FindGameObjectsWithTag("SquarePoint");
+        tempSquares = IncludeMapCellsHiddenByHelp(tempSquares); // Batch 6 fix: also the cells hidden by the Help page
         int palyerId = PhotonNetwork.IsMasterClient ? 0 : 1;
 
 
@@ -191,9 +192,57 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
 
     }
 
+    // Batch 6 fix (owner-approved): the Help page, auto-opened 1 s after the round scene starts (HelpPageCountdown),
+    // deactivates the shared map parent Canvas/States, and FindGameObjectsWithTag skips inactive objects. An InitSquares
+    // that arrived after that found no cells: empty squares, an empty Cut and a KeyNotFoundException on the partner.
+    // The map cells are exactly the PointOfStateAITutorial children of this scene's Canvas/States (all tagged SquarePoint). They are
+    // active from the scene load until Help opens, so their Start (key, sprites) has already run. The tag search is
+    // kept whenever it already finds every map cell (unchanged behaviour and order); otherwise exactly those cells
+    // are used, including the ones Help has hidden.
+    private GameObject[] IncludeMapCellsHiddenByHelp(GameObject[] activeCells)
+    {
+        Transform states = null;
+        foreach (GameObject root in this.gameObject.scene.GetRootGameObjects())
+        {
+            if (root.name == "Canvas")
+            {
+                states = root.transform.Find("States");
+                if (states != null)
+                {
+                    break;
+                }
+            }
+        }
+        if (states == null)
+        {
+            return activeCells;
+        }
+        List<GameObject> mapCells = new List<GameObject>();
+        foreach (PointOfStateAITutorial cell in states.GetComponentsInChildren<PointOfStateAITutorial>(true))
+        {
+            if (cell.CompareTag("SquarePoint"))
+            {
+                mapCells.Add(cell.gameObject);
+            }
+        }
+        if (mapCells.Count == activeCells.Length)
+        {
+            return activeCells;
+        }
+        Debug.LogWarning("INIT-SQUARES: " + activeCells.Length + " active map cells (Help page open); using the "
+            + mapCells.Count + " map cells under Canvas/States");
+        return mapCells.ToArray();
+    }
+
     private IEnumerator withSec(float sec, GameObject[] tempSquares)
     {
         yield return new WaitForSeconds(sec);
+        if (this.squares.Count > 0)
+        {
+            // Batch 6: the map is set up once per scene; a repeated InitSquares would add every value to sumPlayer twice.
+            Debug.LogWarning("INIT-SQUARES: map already set up (" + this.squares.Count + " cells); repeated call ignored");
+            yield break;
+        }
 
         int j1 = 1, j2 = 2;
         for (int i = 0; i < tempSquares.Length; i++)
