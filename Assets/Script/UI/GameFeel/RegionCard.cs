@@ -2,10 +2,11 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Display only (game-feel batch). Styles one region button: fill colour, label colour, outline ring and ownership badge.
-// It reads Button.interactable but never writes it, never touches the button's OnClick, and owns no raycast targets
-// (all of its graphics have raycastTarget off), so region selection (Player.ChooseView / GetLast, which use
-// Button.IsInteractable) is unchanged. Lives on a decor child of the region button.
+// Display only (game-feel batch). Styles one region button: fill colour, label colour, outline ring and ownership badge,
+// with short transitions. It reads Button.interactable but never writes it, never touches the button's OnClick, and owns
+// no raycast targets (all of its graphics have raycastTarget off), so region selection (Player.ChooseView / GetLast,
+// which use Button.IsInteractable) is unchanged. Lives on a decor child of the region button. Motion is cosmetic only:
+// every state is applied at once when effects are off, outside Play Mode, or while the card is hidden.
 [DisallowMultipleComponent]
 public class RegionCard : MonoBehaviour
 {
@@ -18,10 +19,12 @@ public class RegionCard : MonoBehaviour
 
     [Header("Decor (no raycast)")]
     [SerializeField] private Image ring;
+    [SerializeField] private Image flash;
     [SerializeField] private Image badge;
     [SerializeField] private Image badgeIcon;
     [SerializeField] private Sprite checkIcon;
     [SerializeField] private Sprite lockIcon;
+    [SerializeField] private int staggerIndex;
 
     [Header("Palette")]
     [SerializeField] private Color regionColor = Color.white;
@@ -41,17 +44,40 @@ public class RegionCard : MonoBehaviour
     private bool hover;
     private bool lastInteractable = true;
 
+    private Look shown;
+    private bool hasShown;
+    private int lookTween = -1;
+    private int fxTween = -1;
+    private int badgeTween = -1;
+
     public Owner CurrentOwner => owner;
 
-    // True only while this player may pick this region now (display hint for hover feedback; gates nothing).
+    // True only while this player may pick this region now (display hint; gates nothing).
     public bool IsSelectableNow => choosePhase && myTurn && owner == Owner.None && button != null && button.interactable;
 
-    public RectTransform BadgeTransform => badge != null ? badge.rectTransform : null;
-    public Image Ring => ring;
+    private struct Look
+    {
+        public Color fill;
+        public Color label;
+        public Color ring;
+        public Color badge;
+        public bool badgeOn;
+        public Sprite icon;
+        public Color iconColor;
+    }
 
-    protected virtual void OnEnable()
+    private void OnEnable()
     {
         Refresh(true);
+    }
+
+    private void OnDisable()
+    {
+        UiMotion.Stop(ref lookTween);
+        UiMotion.Stop(ref fxTween);
+        UiMotion.Stop(ref badgeTween);
+        ResetFx();
+        Refresh(true); // settle on the final look while hidden
     }
 
     private void LateUpdate()
@@ -69,9 +95,19 @@ public class RegionCard : MonoBehaviour
         {
             return;
         }
+        bool valuesAppeared = isChoosePhase && !choosePhase;
+        bool turnStarted = isChoosePhase && isMyTurn && !myTurn;
         choosePhase = isChoosePhase;
         myTurn = isMyTurn;
         Refresh(false);
+        if (valuesAppeared)
+        {
+            PlayFlash(0.35f, UiMotion.Emphasis + 0.06f, 0.06f * staggerIndex, 0f);
+        }
+        else if (turnStarted && IsSelectableNow)
+        {
+            PlayFlash(0f, UiMotion.Emphasis + 0.06f, 0.05f * staggerIndex, 0.10f);
+        }
     }
 
     public void SetOwner(Owner newOwner)
@@ -81,7 +117,8 @@ public class RegionCard : MonoBehaviour
         Refresh(false);
         if (changed && newOwner != Owner.None)
         {
-            OnTaken(newOwner);
+            // The chosen region gets the strongest emphasis; a region taken by the other player a lighter one.
+            PlayFlash(newOwner == Owner.Mine ? 0.55f : 0.25f, 0.30f, 0f, newOwner == Owner.Mine ? 0.14f : 0.06f);
         }
     }
 
@@ -95,18 +132,7 @@ public class RegionCard : MonoBehaviour
         Refresh(false);
     }
 
-    protected struct Look
-    {
-        public Color fill;
-        public Color label;
-        public Color ring;
-        public Color badge;
-        public bool badgeOn;
-        public Sprite icon;
-        public Color iconColor;
-    }
-
-    protected Look ComputeLook()
+    private Look ComputeLook()
     {
         lastInteractable = button == null || button.interactable;
         bool taken = owner != Owner.None || !lastInteractable;
@@ -143,6 +169,10 @@ public class RegionCard : MonoBehaviour
         else if (choosePhase && myTurn)
         {
             look.ring = hover ? hoverRing : turnRing;
+            if (hover)
+            {
+                look.fill = Color.Lerp(regionColor, Color.white, 0.14f);
+            }
         }
         else if (choosePhase)
         {
@@ -152,31 +182,83 @@ public class RegionCard : MonoBehaviour
         return look;
     }
 
-    protected virtual void Refresh(bool instant)
+    private void Refresh(bool instant)
     {
-        Apply(ComputeLook());
+        Look target = ComputeLook();
+        bool badgeAppears = target.badgeOn && (!hasShown || !shown.badgeOn);
+        UiMotion.Stop(ref lookTween);
+        if (instant || !hasShown || !GameFeel.Animate(this))
+        {
+            Apply(target, target, 1f);
+            if (badgeAppears) SetBadgeScale(1f);
+            return;
+        }
+        Look from = shown;
+        lookTween = UiMotion.Play(gameObject, hover || !target.badgeOn ? UiMotion.Fast + 0.03f : UiMotion.Normal, t => Apply(from, target, t));
+        if (badgeAppears)
+        {
+            UiMotion.Stop(ref badgeTween);
+            SetBadgeScale(0.3f);
+            badgeTween = UiMotion.Play(gameObject, UiMotion.Emphasis, t => SetBadgeScale(Mathf.LerpUnclamped(0.3f, 1f, t)), true, 0.05f);
+        }
     }
 
-    protected void Apply(Look look)
+    private void Apply(Look from, Look to, float t)
     {
-        if (fill != null) fill.color = look.fill;
-        if (label != null) label.color = look.label;
-        if (ring != null) ring.color = look.ring;
+        Look now = new Look
+        {
+            fill = Color.Lerp(from.fill, to.fill, t),
+            label = Color.Lerp(from.label, to.label, t),
+            ring = Color.Lerp(from.ring, to.ring, t),
+            badge = to.badge,
+            badgeOn = to.badgeOn,
+            icon = to.icon,
+            iconColor = to.iconColor,
+        };
+        shown = now;
+        hasShown = true;
+        if (fill != null) fill.color = now.fill;
+        if (label != null) label.color = now.label;
+        if (ring != null) ring.color = now.ring;
         if (badge != null)
         {
-            badge.color = look.badge;
-            badge.gameObject.SetActive(look.badgeOn);
+            badge.color = now.badge;
+            if (badge.gameObject.activeSelf != now.badgeOn) badge.gameObject.SetActive(now.badgeOn);
         }
         if (badgeIcon != null)
         {
-            badgeIcon.sprite = look.icon;
-            badgeIcon.color = look.iconColor;
-            badgeIcon.enabled = look.icon != null;
+            badgeIcon.sprite = now.icon;
+            badgeIcon.color = now.iconColor;
+            badgeIcon.enabled = now.icon != null;
         }
     }
 
-    // Stage 2 hook for the selection emphasis.
-    protected virtual void OnTaken(Owner newOwner)
+    private void SetBadgeScale(float s)
     {
+        if (badge != null) badge.rectTransform.localScale = Vector3.one * s;
+    }
+
+    // White flash over the card plus an outward ring pulse; purely cosmetic and self-resetting.
+    private void PlayFlash(float flashAlpha, float duration, float delay, float ringGrow)
+    {
+        UiMotion.Stop(ref fxTween);
+        ResetFx();
+        if (!GameFeel.Animate(this))
+        {
+            return;
+        }
+        fxTween = UiMotion.Play(gameObject, duration, t =>
+        {
+            float b = UiMotion.Bump(t);
+            if (flash != null) flash.color = new Color(1f, 1f, 1f, flashAlpha * b);
+            if (ring != null) ring.rectTransform.localScale = Vector3.one * (1f + ringGrow * b);
+        }, false, delay);
+    }
+
+    private void ResetFx()
+    {
+        if (flash != null) flash.color = new Color(1f, 1f, 1f, 0f);
+        if (ring != null) ring.rectTransform.localScale = Vector3.one;
+        if (badge != null && !GameFeel.Animate(this)) badge.rectTransform.localScale = Vector3.one;
     }
 }
