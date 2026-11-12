@@ -65,6 +65,9 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     private string roundTransitionText = null;
     private const string waitingForNextRTL = "ממתינים לשחקן השני";
     private const string nextRoundTransitionRTL = "עוברים לסבב הבא";
+    // Next handshake (B1/B2, mirrors Player). Both reset with the scene (this object lives in CutSceneAITutorial).
+    private string localNextSceneName = null;       // B1: the scene argument of this client's own Next (the button's "CutScene")
+    private bool masterTransitionStarted = false;   // B2: the master starts the move to real round 1 at most once
 
     private CutAndChoosePlayerDatabase gameDatabase = new CutAndChoosePlayerDatabase();
     //private Task databaseTask;
@@ -1273,9 +1276,14 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     public void NextGame(string sceneName)
     {
         //Manager.inst.setNote(-1,"Other player left the game...", false); // need to send in RPC!
+        if (this.localNextPressed)
+        {
+            return; // B2: this client's Next (readiness message) runs once
+        }
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         this.palyersGameOver[playerNum - 1] = true;
         this.localNextPressed = true; // display only
+        this.localNextSceneName = sceneName;
         Manager.inst.NextSceneClick();
         if (this.palyersGameOver[0] && this.palyersGameOver[1])
         {
@@ -1295,6 +1303,11 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
         // Master client loads the scene on behalf of non-master clients
         this.palyersGameOver[playerNum - 1] = true;
         Manager.inst.setNote(-1, "Other player continue the game...", false, "השחקן השני ממשיך במשחק..."); // need to send in RPC!
+        // B1 (mirrors Player): the two GameOverClicked RPCs crossed, so nobody sent MasterNextGame; only the master resolves it.
+        if (PhotonNetwork.IsMasterClient && this.localNextPressed && this.palyersGameOver[0] && this.palyersGameOver[1])
+        {
+            photonView.RPC("MasterNextGame", RpcTarget.All, this.localNextSceneName);
+        }
     }
 
     [PunRPC]
@@ -1302,8 +1315,9 @@ public class PlayerAITutorial : MonoBehaviourPunCallbacks
     {
         ShowRoundTransition(); // UX-030, display only; runs before the unchanged logic below and cannot stop it
         // Master client loads the scene on behalf of non-master clients
-        if (PhotonNetwork.IsMasterClient)
+        if (PhotonNetwork.IsMasterClient && !this.masterTransitionStarted)
         {
+            this.masterTransitionStarted = true; // B2: one move to real round 1, even if this RPC repeats
             photonView.RPC("RequestSceneLoad", RpcTarget.All, sceneName, 1, 0);
         }
     }

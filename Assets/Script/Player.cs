@@ -74,6 +74,9 @@ public class Player : MonoBehaviourPunCallbacks
     private const string nextRoundTransitionRTL = "עוברים לסבב הבא";
     private const string endGameTransitionRTL = "עוברים לסיום המשחק";
     private const int lastRealRoundIndex = 5; // MasterNextGame sends both players to EndGameFlow after round index 5
+    // Next handshake (B1/B2). Both reset with the scene: this Player object lives in CutScene, which is reloaded every round.
+    private string localNextSceneName = null;       // B1: the scene argument of this client's own Next (the button's "CutScene")
+    private bool masterTransitionStarted = false;   // B2: the master advances the round (or ends the game) at most once per round
 
     private CutAndChoosePlayerDatabase gameDatabase = new CutAndChoosePlayerDatabase();
     //private Task databaseTask;
@@ -1220,9 +1223,14 @@ public class Player : MonoBehaviourPunCallbacks
     public void NextGame(string sceneName)
     {
         //Manager.inst.setNote(-1,"Other player left the game...", false); // need to send in RPC!
+        if (this.localNextPressed)
+        {
+            return; // B2: this client's Next (save + readiness message) runs once per round
+        }
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         this.palyersGameOver[playerNum - 1] = true;
         this.localNextPressed = true; // display only
+        this.localNextSceneName = sceneName;
         Manager.inst.NextSceneClick();
         this.SaveData();
         if (this.palyersGameOver[0] && this.palyersGameOver[1])
@@ -1249,6 +1257,13 @@ public class Player : MonoBehaviourPunCallbacks
         // Master client loads the scene on behalf of non-master clients
         this.palyersGameOver[playerNum - 1] = true;
         Manager.inst.setNote(-1, "Other player continue the game...", false, "השחקן השני ממשיך במשחק..."); // need to send in RPC!
+        // B1: both players pressed Next before either readiness message arrived (the two GameOverClicked RPCs crossed), so
+        // neither NextGame saw both flags and nobody sent MasterNextGame. Only the master resolves this case, which keeps a
+        // single sender: when a NextGame already saw both flags it sent MasterNextGame instead of GameOverClicked.
+        if (PhotonNetwork.IsMasterClient && this.localNextPressed && this.palyersGameOver[0] && this.palyersGameOver[1])
+        {
+            photonView.RPC("MasterNextGame", RpcTarget.All, this.localNextSceneName);
+        }
     }
 
     [PunRPC]
@@ -1256,8 +1271,9 @@ public class Player : MonoBehaviourPunCallbacks
     {
         ShowRoundTransition(); // UX-030, display only; runs before the unchanged logic below and cannot stop it
         // Master client loads the scene on behalf of non-master clients
-        if (PhotonNetwork.IsMasterClient)
+        if (PhotonNetwork.IsMasterClient && !this.masterTransitionStarted)
         {
+            this.masterTransitionStarted = true; // B2: one round advance / payment draw per round, even if this RPC repeats
             int roundNumberConfig = Config.inst.addRoundNumber();
             //roundNumberConfig = 4;
             //Debug.LogError("scenarioNum= " + roundNumberConfig);
