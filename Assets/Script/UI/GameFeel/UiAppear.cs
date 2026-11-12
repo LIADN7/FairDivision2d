@@ -16,12 +16,16 @@ public class UiAppear : MonoBehaviour
     [SerializeField] private float delay = 0f;
     [SerializeField] private bool overshoot = false;
     [SerializeField] private bool playOnce = false;
+    // Stage 4 (EndGameFlow): content that is already shown when the scene loads may opt in to an entrance at load.
+    // The tween then starts only after the load hitch (see PlayAfterLoad). Off by default: existing usages are unchanged.
+    [SerializeField] private bool playOnSceneLoad = false;
 
     private Vector3 baseScale = Vector3.one;
     private float[] spriteAlpha;
     private bool captured;
     private bool played;
     private int tweenId = -1;
+    private Coroutine deferred;
 
     private void Capture()
     {
@@ -49,7 +53,7 @@ public class UiAppear : MonoBehaviour
         Capture();
         UiMotion.Stop(ref tweenId);
         // Objects switched on/off while the scene loads (saved active, then hidden by Manager.Start) are not appearances.
-        bool sceneLoading = Time.timeSinceLevelLoad < 0.25f;
+        bool sceneLoading = !playOnSceneLoad && Time.timeSinceLevelLoad < 0.25f;
         if (!GameFeel.Animate(this) || sceneLoading || (playOnce && played))
         {
             Set(1f);
@@ -57,11 +61,42 @@ public class UiAppear : MonoBehaviour
         }
         played = true;
         Set(0f);
+        if (playOnSceneLoad)
+        {
+            // During a scene (re)load timeSinceLevelLoad can still hold the previous scene's time, so opted-in objects
+            // always start through PlayAfterLoad (outside a load it only adds two frames).
+            deferred = StartCoroutine(PlayAfterLoad());
+            return;
+        }
+        tweenId = UiMotion.Play(gameObject, duration, Set, overshoot, delay);
+    }
+
+    // The load frame and the first frames after it carry a long unscaled delta (over a second in the Editor), which would
+    // finish a tween started during the load at once. Start only after the frame time is normal again (max ~15 frames).
+    private System.Collections.IEnumerator PlayAfterLoad()
+    {
+        yield return null;
+        for (int i = 0; i < 15 && Time.unscaledDeltaTime > 0.1f; i++)
+        {
+            yield return null;
+        }
+        yield return null;
+        deferred = null;
+        if (!GameFeel.Animate(this))
+        {
+            Set(1f);
+            yield break;
+        }
         tweenId = UiMotion.Play(gameObject, duration, Set, overshoot, delay);
     }
 
     private void OnDisable()
     {
+        if (deferred != null)
+        {
+            StopCoroutine(deferred);
+            deferred = null;
+        }
         UiMotion.Stop(ref tweenId);
         Set(1f); // a re-enable with effects off, or a hide/show, starts from the final look
     }

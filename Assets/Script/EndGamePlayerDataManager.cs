@@ -14,6 +14,10 @@ public class EndGamePlayerDataManager : MonoBehaviour
     public  TextMeshProUGUI     winningsTextRTL   ;
     // Display only (UX-010): how the reward was chosen, and which round when that round's result is really in RandArrays.
     public TextMeshProUGUI rewardInfoRTL;
+    // Display only (game-feel Stage 4): optional highlighted line for the selected round. When assigned, the round
+    // sentence moves here (same text) and rewardInfoRTL keeps the explanation; when not assigned, both stay in rewardInfoRTL.
+    public TextMeshProUGUI selectedRoundRTL;
+    public GameObject selectedRoundPlate;
     public Button submit;
     public TMP_Text errorText;
 
@@ -57,9 +61,18 @@ public class EndGamePlayerDataManager : MonoBehaviour
             string info = "התגמול חושב לפי סבב אחד שנבחר באקראי.";
             // roundIndex is the 0-based RandArrays index drawn by the master (0-5 = real rounds 1-6; practice is never added).
             bool roundIsKnown = RandArrays.inst != null && roundIndex >= 0 && roundIndex < RandArrays.inst.GetSize();
-            if (roundIsKnown)
+            string roundLine = "סבב " + (roundIndex + 1) + " נבחר לחישוב התגמול.";
+            if (selectedRoundRTL != null)
             {
-                info += "\nסבב " + (roundIndex + 1) + " נבחר לחישוב התגמול.";
+                selectedRoundRTL.text = roundIsKnown ? Manager.PrepareRtlNote(roundLine) : "";
+                if (selectedRoundPlate != null)
+                {
+                    selectedRoundPlate.SetActive(roundIsKnown);
+                }
+            }
+            else if (roundIsKnown)
+            {
+                info += "\n" + roundLine;
             }
             rewardInfoRTL.text = Manager.PrepareRtlNote(info);
         }
