@@ -1145,7 +1145,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4281479730
+    rgba: 4281085958
   m_fontColor: {r: 0.023529412, g: 0.1882353, b: 0.17254902, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -1163,7 +1163,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 31.55
+  m_fontSize: 34
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -2706,6 +2706,7 @@ MonoBehaviour:
   delay: 0.05
   overshoot: 0
   playOnce: 0
+  playOnSceneLoad: 0
 --- !u!114 &49000930
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3380,7 +3381,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4279900698
+    rgba: 4294967295
   m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -10063,7 +10064,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4279900698
+    rgba: 4278461226
   m_fontColor: {r: 0.16470589, g: 0.13725491, b: 0.015686275, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -12278,6 +12279,7 @@ MonoBehaviour:
   delay: 0.02
   overshoot: 1
   playOnce: 0
+  playOnSceneLoad: 0
 --- !u!1 &347248478
 GameObject:
   m_ObjectHideFlags: 0
@@ -13636,7 +13638,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4294307046
   m_fontColor: {r: 0.9019608, g: 0.9254902, b: 0.9607843, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -17957,7 +17959,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4279900698
-  m_fontColor: {r: 0.78039217, g: 0.827451, b: 0.8980392, a: 1}
+  m_fontColor: {r: 0.8627451, g: 0.8980392, b: 0.9490196, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -28653,7 +28655,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4279900698
+    rgba: 4292659644
   m_fontColor: {r: 0.7372549, g: 0.7882353, b: 0.8627451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -29245,7 +29247,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4279900698
+    rgba: 4292659644
   m_fontColor: {r: 0.7372549, g: 0.7882353, b: 0.8627451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -29541,7 +29543,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4279900698
+    rgba: 4294967295
   m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -30771,7 +30773,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4279900698
+    rgba: 4279510029
   m_fontColor: {r: 0.050980393, g: 0.14117648, b: 0.078431375, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -36078,6 +36080,7 @@ MonoBehaviour:
   delay: 0
   overshoot: 1
   playOnce: 0
+  playOnSceneLoad: 0
 --- !u!1 &887548043
 GameObject:
   m_ObjectHideFlags: 0
@@ -37181,6 +37184,7 @@ MonoBehaviour:
   delay: 0
   overshoot: 0
   playOnce: 0
+  playOnSceneLoad: 0
 --- !u!114 &915190752
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -39348,7 +39352,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4294702577
   m_fontColor: {r: 0.94509804, g: 0.9607843, b: 0.9843137, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -39361,7 +39365,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -40177,6 +40181,7 @@ MonoBehaviour:
   delay: 0
   overshoot: 0
   playOnce: 0
+  playOnSceneLoad: 0
 --- !u!1 &987960027
 GameObject:
   m_ObjectHideFlags: 0
@@ -43495,7 +43500,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4279900698
+    rgba: 4292659644
   m_fontColor: {r: 0.7372549, g: 0.7882353, b: 0.8627451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -55441,7 +55446,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4279900698
+    rgba: 4294108636
   m_fontColor: {r: 0.8627451, g: 0.8980392, b: 0.9490196, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -55459,7 +55464,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 52.6
+  m_fontSize: 56
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -56684,7 +56689,7 @@ MonoBehaviour:
   m_fontWeight: 400
   m_enableAutoSizing: 1
   m_fontSizeMin: 9
-  m_fontSizeMax: 12
+  m_fontSizeMax: 16
   m_fontStyle: 0
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 256
@@ -57786,6 +57791,7 @@ MonoBehaviour:
   delay: 0.08
   overshoot: 0
   playOnce: 0
+  playOnSceneLoad: 0
 --- !u!1 &1398795074
 GameObject:
   m_ObjectHideFlags: 0
@@ -62735,6 +62741,7 @@ MonoBehaviour:
   delay: 0
   overshoot: 0
   playOnce: 0
+  playOnSceneLoad: 0
 --- !u!1 &1511093906
 GameObject:
   m_ObjectHideFlags: 0
@@ -68043,6 +68050,7 @@ MonoBehaviour:
   delay: 0.12
   overshoot: 0
   playOnce: 0
+  playOnSceneLoad: 0
 --- !u!1 &1642563053
 GameObject:
   m_ObjectHideFlags: 0
@@ -68725,6 +68733,7 @@ MonoBehaviour:
   delay: 0
   overshoot: 0
   playOnce: 0
+  playOnSceneLoad: 0
 --- !u!1 &1648159035
 GameObject:
   m_ObjectHideFlags: 0
@@ -70345,7 +70354,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294901760
+    rgba: 4281999635
   m_fontColor: {r: 0.07450981, g: 0.12941177, b: 0.22745098, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -76020,7 +76029,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 2150773298
+    rgba: 4288251514
   m_fontColor: {r: 0.47843137, g: 0.5254902, b: 0.6, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -79496,7 +79505,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294049619
+    rgba: 4292659644
   m_fontColor: {r: 0.7372549, g: 0.7882353, b: 0.8627451, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -83978,7 +83987,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294049619
+    rgba: 4292404830
   m_fontColor: {r: 0.36862746, g: 0.9019608, b: 0.84705883, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -83996,7 +84005,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 47.2
+  m_fontSize: 35.4
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -85280,8 +85289,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4279900698
-  m_fontColor: {r: 0.78039217, g: 0.827451, b: 0.8980392, a: 1}
+    rgba: 4293252039
+  m_fontColor: {r: 0.8627451, g: 0.8980392, b: 0.9490196, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -87811,7 +87820,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294776075
+    rgba: 4294702577
   m_fontColor: {r: 0.94509804, g: 0.9607843, b: 0.9843137, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -88463,6 +88472,7 @@ MonoBehaviour:
   delay: 0
   overshoot: 1
   playOnce: 0
+  playOnSceneLoad: 0
 --- !u!1 &2105137727
 GameObject:
   m_ObjectHideFlags: 0
@@ -89180,6 +89190,7 @@ MonoBehaviour:
   delay: 0
   overshoot: 0
   playOnce: 0
+  playOnSceneLoad: 0
 --- !u!1 &2129168035
 GameObject:
   m_ObjectHideFlags: 0
@@ -90185,6 +90196,7 @@ MonoBehaviour:
   delay: 0.05
   overshoot: 1
   playOnce: 1
+  playOnSceneLoad: 0
 --- !u!1 &2146652100
 GameObject:
   m_ObjectHideFlags: 0
