@@ -85,8 +85,23 @@ public class EndGamePlayerDataManager : MonoBehaviour
         return text.EndsWith(".00") ? text.Substring(0, text.Length - 3) : text;
     }
 
+    // A1: the Finish submission (save + survey redirect) starts at most once per EndGameFlow visit. Guarded here, the one
+    // entry point of every path (button OnClick -> HideInputFields, keyboard Submit on the selected button, direct calls).
+    // The save itself is unchanged: it is still not awaited, its result is not reported, and the redirect is not delayed.
+    private bool finishStarted = false;
+
     public void OnFinishButtonClicked()
     {
+        if (finishStarted)
+        {
+            return;
+        }
+        finishStarted = true;
+        if (submit != null)
+        {
+            submit.interactable = false; // existing disabled look: the submission has already started
+        }
+
         float winnings = 0f;
         if (PlayerData.inst != null)
         {
