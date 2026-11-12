@@ -2,7 +2,7 @@
 
 > Detailed implementation reference for the core algorithm. For the project overview, experiment schedule, data schema and environment see [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md); this file does not repeat them.
 >
-> **Last verified:** 2026-11-01 — static inspection on `AITutorial` @ `d1cc192`, plus two-client runtime smoke tests on `feat/ux-batch-1` and (2026-11-02, six rounds) `feat/ux-batch-2` (see PROJECT_CONTEXT §17). Batches 1–3 changed display only, plus the Batch 2 see-other guard (§15). Batch 4 (`feat/ux-batch-4`, 2026-11-03, not yet integrated) adds the Player 2 shading fix (§3), a UI-click guard on line start, line outlines (§2) and cut-phase labels. Batch 6 (`feat/ux-batch-6`, 2026-11-07) adds display-only session dialogs (exit confirmation, connection notice, partner-exit lobby notice) and Next/transition messages (§7, §8.1, §15). The rules, sync and persistence described here are unchanged. Evidence tags follow PROJECT_CONTEXT: **[Verified]**, **[Inferred]**, **[Unknown]**. Paths are relative to `Assets/Script/` unless stated otherwise.
+> **Last verified:** 2026-11-01 — static inspection on `AITutorial` @ `d1cc192`, plus two-client runtime smoke tests on `feat/ux-batch-1` and (2026-11-02, six rounds) `feat/ux-batch-2` (see PROJECT_CONTEXT §17). Batches 1–3 changed display only, plus the Batch 2 see-other guard (§15). Batch 4 (`feat/ux-batch-4`, 2026-11-03, not yet integrated) adds the Player 2 shading fix (§3), a UI-click guard on line start, line outlines (§2) and cut-phase labels. Batch 6 (`feat/ux-batch-6`, 2026-11-07, merged into `dev` `ce2350d`) adds display-only session dialogs (exit confirmation, connection notice, partner-exit lobby notice) and Next/transition messages (§7, §8.1, §15). The game-feel batch (`feat/game-feel-visual-polish`, 2026-11-11, CutScene only) restyles the region buttons and adds UI motion; `Player.Choose`, `GetValues` and `UpdatePhaseInstruction` gained one display-only `RegionSelectionView` notification each, after their existing logic (§13.3). The rules, sync and persistence described here are unchanged. Evidence tags follow PROJECT_CONTEXT: **[Verified]**, **[Inferred]**, **[Unknown]**. Paths are relative to `Assets/Script/` unless stated otherwise.
 
 ## Contents
 
@@ -297,6 +297,7 @@ RequestSceneLoad(sceneName, scenario, r) → every client: Config.createConfig(s
 | Next | `isAgreed` read from the toggle; record saved as `CutAChoose_{round}_{condition}` | `NextGame` → `SaveData` → `DatabaseManager.SaveData` (`ForceSaveAsync`, fire-and-forget) |
 | After round 6 | Shared random index → each client: `winnings = 30 + max(0, (x − 45)·1.5)` with x = own `RandArrays[index]` | `SetRandomPaymentRound` → `PlayerData.SetRandIndex`, `SetNormalizeWinning` |
 | Finish (EndGameFlow) | `PlayerData` saved; redirect with winnings | `EndGamePlayerDataManager.OnFinishButtonClicked`, `Config.RedirectToSurvey` |
+| Reward display (EndGameFlow) | Display only: amount `X.XX ₪` from the unrounded `PlayerData` value; explanation line; round line `סבב N נבחר לחישוב התגמול.` (N = index + 1) only when the index is inside `RandArrays` — since game-feel Stage 4 shown in its own chip (`selectedRoundRTL` / `selectedRoundPlate`, same text and condition) | `EndGamePlayerDataManager.SetWinnings` (called from `Start`) |
 
 Full field list: [PROJECT_CONTEXT §11](PROJECT_CONTEXT.md#11-data-collection-and-storage). Each client saves only its own record. The two records of a pair are linked only by nicknames (`PlayerName`/`otherPlayerName`), round and condition — there is no shared room/session ID [Verified].
 
@@ -407,7 +408,7 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 
 ### 13.3 UI-dependent game state
 
-- Allocation: `GetLast()` (real) and `GetAvailableChoiceIndices` / `GetChosenCount` (practice, PC picks, auto-remainder at 3 taken) read `Button.interactable` of the four region buttons. Making a button non-interactable for UX reasons changes who gets which region.
+- Allocation: `GetLast()` (real) and `GetAvailableChoiceIndices` / `GetChosenCount` (practice, PC picks, auto-remainder at 3 taken) read `Button.IsInteractable()` of the four region buttons. Making a button non-interactable for UX reasons changes who gets which region. `IsInteractable()` is also false while any **parent** `CanvasGroup` has `interactable = false`, so a fade/animation group must never sit above the region buttons (game-feel batch rule: `UiAppear` only ever writes `CanvasGroup.alpha`, and none of its groups is an ancestor of a region button — checked when wiring the scene and in the reference dump).
 - Scoring cache in a UI class: `Manager.sumRGYB` is read for scoring by `ChooseView`/`GetValues`.
 - Payment capture inside a UI method: `Manager.setEndGameLayer(sum, isReelGame)` appends to `RandArrays`; calling it twice, or with the wrong flag, changes payments.
 - Shared labels: `buttonsValueText[0..1]` serve as cut readouts and as region labels.
