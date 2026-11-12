@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Linq;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -20,10 +21,38 @@ public class EndGamePlayerDataManager : MonoBehaviour
     public GameObject selectedRoundPlate;
     public Button submit;
     public TMP_Text errorText;
+    // Two-step completion (Cloud Save & data integrity batch, owner-approved). Step A: the existing Submit button saves
+    // the final record and waits for every research record of the run. Step B: after a confirmed save, a separate,
+    // user-initiated button returns to the survey. Nothing navigates automatically.
+    public TextMeshProUGUI saveStatusRTL;  // saving / saved / failed line under the buttons (no raycast target)
+    public Button returnToSurveyButton;    // hidden until the save is confirmed; never saves anything
+    [SerializeField] private Color saveStatusColor = Color.white;
+    [SerializeField] private Color saveSucceededColor = Color.white;
+    [SerializeField] private Color saveFailedColor = new Color(1f, 0.72f, 0.66f, 1f);
+
+    private const string savingRTL = "שומרים את הנתונים...";
+    private const string savedRTL = "הנתונים נשמרו בהצלחה.";
+    private const string saveFailedRTL = "השמירה נכשלה. בדקו את החיבור לאינטרנט ולחצו שוב על \"שלח\".";
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    private const string returnUnavailableTestRTL = "מצב בדיקה: המעבר לסקר אינו זמין.";
+#endif
+
+    private bool saveInProgress = false;
+    private bool saveSucceeded = false;
+    private bool returnStarted = false;
 
     private void Start()
     {
         if (errorText != null) errorText.text = "";
+        if (saveStatusRTL != null)
+        {
+            saveStatusRTL.raycastTarget = false;
+            saveStatusRTL.text = "";
+        }
+        if (returnToSurveyButton != null)
+        {
+            returnToSurveyButton.gameObject.SetActive(false);
+        }
         LoadPlayerData();
     }
 
@@ -85,30 +114,100 @@ public class EndGamePlayerDataManager : MonoBehaviour
         return text.EndsWith(".00") ? text.Substring(0, text.Length - 3) : text;
     }
 
-    // A1: the Finish submission (save + survey redirect) starts at most once per EndGameFlow visit. Guarded here, the one
-    // entry point of every path (button OnClick -> HideInputFields, keyboard Submit on the selected button, direct calls).
-    // The save itself is unchanged: it is still not awaited, its result is not reported, and the redirect is not delayed.
-    private bool finishStarted = false;
-
+    // Step A - Save (button OnClick -> HideInputFields, keyboard Submit, direct calls). One submission at a time (A1
+    // guard extended): while saving, and after a confirmed save, further presses are ignored. On failure the button is
+    // enabled again for a manual retry, which reuses the same final record (same reward, same payment round) and retries
+    // only the records that are not yet confirmed. No redirect here.
     public void OnFinishButtonClicked()
     {
-        if (finishStarted)
+        if (saveInProgress || saveSucceeded)
         {
             return;
         }
-        finishStarted = true;
+        _ = SaveAndShowResultAsync();
+    }
+
+    private async Task SaveAndShowResultAsync()
+    {
+        saveInProgress = true;
         if (submit != null)
         {
-            submit.interactable = false; // existing disabled look: the submission has already started
+            submit.interactable = false; // existing disabled look while saving
         }
+        SetSaveStatus(savingRTL, saveStatusColor);
 
-        float winnings = 0f;
-        if (PlayerData.inst != null)
+        bool saved = false;
+        try
         {
-            winnings = PlayerData.inst.GetNormalizeWinning();
-            _ = PlayerData.inst.SaveFinalRecordAsync();
+            if (PlayerData.inst != null)
+            {
+                saved = await PlayerData.inst.SaveFinalRecordAsync();
+            }
+            else
+            {
+                Debug.LogError("PlayerData instance not found - nothing to save");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("SAVE: final submission failed: " + ex.Message);
+            saved = false;
+        }
+        saveInProgress = false;
+        if (this == null)
+        {
+            return; // the scene was left while saving; the queue keeps the records' state
         }
 
+        if (saved)
+        {
+            saveSucceeded = true;
+            ShowSaved();
+        }
+        else
+        {
+            SetSaveStatus(saveFailedRTL, saveFailedColor);
+            if (submit != null)
+            {
+                submit.interactable = true; // manual retry
+            }
+        }
+    }
+
+    private void ShowSaved()
+    {
+        if (submit != null)
+        {
+            submit.gameObject.SetActive(false);
+        }
+        string status = savedRTL;
+        if (returnToSurveyButton != null)
+        {
+            returnToSurveyButton.gameObject.SetActive(true);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // Test mode never reports to the survey panel (Config.RedirectToSurvey is suppressed): shown as unavailable.
+            returnToSurveyButton.interactable = false;
+            status += "\n" + returnUnavailableTestRTL;
+#endif
+        }
+        SetSaveStatus(status, saveSucceededColor);
+    }
+
+    // Step B - return to the survey: a separate click, only after a confirmed save, at most once per EndGameFlow visit.
+    // Uses the existing redirect unchanged (Config.RedirectToSurvey with the unrounded PlayerData reward; suppressed in
+    // test mode). It never triggers a Cloud Save write.
+    public void OnReturnToSurveyClicked()
+    {
+        if (!saveSucceeded || returnStarted)
+        {
+            return;
+        }
+        returnStarted = true;
+        if (returnToSurveyButton != null)
+        {
+            returnToSurveyButton.interactable = false;
+        }
+        float winnings = PlayerData.inst != null ? PlayerData.inst.GetNormalizeWinning() : 0f;
         if (Config.inst != null)
         {
             Config.inst.RedirectToSurvey(winnings);
@@ -117,6 +216,16 @@ public class EndGamePlayerDataManager : MonoBehaviour
         {
             Debug.LogError("Config instance not found for redirect!");
         }
+    }
+
+    private void SetSaveStatus(string text, Color color)
+    {
+        if (saveStatusRTL == null)
+        {
+            return;
+        }
+        saveStatusRTL.text = Manager.PrepareRtlNote(text);
+        saveStatusRTL.color = color;
     }
 
     // Maintained for backward compatibility if wired up to UI Button in scene Inspector
