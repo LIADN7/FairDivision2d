@@ -52,7 +52,15 @@ public class Launcher : MonoBehaviourPunCallbacks
         PhotonNetwork.GameVersion = TestGameVersion;
         Debug.Log("TEST MODE: Photon AppVersion = " + PhotonNetwork.AppVersion + " (lobby load, connected=" + PhotonNetwork.IsConnected + ")");
 #else
-        PhotonNetwork.GameVersion = "0.0.1";
+        // C1: only before a connection. MainScene also loads while still connected (Home/exit, the connection notice's
+        // return, EndGameFlow -> Home); setting GameVersion then would move the next master-server authentication to
+        // "0.0.1_2.42", a separate matchmaking pool. IsConnected stays true while switching from the game server back to
+        // the master server. A fresh start is unchanged: ConnectUsingSettings() in Start overwrites this with the settings'
+        // AppVersion, so the client connects as before (empty AppVersion -> "_2.42").
+        if (!PhotonNetwork.IsConnected)
+        {
+            PhotonNetwork.GameVersion = "0.0.1";
+        }
 #endif
 
 
