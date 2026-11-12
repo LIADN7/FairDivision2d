@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Unity.Services.CloudSave;
 using Newtonsoft.Json;
 using System;
+using Newtonsoft.Json.Linq;
 using ExitGames.Client.Photon.StructWrapping;
 
 using System.Runtime.InteropServices;
@@ -69,38 +70,51 @@ public class DatabaseManager : MonoBehaviour
     //     public string surveyID;
     //     public string userID;
     // }
+    // Initializes Unity Services and signs in anonymously. Safe to call again: it only does what is still missing, so a
+    // failed start (e.g. offline) or an expired/signed-out session is repaired by the next save attempt. A new sign-in
+    // reuses this browser's cached session token, i.e. the same anonymous player.
     private async Task ConnectToCloud()
     {
-        if (isInitializing || isInitialized) return;
+        if (isInitializing) return;
 
         isInitializing = true;
 
         try
         {
-            Debug.Log("Starting Unity Services initialization...");
+            if (UnityServices.State != ServicesInitializationState.Initialized)
+            {
+                Debug.Log("Starting Unity Services initialization...");
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            // Test isolation: Editor and Development builds use the "development" environment and their
-            // own sign-in profile, so they never read or write production Cloud Save data. If this fails,
-            // the error is logged below and nothing is saved (no fallback to production).
-            var testOptions = new InitializationOptions();
-            Unity.Services.Core.Environments.EnvironmentsOptionsExtensions.SetEnvironmentName(testOptions, "development");
-            testOptions.SetProfile("uxtest");
-            Debug.Log("TEST MODE: Unity Services environment = development, profile = uxtest");
-            await UnityServices.InitializeAsync(testOptions);
+                // Test isolation: Editor and Development builds use the "development" environment and their
+                // own sign-in profile, so they never read or write production Cloud Save data. If this fails,
+                // the error is logged below and nothing is saved (no fallback to production).
+                var testOptions = new InitializationOptions();
+                Unity.Services.Core.Environments.EnvironmentsOptionsExtensions.SetEnvironmentName(testOptions, "development");
+                testOptions.SetProfile("uxtest");
+                Debug.Log("TEST MODE: Unity Services environment = development, profile = uxtest");
+                await UnityServices.InitializeAsync(testOptions);
 #else
-            await UnityServices.InitializeAsync();
+                await UnityServices.InitializeAsync();
 #endif
-            Debug.Log("Unity Services initialized successfully");
+                Debug.Log("Unity Services initialized successfully");
+            }
 
-            Debug.Log("Starting authentication...");
-            await AuthenticationService.Instance.SignInAnonymouslyAsync();
-            Debug.Log("Authentication successful");
+            if (!AuthenticationService.Instance.IsAuthorized)
+            {
+                Debug.Log("Starting authentication...");
+                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+                Debug.Log("Authentication successful");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.Log("TEST MODE: anonymous player " + AuthenticationService.Instance.PlayerId);
+#endif
+            }
 
             isInitialized = true;
             Debug.Log("Cloud services fully initialized and ready to use");
         }
         catch (System.Exception e)
         {
+            isInitialized = false;
             Debug.LogError($"Failed to initialize Unity Services: {e.Message}");
             Debug.LogError($"Full exception: {e}");
         }
@@ -112,7 +126,11 @@ public class DatabaseManager : MonoBehaviour
 
     public async Task<bool> EnsureInitialized()
     {
-        if (isInitialized) return true;
+        if (isInitialized && UnityServices.State == ServicesInitializationState.Initialized
+            && AuthenticationService.Instance.IsAuthorized)
+        {
+            return true;
+        }
 
         if (!isInitializing)
         {
@@ -120,40 +138,111 @@ public class DatabaseManager : MonoBehaviour
         }
         else
         {
-            // Wait for initialization to complete
+            // Wait for the running initialization (Unity frame-based wait: also works in WebGL)
             while (isInitializing)
             {
-                await Task.Delay(100);
+                await Awaitable.WaitForSecondsAsync(0.1f);
             }
         }
 
         return isInitialized;
     }
 
-    public async void SaveData(string name, string jsonData)
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    // TEST MODE ONLY (compiled out of Release builds): read-only validation helper. Reads THIS anonymous player's own
+    // Cloud Save data back from the service: every key with its last-modified time, and the full values of the keys
+    // that start with keyPrefix (e.g. "CC_<runId>"; "CC_" for all new-schema records). Returns one JSON document:
+    // {"playerId", "readAtUtc", "allKeys":[{"key","modified"}], "items":{key: value}}. Writes nothing; logs no tokens.
+    public async Task<string> TestReadBackAsync(string keyPrefix)
     {
         if (!await EnsureInitialized())
         {
-            Debug.LogError("Cannot save data - Unity Services not initialized");
-            return;
+            throw new InvalidOperationException("Unity Services are not initialized or the player is not signed in");
         }
+        var keys = await CloudSaveService.Instance.Data.Player.ListAllKeysAsync(
+            new Unity.Services.CloudSave.Models.Data.Player.ListAllKeysOptions());
+        var allKeys = new JArray();
+        var wanted = new HashSet<string>();
+        foreach (var k in keys)
+        {
+            allKeys.Add(new JObject { ["key"] = k.Key, ["modified"] = k.Modified?.ToUniversalTime().ToString("o") });
+            if (!string.IsNullOrEmpty(keyPrefix) && k.Key.StartsWith(keyPrefix, StringComparison.Ordinal))
+            {
+                wanted.Add(k.Key);
+            }
+        }
+        var items = new JObject();
+        if (wanted.Count > 0)
+        {
+            var loaded = await CloudSaveService.Instance.Data.Player.LoadAsync(wanted,
+                new Unity.Services.CloudSave.Models.Data.Player.LoadOptions());
+            foreach (var pair in loaded)
+            {
+                using (var reader = new JsonTextReader(new System.IO.StringReader(pair.Value.Value.GetAsString()))
+                    { DateParseHandling = DateParseHandling.None })
+                {
+                    items[pair.Key] = JToken.ReadFrom(reader);
+                }
+            }
+        }
+        var doc = new JObject
+        {
+            ["playerId"] = AuthenticationService.Instance.PlayerId,
+            ["readAtUtc"] = DateTime.UtcNow.ToString("o"),
+            ["allKeys"] = allKeys,
+            ["items"] = items
+        };
+        return doc.ToString(Formatting.None);
+    }
 
+    // TEST MODE ONLY: WebGL entry point for TestReadBackAsync (unityInstance.SendMessage("DatabaseManager",
+    // "TestReadBackRecords", "<key prefix>")). The WebGL player truncates a log line at 8191 characters, so the JSON is
+    // logged in parts: "READBACK-PART <id> <i>/<n> <text>"; joining the parts in order gives the document.
+    public async void TestReadBackRecords(string keyPrefix)
+    {
         try
         {
-            string keyName = name;
-            string value = jsonData;
-            var playerData = new Dictionary<string, object>{
-              {keyName, jsonData }
-            };
-
-            Debug.Log($"Saving data to cloud with key: {keyName}");
-            await CloudSaveService.Instance.Data.ForceSaveAsync(playerData);
-            Debug.Log($"Data saved successfully to cloud");
+            string json = await TestReadBackAsync(keyPrefix);
+            const int partSize = 4000;
+            int parts = (json.Length + partSize - 1) / partSize;
+            string id = Guid.NewGuid().ToString("N").Substring(0, 8);
+            for (int i = 0; i < parts; i++)
+            {
+                int start = i * partSize;
+                Debug.Log("READBACK-PART " + id + " " + (i + 1) + "/" + parts + " "
+                    + json.Substring(start, Math.Min(partSize, json.Length - start)));
+            }
         }
-        catch (System.Exception e)
+        catch (Exception e)
         {
-            Debug.LogError($"Failed to save data: {e.Message}");
-            Debug.LogError($"Full exception: {e}");
+            Debug.LogError("READBACK failed: " + e.Message);
+        }
+    }
+#endif
+
+    // One Cloud Save write (default access class, no write lock: an overwrite of this key). Completes only when the
+    // service acknowledged the write; throws on any failure. Called by ResearchSaveQueue, which tracks and retries it.
+    public async Task WriteRecordAsync(string key, JToken record)
+    {
+        if (!await EnsureInitialized())
+        {
+            throw new InvalidOperationException("Unity Services are not initialized or the player is not signed in");
+        }
+
+        JToken toSend = record;
+        if (record is JObject obj && obj.ContainsKey("UnityPlayerId") && string.IsNullOrEmpty((string)obj["UnityPlayerId"]))
+        {
+            toSend = obj.DeepClone();
+            toSend["UnityPlayerId"] = AuthenticationService.Instance.PlayerId; // owner of the record, for the export
+        }
+
+        Debug.Log($"Saving data to cloud with key: {key}");
+        var result = await CloudSaveService.Instance.Data.Player.SaveAsync(
+            new Dictionary<string, object> { { key, toSend } },
+            new Unity.Services.CloudSave.Models.Data.Player.SaveOptions());
+        if (result == null || !result.ContainsKey(key))
+        {
+            throw new InvalidOperationException("Cloud Save did not acknowledge the key " + key);
         }
     }
 

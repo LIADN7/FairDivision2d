@@ -7,6 +7,7 @@ Unity 6 (6000.2.10f1) + Photon PUN 2 research game for two-player fair division 
 - **[docs/PROJECT_CONTEXT.md §17 — Current Status and Handoff](docs/PROJECT_CONTEXT.md#17-current-status-and-handoff)** — current branch, finished UX batches, known issues, next batch.
 - **[docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md)** — project overview, experiment conditions and schedule, data schema, environment, Unity Editor access, **test mode** (§13.2) and **release checklist** (§13.3). Read it before planning any change.
 - **[docs/CUT_AND_CHOOSE_REFERENCE.md](docs/CUT_AND_CHOOSE_REFERENCE.md)** — algorithm implementation, state machines, synchronization, dependency map, high-risk coupling points and research invariants. Read it before touching gameplay, UI flow, networking or data code.
+- **[docs/RESEARCH_DATA.md](docs/RESEARCH_DATA.md)** — Cloud Save layout (legacy schema 1 vs run-scoped schema 2), save lifecycle and completion gate, limits, export helper. Read it before touching persistence or the end screen.
 
 ## Development priorities
 

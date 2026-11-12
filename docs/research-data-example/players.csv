@@ -1,0 +1,5 @@
+RunId,PlayerRole,OwnerPlayerId,RoundsPresent,RoundsMissing,FinalPresent,WinRandIndex,PaymentRoundResult,Winnings,WinningsCheck,UserID,SurveyID,RoundKeysListed
+20261112-204719-a9f9be,1,player-A (WebGL),6,,True,0,47.26721,33.40081,ok,TEST_cs_w,TEST_cs_s,6
+20261112-204719-a9f9be,2,player-B (Editor),6,,True,0,61.2453537,54.36803,ok,defaultUserID,defaultSurveyID,6
+20261112-210655-f04a40,1,player-B (Editor),6,,True,3,46.2550621,31.8825932,ok,defaultUserID,defaultSurveyID,6
+20261112-210655-f04a40,2,player-A (WebGL),6,,True,3,70.3531647,68.02975,ok,TEST_cs_w,TEST_cs_s,6

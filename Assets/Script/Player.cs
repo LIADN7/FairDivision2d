@@ -112,6 +112,11 @@ public class Player : MonoBehaviourPunCallbacks
         int[] tempChoosen = { -1, -1 };
         this.gameDatabase.PlayerChoosenColors = tempChoosen;
         this.SetDataFromURL();
+        // Run identity (Cloud Save batch): the experiment's shared run ID and this client's role, read from the room.
+        this.gameDatabase.RunId = ExperimentRun.CaptureFromRoom() ?? ExperimentRun.EnsureRunId();
+        this.gameDatabase.RunIdShared = ExperimentRun.RunIdShared;
+        this.gameDatabase.PlayerRole = ExperimentRun.PlayerRole;
+        this.gameDatabase.RoomName = ExperimentRun.RoomName;
 
         /*        await UnityServices.InitializeAsync();
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();

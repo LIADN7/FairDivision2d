@@ -126,6 +126,15 @@ public class Launcher : MonoBehaviourPunCallbacks
         PhotonNetwork.LoadLevel(this.sceneToLoad);
     }
 
+    // Cloud Save batch: early cache of the experiment's shared run ID (room property) and this client's role. Reliable
+    // only for the room creator: on the joining client the room's scene sync can unload the lobby before this callback
+    // runs (observed in test). The authoritative capture is Player.InitDatabaseAsync at the start of every real round,
+    // which both clients run inside the room before their first research save.
+    public override void OnJoinedRoom()
+    {
+        ExperimentRun.CaptureFromRoom();
+    }
+
     /*    public override void OnJoinedRoom()
         {
             this.loadingScreen.SetActive(false);
@@ -145,6 +154,7 @@ public class Launcher : MonoBehaviourPunCallbacks
         int previousKeys = PointOfState.ResetKeyCounter();
         int previousPracticeKeys = PointOfStateAITutorial.ResetKeyCounter();
         int previousResults = RandArrays.inst != null ? RandArrays.inst.Clear() : 0;
+        ExperimentRun.BeginNewExperiment(); // Cloud Save batch: the next room provides a new shared run ID
         Debug.Log("SESSION-RESET: new experiment; cell key counter " + previousKeys + " -> 0, practice key counter "
             + previousPracticeKeys + " -> 0, results cleared " + previousResults);
     }
@@ -165,6 +175,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             Config.inst.createConfig(scenarioNumber,0);
             RoomOptions opt = new RoomOptions();
             opt.MaxPlayers = 2;
+            opt.CustomRoomProperties = ExperimentRun.NewRoomProperties(); // used only if this client creates the room
 
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
@@ -194,6 +205,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             //         {
             RoomOptions opt = new RoomOptions();
             opt.MaxPlayers = 2;
+            opt.CustomRoomProperties = ExperimentRun.NewRoomProperties(); // used only if this client creates the room
 
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
@@ -236,6 +248,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             Config.inst.createConfig(scenarioNumber, 0);
             RoomOptions opt = new RoomOptions();
             opt.MaxPlayers = 2;
+            opt.CustomRoomProperties = ExperimentRun.NewRoomProperties(); // used only if this client creates the room
 
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);

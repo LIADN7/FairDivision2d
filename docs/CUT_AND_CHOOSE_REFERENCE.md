@@ -166,7 +166,7 @@ No rounding is applied to stored values; UI shows the default float text. Each p
 
 **Host (master) authority** — limited to: sending `InitSquares`; deciding the next condition and triggering scene loads (`MasterNextGame`); drawing the payment round. The master does **not** validate cuts or choices.
 
-**State ownership** (per client; nothing is held in Photon room properties):
+**State ownership** (per client; no game state is held in Photon room properties — the only room property, `ccRunId` since `feat/cloud-save-data-integrity`, is a data ID):
 
 | State | Owner | Replicated how |
 |---|---|---|
@@ -183,6 +183,8 @@ No rounding is applied to stored values; UI shows the default float text. Each p
 | Results list for payment | `RandArrays` (DontDestroyOnLoad) | Local |
 | Payment index, winnings | `PlayerData` (DontDestroyOnLoad) | `SetRandomPaymentRound` RPC (index only) |
 | Round record | `CutAndChoosePlayerDatabase` inside `Player` | Saved separately by each client |
+| Experiment data ID `RunId` (since `feat/cloud-save-data-integrity`) | `ExperimentRun` (static) | Custom room property `ccRunId`, set once by the room creator at room creation; read into records only |
+| Save state of research records (same batch) | `ResearchSaveQueue` (static) | Local; not replicated |
 
 Consistency between clients relies on both clients holding identical scene data, identical cell keys (§13.1), and receiving the same RPCs in order.
 
@@ -235,7 +237,8 @@ MainScene: Connecting ─OnConnectedToMaster→ JoinLobby ─OnJoinedLobby→ Lo
 CutSceneAITutorial (practice) ─both humans click Next→ RequestSceneLoad("CutScene", scenario 1, round 0)
 CutScene round r ─both click Next→ CutScene round r+1      (r = 0…4)
 CutScene round 5 ─both click Next→ SetRandomPaymentRound + LeaveGame("EndGameFlow")
-EndGameFlow ─Finish→ PlayerData saved → survey redirect
+EndGameFlow ─"שלח"→ final record + all round records confirmed (retry on failure) ─success→ "חזרה לאתר הסקר" ─click→ survey redirect
+            (before feat/cloud-save-data-integrity: ─Finish→ PlayerData saved (unobserved) → survey redirect)
 Any game scene ─Home (either player)→ [Batch 6: confirmation "לצאת מהמשחק?"; "יציאה"] → LeaveGameForAll → both return to MainScene (round not saved)
 Any game scene ─confirmed departure / lost connection→ [Batch 6: notice] ─"חזרה למסך הראשי"→ MainScene (in room: LeaveGame; else direct load)
 ```
@@ -294,12 +297,13 @@ RequestSceneLoad(sceneName, scenario, r) → every client: Config.createConfig(s
 | Both cuts | Own and opponent region %s, cell counts, opponent name | `Cut`, RPCs |
 | Choices | Region indices received | `ChooseView`, `GetValues` |
 | Result | `SumOfMyPart`; result appended to `RandArrays` | `GetValues`, `Manager.setEndGameLayer` |
-| Next | `isAgreed` read from the toggle; record saved as `CutAChoose_{round}_{condition}` | `NextGame` → `SaveData` → `DatabaseManager.SaveData` (`ForceSaveAsync`, fire-and-forget) |
+| Round start (since `feat/cloud-save-data-integrity`) | `RunId`, `RunIdShared`, `PlayerRole`, `RoomName` read from the room (`ExperimentRun.CaptureFromRoom`) | `Player.InitDatabaseAsync` |
+| Next | `isAgreed` read from the toggle; record frozen and saved. Schema 1 (before the batch): key `CutAChoose_{round}_{condition}`, `ForceSaveAsync`, fire-and-forget. Schema 2: key `CC_{runId}_P{role}_R{round}`, submitted to `ResearchSaveQueue` (confirmed, ≤ 3 attempts per request, failed records kept for the end-screen retry) | `NextGame` → `SaveData` → `CutAndChoosePlayerDatabase.SaveDatabaseAsync` → `ResearchSaveQueue.Submit` → `DatabaseManager.WriteRecordAsync` |
 | After round 6 | Shared random index → each client: `winnings = 30 + max(0, (x − 45)·1.5)` with x = own `RandArrays[index]` | `SetRandomPaymentRound` → `PlayerData.SetRandIndex`, `SetNormalizeWinning` |
-| Finish (EndGameFlow) | `PlayerData` saved; redirect with winnings | `EndGamePlayerDataManager.OnFinishButtonClicked`, `Config.RedirectToSurvey` |
+| Finish (EndGameFlow) | Schema 1: `PlayerData` saved; redirect with winnings. Schema 2: Step A "שלח" registers the final record `CC_{runId}_P{role}_final` once and waits until it and every round record are confirmed (saving / success / failure + manual retry); Step B "חזרה לאתר הסקר", shown only after success, calls the unchanged redirect once (no save) | `EndGamePlayerDataManager.OnFinishButtonClicked` → `PlayerData.SaveFinalRecordAsync`; `OnReturnToSurveyClicked` → `Config.RedirectToSurvey` |
 | Reward display (EndGameFlow) | Display only: amount `X.XX ₪` from the unrounded `PlayerData` value; explanation line; round line `סבב N נבחר לחישוב התגמול.` (N = index + 1) only when the index is inside `RandArrays` — since game-feel Stage 4 shown in its own chip (`selectedRoundRTL` / `selectedRoundPlate`, same text and condition) | `EndGamePlayerDataManager.SetWinnings` (called from `Start`) |
 
-Full field list: [PROJECT_CONTEXT §11](PROJECT_CONTEXT.md#11-data-collection-and-storage). Each client saves only its own record. The two records of a pair are linked only by nicknames (`PlayerName`/`otherPlayerName`), round and condition — there is no shared room/session ID [Verified].
+Full field list: [PROJECT_CONTEXT §11](PROJECT_CONTEXT.md#11-data-collection-and-storage); schema 2 layout and export: [RESEARCH_DATA.md](RESEARCH_DATA.md). Each client saves only its own record. Schema 1: the two records of a pair are linked only by nicknames (`PlayerName`/`otherPlayerName`), round and condition — there is no shared room/session ID [Verified]. Schema 2: both records carry the same `RunId` and their `PlayerRole` [Verified 2026-11-12, read back from Cloud Save `development`].
 
 ---
 
@@ -443,7 +447,7 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 | Experimental conditions | `Normal`, `Info`, `Chat`, `InfoAChat`; own valuations always visible; opponent valuations only in Info conditions and only before own cut; chat only in Chat conditions |
 | Round progression | Practice → rounds 1–2 Normal → 3–4 one random draw of Info/Chat → 5–6 InfoAChat → EndGameFlow |
 | Multiplayer allocation consistency | Both clients must derive identical regions and allocation from identical scene data and keys; master = Player 1 |
-| Data collection | Record fields and key format `CutAChoose_{round}_{condition}`; region key names `RedX, GreenO, RedO, GreenX`; save on Next; practice unsaved |
+| Data collection | Record fields (meanings unchanged; schema 2 adds identity fields only); key format — owner-approved change 2026-11-12 from `CutAChoose_{round}_{condition}` / `PlayerData` to `CC_{runId}_P{role}_R{round}` / `CC_{runId}_P{role}_final` ([RESEARCH_DATA.md](RESEARCH_DATA.md)); region key names `RedX, GreenO, RedO, GreenX`; save on Next; practice unsaved |
 | Reward | Uniform draw over the 6 real rounds, same index for both; `30 + max(0, (x − 45)·1.5)`; practice excluded |
 | Participant texts | Bilingual instructions incl. the 50% hint |
 
@@ -471,7 +475,7 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 | `InitSquares` arrives after the Help page auto-opened | Before the fix: Help (opened 1.0 s after scene start by `HelpPageCountdown`) deactivates `Canvas/States`; `FindGameObjectsWithTag` returned 0 cells → empty `Cut` → `KeyNotFoundException`, round stalled (RPC 1.47 s after scene start). Since Batch 6: when the tag search misses map cells, `InitSquares` uses the tagged cells under the scene's `Canvas/States` including inactive ones (both forks); repeated `InitSquares` ignored | Fixed; verified 2026-11-11 (practice and round 1 with Help open via a test-only delayed RPC; round 2 normal) |
 | Late join to practice after partner pressed Next | Missed `GameOverClicked` → permanent wait | Inferred |
 | Player never presses Next | Round record never saved | Verified |
-| Cloud Save initialization or save fails | Logged only; data lost | Verified |
+| Cloud Save initialization or save fails | Before `feat/cloud-save-data-integrity`: logged only; data lost. Since: each record is retried (≤ 3 attempts per request), kept in memory when it still fails, retried again by the end-screen Save, which reports failure and allows a manual retry; initialization / an expired session is repaired on the next attempt. Lost only if the tab closes before the service acknowledges it | Verified 2026-11-12 in test mode (injected failures, read back from Cloud Save) |
 | Submit without a line / zero-length line | 100/0 cut (or the colours of an `Esc`-cancelled redraw); no line shown for that player; drawing after submit was possible before the `feat/ux-batch-5` lock and is now blocked; Player 1's no-line cut leaves Green and Blue empty (details §2, UX-004) | Observed 2026-11-03 in test mode (practice, Player 1 role, Editor and WebGL); Player 2 in a real round observed 2026-11-05 (the unsent post-submit line stays visible while choosing); Esc variant Inferred |
 | Help Page open over the result | Before the final Batch 4 fixes, `EndGameStatusObject` (a direct `Canvas` child) stayed visible over the Help Page; it now sits under `ViewItems` | Verified 2026-11-04 (practice and round 1, WebGL and Editor; same value after closing) |
 | Help Page open over drawn lines | Before the Batch 4 follow-up, the Batch 4 outlines (outside `States`) stayed visible over the Help Page. Fixed in `349f6e2` | Verified 2026-11-04 (practice and round 1, WebGL and Editor; restored after closing) |
