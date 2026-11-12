@@ -40,10 +40,25 @@ public class PlayerData : MonoBehaviour
     // Save the final reward record of this run (CC_<runId>_P<role>_final; replaces the legacy fixed "PlayerData" key,
     // which every later experiment of the same anonymous player overwrote). Same eight fields and meanings as the legacy
     // record, plus the run identity and the keys of this player's round records.
-    public void SaveDatabaseAsync()
+    // Completion gate: returns true only when the final record AND every round record of this run are confirmed by
+    // Cloud Save. The final payload is built once (first call) and reused by every retry, so a retry never changes the
+    // reward or the payment round; failed round records are retried with their original payloads.
+    public async Task<bool> SaveFinalRecordAsync()
     {
-        DatabaseManager.EnsureInstance();
-        DatabaseManager.inst.SaveData(ExperimentRun.FinalKey(), ExperimentRun.ToPayload(ToFinalRecord()));
+        string finalKey = ExperimentRun.FinalKey();
+        if (!ResearchSaveQueue.IsRegistered(finalKey))
+        {
+            ResearchSaveQueue.Register(finalKey, ExperimentRun.ToPayload(ToFinalRecord()));
+        }
+        var roundKeys = new System.Collections.Generic.List<string>(ExperimentRun.RoundKeys);
+        Task<bool> rounds = roundKeys.Count > 0 ? ResearchSaveQueue.EnsureSavedAsync(roundKeys) : Task.FromResult(true);
+        Task<bool> final = ResearchSaveQueue.SaveAsync(finalKey);
+        bool roundsSaved = await rounds;
+        bool finalSaved = await final;
+        roundKeys.Add(finalKey);
+        Debug.Log("SAVE: completion gate " + (roundsSaved && finalSaved ? "PASSED" : "NOT PASSED") + " - "
+            + ResearchSaveQueue.Describe(roundKeys));
+        return roundsSaved && finalSaved;
     }
 
     private FinalRecordModel ToFinalRecord()

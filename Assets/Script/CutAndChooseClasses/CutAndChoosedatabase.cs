@@ -200,12 +200,13 @@ public class CutAndChoosePlayerDatabase
             }
     // Saves this round record under its run-scoped key (one key per player and round; never overwrites another run).
     // The payload is a snapshot taken now; ScenarioNum is the round index 0-5 and ScenarioType stays in the record.
+    // The save runs in the background (gameplay is not held); ResearchSaveQueue tracks it, retries a failure a few
+    // times, and the EndGameFlow Save button waits for it (or retries it) before reporting success.
     public void SaveDatabaseAsync(string fileName)
     {
         string keyName = ExperimentRun.RoundKey(this.PlayerRole, this.ScenarioNum);
         ExperimentRun.NoteRoundRecord(keyName);
-        DatabaseManager.EnsureInstance();
-        DatabaseManager.inst.SaveData(keyName, ExperimentRun.ToPayload(this));
+        ResearchSaveQueue.Submit(keyName, ExperimentRun.ToPayload(this));
     }
 
 

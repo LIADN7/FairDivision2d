@@ -106,7 +106,7 @@ public class EndGamePlayerDataManager : MonoBehaviour
         if (PlayerData.inst != null)
         {
             winnings = PlayerData.inst.GetNormalizeWinning();
-            PlayerData.inst.SaveDatabaseAsync();
+            _ = PlayerData.inst.SaveFinalRecordAsync();
         }
 
         if (Config.inst != null)
