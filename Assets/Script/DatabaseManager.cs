@@ -130,7 +130,7 @@ public class DatabaseManager : MonoBehaviour
         return isInitialized;
     }
 
-    public async void SaveData(string name, string jsonData)
+    public async void SaveData(string name, Newtonsoft.Json.Linq.JToken record)
     {
         if (!await EnsureInitialized())
         {
@@ -141,9 +141,13 @@ public class DatabaseManager : MonoBehaviour
         try
         {
             string keyName = name;
-            string value = jsonData;
+            if (record is Newtonsoft.Json.Linq.JObject obj && obj.ContainsKey("UnityPlayerId")
+                && string.IsNullOrEmpty((string)obj["UnityPlayerId"]))
+            {
+                obj["UnityPlayerId"] = AuthenticationService.Instance.PlayerId; // owner of the record, for the export
+            }
             var playerData = new Dictionary<string, object>{
-              {keyName, jsonData }
+              {keyName, record }
             };
 
             Debug.Log($"Saving data to cloud with key: {keyName}");

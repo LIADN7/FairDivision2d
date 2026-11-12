@@ -126,6 +126,13 @@ public class Launcher : MonoBehaviourPunCallbacks
         PhotonNetwork.LoadLevel(this.sceneToLoad);
     }
 
+    // Cloud Save batch: cache the experiment's shared run ID (room property) and this client's role as soon as the room
+    // is joined, before any scene of the experiment loads. Also re-read at the start of every real round (Player).
+    public override void OnJoinedRoom()
+    {
+        ExperimentRun.CaptureFromRoom();
+    }
+
     /*    public override void OnJoinedRoom()
         {
             this.loadingScreen.SetActive(false);
@@ -145,6 +152,7 @@ public class Launcher : MonoBehaviourPunCallbacks
         int previousKeys = PointOfState.ResetKeyCounter();
         int previousPracticeKeys = PointOfStateAITutorial.ResetKeyCounter();
         int previousResults = RandArrays.inst != null ? RandArrays.inst.Clear() : 0;
+        ExperimentRun.BeginNewExperiment(); // Cloud Save batch: the next room provides a new shared run ID
         Debug.Log("SESSION-RESET: new experiment; cell key counter " + previousKeys + " -> 0, practice key counter "
             + previousPracticeKeys + " -> 0, results cleared " + previousResults);
     }
@@ -165,6 +173,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             Config.inst.createConfig(scenarioNumber,0);
             RoomOptions opt = new RoomOptions();
             opt.MaxPlayers = 2;
+            opt.CustomRoomProperties = ExperimentRun.NewRoomProperties(); // used only if this client creates the room
 
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
@@ -194,6 +203,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             //         {
             RoomOptions opt = new RoomOptions();
             opt.MaxPlayers = 2;
+            opt.CustomRoomProperties = ExperimentRun.NewRoomProperties(); // used only if this client creates the room
 
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
@@ -236,6 +246,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             Config.inst.createConfig(scenarioNumber, 0);
             RoomOptions opt = new RoomOptions();
             opt.MaxPlayers = 2;
+            opt.CustomRoomProperties = ExperimentRun.NewRoomProperties(); // used only if this client creates the room
 
             this.menu.SetActive(false);
             this.loadingScreen.SetActive(true);
