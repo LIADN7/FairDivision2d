@@ -127,7 +127,7 @@ Matches the README. Map, valuations and player roles are identical in all six ro
 
 ### 6.5 Reward calculation [Verified]
 
-After round 6 the master draws a round index uniformly from 0–5 and shares it; each client computes **winnings = 30 + max(0, (x − 45) × 1.5)** ₪ with x = its own result in that round (`PlayerData.SetNormalizeWinning`, [PlayerData.cs:138](../Assets/Script/PlayerData.cs#L138)). `EndGameFlow` shows the amount; Finish saves `PlayerData` and redirects to the panel4all survey with `surveyID`, `userID`, `status=finish`, `winnings` (`Config.RedirectToSurvey`). Data path: [Reference §10](CUT_AND_CHOOSE_REFERENCE.md#10-persistence-and-result-calculation).
+After round 6 the master draws a round index uniformly from 0–5 and shares it; each client computes **winnings = 30 + max(0, (x − 45) × 1.5)** ₪ with x = its own result in that round (`PlayerData.SetNormalizeWinning`, [PlayerData.cs:138](../Assets/Script/PlayerData.cs#L138)). `EndGameFlow` shows the amount; Finish saves `PlayerData` and redirects to the panel4all survey with `surveyID`, `userID`, `status=finish`, `winnings` (`Config.RedirectToSurvey`). *Status 2026-11-12: the survey company is not currently participating, so this redirect is existing code, not a confirmed live integration (§17 "Multiplayer reliability batch").* Data path: [Reference §10](CUT_AND_CHOOSE_REFERENCE.md#10-persistence-and-result-calculation).
 
 ---
 
