@@ -148,6 +148,78 @@ public class DatabaseManager : MonoBehaviour
         return isInitialized;
     }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    // TEST MODE ONLY (compiled out of Release builds): read-only validation helper. Reads THIS anonymous player's own
+    // Cloud Save data back from the service: every key with its last-modified time, and the full values of the keys
+    // that start with keyPrefix (e.g. "CC_<runId>"; "CC_" for all new-schema records). Returns one JSON document:
+    // {"playerId", "readAtUtc", "allKeys":[{"key","modified"}], "items":{key: value}}. Writes nothing; logs no tokens.
+    public async Task<string> TestReadBackAsync(string keyPrefix)
+    {
+        if (!await EnsureInitialized())
+        {
+            throw new InvalidOperationException("Unity Services are not initialized or the player is not signed in");
+        }
+        var keys = await CloudSaveService.Instance.Data.Player.ListAllKeysAsync(
+            new Unity.Services.CloudSave.Models.Data.Player.ListAllKeysOptions());
+        var allKeys = new JArray();
+        var wanted = new HashSet<string>();
+        foreach (var k in keys)
+        {
+            allKeys.Add(new JObject { ["key"] = k.Key, ["modified"] = k.Modified?.ToUniversalTime().ToString("o") });
+            if (!string.IsNullOrEmpty(keyPrefix) && k.Key.StartsWith(keyPrefix, StringComparison.Ordinal))
+            {
+                wanted.Add(k.Key);
+            }
+        }
+        var items = new JObject();
+        if (wanted.Count > 0)
+        {
+            var loaded = await CloudSaveService.Instance.Data.Player.LoadAsync(wanted,
+                new Unity.Services.CloudSave.Models.Data.Player.LoadOptions());
+            foreach (var pair in loaded)
+            {
+                using (var reader = new JsonTextReader(new System.IO.StringReader(pair.Value.Value.GetAsString()))
+                    { DateParseHandling = DateParseHandling.None })
+                {
+                    items[pair.Key] = JToken.ReadFrom(reader);
+                }
+            }
+        }
+        var doc = new JObject
+        {
+            ["playerId"] = AuthenticationService.Instance.PlayerId,
+            ["readAtUtc"] = DateTime.UtcNow.ToString("o"),
+            ["allKeys"] = allKeys,
+            ["items"] = items
+        };
+        return doc.ToString(Formatting.None);
+    }
+
+    // TEST MODE ONLY: WebGL entry point for TestReadBackAsync (unityInstance.SendMessage("DatabaseManager",
+    // "TestReadBackRecords", "<key prefix>")). The WebGL player truncates a log line at 8191 characters, so the JSON is
+    // logged in parts: "READBACK-PART <id> <i>/<n> <text>"; joining the parts in order gives the document.
+    public async void TestReadBackRecords(string keyPrefix)
+    {
+        try
+        {
+            string json = await TestReadBackAsync(keyPrefix);
+            const int partSize = 4000;
+            int parts = (json.Length + partSize - 1) / partSize;
+            string id = Guid.NewGuid().ToString("N").Substring(0, 8);
+            for (int i = 0; i < parts; i++)
+            {
+                int start = i * partSize;
+                Debug.Log("READBACK-PART " + id + " " + (i + 1) + "/" + parts + " "
+                    + json.Substring(start, Math.Min(partSize, json.Length - start)));
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("READBACK failed: " + e.Message);
+        }
+    }
+#endif
+
     // One Cloud Save write (default access class, no write lock: an overwrite of this key). Completes only when the
     // service acknowledged the write; throws on any failure. Called by ResearchSaveQueue, which tracks and retries it.
     public async Task WriteRecordAsync(string key, JToken record)
