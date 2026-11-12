@@ -35,4 +35,19 @@ The tutorial step entrance (0.22–0.30 s) finishes before an Editor capture ret
 
 \* Staged: CutScene opened in the Editor and put into the state with exactly the texts and interactable values that `Player` / `Manager` write (never saved). Map cells show their edit-time colour there (no runtime shading); the runtime sheets show real shading and lines. Screen-space-overlay dialogs (exit / connection notice) do not appear in camera captures; sheet 08 shows the exit dialog from WebGL.
 
-To see the motion live: run a test-mode two-client round (`docs/PROJECT_CONTEXT.md` §13.2) or Play Mode in the Editor. F8 toggles the UI effects in the Editor and in Development builds.
+Stages 3–4 — lobby, session dialogs and `EndGameFlow` (added 2026-11-12). Before = this branch at `fe43858` (scene/prefab files taken from git and staged the same way); after = the Stage 4 working tree. These edit-mode captures render without MSAA (see PROJECT_CONTEXT §17, finding 3).
+
+| File | What it shows | Source |
+|---|---|---|
+| `23_lobby_states_960x600_before_after.jpg` | Lobby menu, connecting, joining, room-full message | Edit-mode staged state* |
+| `24_lobby_and_partner_notice_1280x720_before_after.jpg` | Lobby and the lobby partner-exit notice at 1280×720 | Edit-mode staged state* |
+| `25_partner_exit_notice_960x600_before_after.jpg` | Partner-exit notice (shown with `GameSessionDialogs`' own methods) | Edit-mode staged state* |
+| `26_exit_dialog_cutscene_before_after.jpg` | Exit dialog over a round ("not saved" line), shared prefab | Edit-mode staged state* |
+| `27_endgameflow_960x600_before_after.jpg` | Reward screen: 34.71 ₪, round 4 (real `PlayerData` formula and `SetWinnings`) | Edit-mode staged state* |
+| `28_endgameflow_1280x720_before_after.jpg` | Same at 1280×720 | Edit-mode staged state* |
+| `29_runtime_webgl_lobby_and_partner_notice.jpg` | WebGL: connecting card, lobby, real hover on Room 1, joining, partner-exit notice | Runtime WebGL Development (real mouse) |
+| `30_runtime_webgl_session_to_endgameflow.jpg` | WebGL: practice and round 1 (unchanged screens), "moving to the end", `EndGameFlow` entrance and settled state (112.50 ₪, round 5) | Runtime, full two-client session |
+| `31_endgameflow_entrance_motion_frames.jpg` | `EndGameFlow` entrance after a real scene load: hidden until the first normal frame, then badge/card/chip easing in; settled frame | Runtime Editor Play Mode |
+| `32_runtime_editor_dialog_room_full_endgame.jpg` | Editor: practice exit dialog (Editor 2× MSAA shading visible), lobby room-full plate, Player 2's real `EndGameFlow` (30 ₪, round 5) | Runtime Editor Play Mode |
+
+To see the motion live: run a test-mode two-client round (`docs/PROJECT_CONTEXT.md` §13.2) or Play Mode in the Editor. F8 toggles the UI effects in the Editor and in Development builds (since Stage 4 also in the lobby and `EndGameFlow`). The lobby fade plays when the menu appears after connecting, the loading dots pulse while connecting or joining, and the `EndGameFlow` entrance plays on every load of that scene.

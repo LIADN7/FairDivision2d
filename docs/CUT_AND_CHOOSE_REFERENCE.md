@@ -297,6 +297,7 @@ RequestSceneLoad(sceneName, scenario, r) → every client: Config.createConfig(s
 | Next | `isAgreed` read from the toggle; record saved as `CutAChoose_{round}_{condition}` | `NextGame` → `SaveData` → `DatabaseManager.SaveData` (`ForceSaveAsync`, fire-and-forget) |
 | After round 6 | Shared random index → each client: `winnings = 30 + max(0, (x − 45)·1.5)` with x = own `RandArrays[index]` | `SetRandomPaymentRound` → `PlayerData.SetRandIndex`, `SetNormalizeWinning` |
 | Finish (EndGameFlow) | `PlayerData` saved; redirect with winnings | `EndGamePlayerDataManager.OnFinishButtonClicked`, `Config.RedirectToSurvey` |
+| Reward display (EndGameFlow) | Display only: amount `X.XX ₪` from the unrounded `PlayerData` value; explanation line; round line `סבב N נבחר לחישוב התגמול.` (N = index + 1) only when the index is inside `RandArrays` — since game-feel Stage 4 shown in its own chip (`selectedRoundRTL` / `selectedRoundPlate`, same text and condition) | `EndGamePlayerDataManager.SetWinnings` (called from `Start`) |
 
 Full field list: [PROJECT_CONTEXT §11](PROJECT_CONTEXT.md#11-data-collection-and-storage). Each client saves only its own record. The two records of a pair are linked only by nicknames (`PlayerName`/`otherPlayerName`), round and condition — there is no shared room/session ID [Verified].
 
