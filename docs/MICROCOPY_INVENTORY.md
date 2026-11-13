@@ -68,7 +68,7 @@
 
 | Text | Source | Class |
 |---|---|---|
-| `המשימה הושלמה!` / `תודה על השתתפותכם!` / `לחצו על "שלח" כדי לסיים את המשחק` / `ולקבל את התגמול שלכם ב-Panel4All` (stored as `…ב-llA4lenaP` so TMP's right-to-left mode shows `Panel4All`) | scene `Explation` | **A** (finish and payment) |
+| `המשימה הושלמה!` / `תודה על השתתפותכם!` / `לחצו על "שלח" כדי לסיים את המשחק` / `ולקבל את התגמול שלכם.` — *release-readiness batch (2026-11-13, owner-approved neutral wording): the provider name was removed from the last line, which was `ולקבל את התגמול שלכם ב-Panel4All` (stored as `…ב-llA4lenaP` for TMP's right-to-left mode); the first three lines are verbatim.* An inactive legacy English object of the same name (`Explation`, never shown) still mentions Panel4All | scene `Explation` | **A** (finish and payment) |
 | `התגמול שלכם` | scene | D |
 | `X.XX ₪` (display rounding, unrounded value stored) | `EndGamePlayerDataManager.SetWinnings` | B (payment display) |
 | `התגמול חושב לפי סבב אחד שנבחר באקראי.` | `SetWinnings` | **A** |

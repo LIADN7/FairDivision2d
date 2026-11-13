@@ -62,7 +62,7 @@ A participant normally plays once: ≈68 KB of 5 MiB (≈1.3 %) and 7 of 2000 ke
 - list players with data: `GET https://services.api.unity.com/cloud-save/v1/data/projects/<projectId>/environments/<environmentId>/players` (`start`, `limit` ≤ 100);
 - one player's items: `GET .../players/<playerId>/items?prefix=CC_` (pages of 20 keys; pass the last key as `after`).
 
-Create the service account in the Unity dashboard, keep its key in a password manager or environment variables, and never commit it. The historical exporter `UnityCloudDataScraper.cs` contains exposed credentials (PROJECT_CONTEXT §11) and must not be reused. Use the `production` environment ID for research data and `development` only for tests. This step was **not** validated in this batch (no service account was used).
+Create the service account in the Unity dashboard, keep its key in a password manager or environment variables, and never commit it. The historical exporter `UnityCloudDataScraper.cs` contains exposed credentials (PROJECT_CONTEXT §11) and must not be reused. Use the `production` environment ID for research data and `development` only for tests. This step was **not** validated in this batch (no service account was used). *Still unvalidated at the 2026-11-13 release-readiness check:* the join step was re-run on fresh read-backs of two known test players (PROJECT_CONTEXT §17 "Release-readiness validation"), but listing and fetching all participants needs the new read-only service account first; the repository is public, so the old account in `UnityCloudDataScraper.cs` must be revoked, never reused.
 
 **Joining (validated).** Save each player's merged `results` as `<playerId>.json`, then:
 
