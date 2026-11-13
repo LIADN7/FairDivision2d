@@ -1,5 +1,6 @@
 
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -18,6 +19,19 @@ public class Manager : MonoBehaviour
     [SerializeField] protected GameObject NextButton;
     [SerializeField] protected Text textEndGameStatus;
     [SerializeField] protected Text textNote;
+    [SerializeField] protected TextMeshProUGUI textNoteRTL;
+    // Display only (UX-012): whose valuation the map shading and readouts show. The plate sits above the cut readouts
+    // (under ViewItems, so the Help Page hides it) and is shown exactly while the see-other toggle is (Info, before the own cut).
+    [SerializeField] protected Image valueOwnerPlate;
+    [SerializeField] protected TextMeshProUGUI valueOwnerRTL;
+    private const string ownValuesLabelRTL = "מוצגים הערכים שלכם";
+    private const string otherValuesLabelRTL = "מוצגים הערכים של השחקן השני";
+    // Display only: the map legend title names whose square values the shading shows (same state as the plate).
+    [SerializeField] protected TextMeshProUGUI legendTitleRTL;
+    private const string ownLegendTitleRTL = "שווי המשבצת עבורכם";
+    private const string otherLegendTitleRTL = "שווי המשבצת עבור השחקן השני";
+    private static readonly Color ownValuesPlateColor = new Color(0.08f, 0.13f, 0.26f, 0.92f);
+    private static readonly Color otherValuesPlateColor = new Color(0.45f, 0.07f, 0.07f, 0.92f);
     //[SerializeField] protected Text textChatAlert;
     //[SerializeField] protected SpriteRenderer backgraundStatus;
     float[] sumRGYB = { 0, 0, 0, 0 }; //GREEN, RED, YELLOW, BLUE (after cut!)
@@ -56,6 +70,7 @@ public class Manager : MonoBehaviour
         this.SeeOtherPlayerBT.SetActive(Config.inst.getSeeOtherEnable());
         this.chatView.SetActive(Config.inst.getChetEnable());
         NextButton.SetActive(false);
+        UpdateValueOwnerLabel();
 
 
     }
@@ -76,6 +91,7 @@ public class Manager : MonoBehaviour
 
         this.SeeOtherPlayerBT.SetActive(false);
         this.cutBt.SetActive(false);
+        UpdateValueOwnerLabel();
         this.status = 0;
         // No button reset needed - line drawing system handles this
         //backgraundStatus.color = Color.white;
@@ -123,7 +139,8 @@ public class Manager : MonoBehaviour
 
     public void setEndGameLayer(float sum,bool isReelGame=true)
     {
-        this.textEndGameStatus.text = "You get total: " + sum + "%";
+        // Display only: one decimal. The unrounded sum is still passed to RandArrays below.
+        this.textEndGameStatus.text = "You get total: " + sum.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "%";
         this.viewTotalValueEndGame.SetActive(true);
         NextButton.SetActive(true);
         this.cutBt.SetActive(false);
@@ -135,17 +152,21 @@ public class Manager : MonoBehaviour
 
     }
 
-    public void setNote(float sec, string massage, bool isError)
+    public void setNote(float sec, string massage, bool isError, string massageRTL = "")
     {
-        StartCoroutine(withSec(sec, massage, isError));
+        StartCoroutine(withSec(sec, massage, isError, massageRTL));
 
     }
 
 
-    private IEnumerator withSec(float sec, string massage, bool isError)
+    private IEnumerator withSec(float sec, string massage, bool isError, string massageRTL = "")
     {
         this.textNote.color = isError ? Color.red : Color.black;
         this.textNote.text = massage;
+        this.textNoteRTL.color = isError ? Color.red : Color.black;
+        this.textNoteRTL.text = PrepareRtlNote(massageRTL);
+        SetNotePaperVisible(!string.IsNullOrEmpty(massageRTL));
+
         if (sec < 0)
         {
             yield return new WaitForSeconds(1);
@@ -154,8 +175,45 @@ public class Manager : MonoBehaviour
         {
             yield return new WaitForSeconds(sec);
             this.textNote.text = "";
-
+            this.textNoteRTL.text = "";
+            SetNotePaperVisible(false);
         }
+    }
+
+    // Display only: the note paper (parent of both note texts) is shown only while it has something to say,
+    // so an empty paper does not compete with the phase instruction. The note objects themselves stay in place.
+    private void SetNotePaperVisible(bool visible)
+    {
+        Transform paper = this.textNoteRTL != null ? this.textNoteRTL.transform.parent : null;
+        if (paper != null && paper.gameObject.activeSelf != visible)
+        {
+            paper.gameObject.SetActive(visible);
+        }
+    }
+
+    // textNoteRTL is a TextMeshPro text with "Right To Left" enabled, which mirrors the whole string.
+    // Display only: pre-reverse number runs ("50%", "30.1%") so they read left-to-right, and swap
+    // brackets so they are mirrored. Single digits and Hebrew words are unaffected.
+    // Also used by Player / PlayerAITutorial for the Hebrew region-button labels.
+    public static string PrepareRtlNote(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return text;
+        }
+        string numbersFixed = System.Text.RegularExpressions.Regex.Replace(text, @"[0-9]+(?:[.,][0-9]+)*%?", m =>
+        {
+            char[] run = m.Value.ToCharArray();
+            System.Array.Reverse(run);
+            return new string(run);
+        });
+        char[] chars = numbersFixed.ToCharArray();
+        for (int i = 0; i < chars.Length; i++)
+        {
+            if (chars[i] == '(') chars[i] = ')';
+            else if (chars[i] == ')') chars[i] = '(';
+        }
+        return new string(chars);
     }
 
 
@@ -185,6 +243,26 @@ public class Manager : MonoBehaviour
         {
             this.SeeOtherPlayerBT.SetActive(false);
         }
+        UpdateValueOwnerLabel();
+    }
+
+    // Display only (UX-012): follows isShowView, which flips only after Player.getOtherView has redrawn the shading
+    // and readouts. Gates nothing.
+    private void UpdateValueOwnerLabel()
+    {
+        if (this.valueOwnerRTL != null)
+        {
+            this.valueOwnerRTL.text = this.isShowView ? otherValuesLabelRTL : ownValuesLabelRTL;
+        }
+        if (this.legendTitleRTL != null)
+        {
+            this.legendTitleRTL.text = this.isShowView ? otherLegendTitleRTL : ownLegendTitleRTL;
+        }
+        if (this.valueOwnerPlate != null)
+        {
+            this.valueOwnerPlate.color = this.isShowView ? otherValuesPlateColor : ownValuesPlateColor;
+            this.valueOwnerPlate.gameObject.SetActive(this.SeeOtherPlayerBT.activeSelf && Config.inst.getSeeOtherEnable());
+        }
     }
 
 
@@ -200,6 +278,7 @@ public class Manager : MonoBehaviour
             Image tempSprit = this.SeeOtherPlayerBT.GetComponent<Image>();
             tempSprit.color = Color.white;
         }
+        UpdateValueOwnerLabel();
     }
 
 
@@ -209,6 +288,11 @@ public class Manager : MonoBehaviour
     public bool getIsShowView()
     {
         return this.isShowView;
+    }
+
+    public bool getIsCut()
+    {
+        return this.isCut;
     }
 
     // Legacy function - no longer needed with line drawing system

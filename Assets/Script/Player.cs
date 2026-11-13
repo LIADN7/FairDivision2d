@@ -9,6 +9,7 @@ using System.Linq;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using TMPro;
 //using static UnityEditor.Experimental.GraphView.GraphView;
 
 
@@ -22,11 +23,38 @@ public class Player : MonoBehaviourPunCallbacks
     [SerializeField] protected Text palyerName;
     [SerializeField] protected Text chatText;
     [SerializeField] protected InputField chatInput;
+    // Display only (UX-013/UX-031): readable Hebrew chat lines with a sender label. The legacy chatText stays hidden
+    // but is still written. chatIsLocal mirrors chatHistory one-to-one and is never sent or saved.
+    [SerializeField] protected TextMeshProUGUI chatMessagesRTL;
+    private readonly List<bool> chatIsLocal = new List<bool>();
+    private bool chatMessagesMaterialReady = false;
+    private const string chatOwnLabelRTL = "אני";
+    private const string chatOtherLabelRTL = "השחקן השני";
+    private const int chatShownMessages = 10; // same as the legacy display (last 10)
     [SerializeField] protected GameObject[] colorsValueObj; // {red, green, yellow, blue}
+    // Display only: Hebrew labels shown on the region buttons (the legacy buttonsValueText stay hidden but are still written)
+    [SerializeField] protected TextMeshProUGUI[] buttonsValueTextRTL; // {red, green, yellow, blue}
+    // Display only: turn status under the region buttons, derived from the role and chooseNum
+    [SerializeField] protected Image turnLabelPlate;
+    [SerializeField] protected TextMeshProUGUI turnLabelRTL;
+    // Display only: cut-phase status derived from the line state and the cuts; hidden once both cuts exist
+    [SerializeField] protected Image cutStatusPlate;
+    [SerializeField] protected TextMeshProUGUI cutStatusRTL;
+    // Display only: which revealed line belongs to whom, from the actual line colours
+    [SerializeField] protected Image lineOwnerPlate;
+    [SerializeField] protected TextMeshProUGUI lineOwnerRTL;
+    // Display only: dim tint plus a centred message while the other player has to act (no raycast targets)
+    [SerializeField] protected GameObject waitingOverlay;
+    [SerializeField] protected TextMeshProUGUI waitingOverlayRTL;
+    private const string cutReadoutPlaceholderRTL = "שרטטו קו כדי לראות את השווי";
+    private static readonly string[] regionNamesRTL = { "חלק 1 - אדום", "חלק 2 - ירוק", "חלק 3 - צהוב", "חלק 4 - כחול" };
+    private static readonly string[] cutSideNamesRTL = { "הצד האדום", "הצד הירוק" };
 
 
     private float[] sumPlayer = { 0f, 0f }; // sum of all the squares for player 1 and 2 -> {1, 2}
     private float[] choosePlayer = { 0f, 0f }; // sum of all the squares that the player choose (1 and 2) -> {1, 2}
+    private float lastOwnGreenVal = 0f; // Display only: last own green share from statusChange (0..1)
+    private LineDrawingManager cachedLineManager;
     public Dictionary<int, GameObject> squares = new Dictionary<int, GameObject>();
     private Dictionary<int, int> player1 = new Dictionary<int, int>();
     private Dictionary<int, int> player2 = new Dictionary<int, int>();
@@ -35,8 +63,20 @@ public class Player : MonoBehaviourPunCallbacks
     [SerializeField] protected SumSquares[] stateObjects; // All the state obj with square childs
     private int chooseNum = 0;
     private string[] endExplanationPlayers = { "You get:\n", "You get:\n" };
+    private string[] endExplanationPlayersRTL = { "קיבלתם:\n", "קיבלתם:\n" };
     private bool[] playerCut = { false, false };
     private bool[] palyersGameOver = { false, false };
+    // Display only (UX-030 / UX-025): this client pressed Next in this round (NextGame saved the round record), and the
+    // round-transition message once both players pressed Next. Neither gates anything.
+    private bool localNextPressed = false;
+    private string roundTransitionText = null;
+    private const string waitingForNextRTL = "ממתינים לשחקן השני";
+    private const string nextRoundTransitionRTL = "עוברים לסבב הבא";
+    private const string endGameTransitionRTL = "עוברים לסיום המשחק";
+    private const int lastRealRoundIndex = 5; // MasterNextGame sends both players to EndGameFlow after round index 5
+    // Next handshake (B1/B2). Both reset with the scene: this Player object lives in CutScene, which is reloaded every round.
+    private string localNextSceneName = null;       // B1: the scene argument of this client's own Next (the button's "CutScene")
+    private bool masterTransitionStarted = false;   // B2: the master advances the round (or ends the game) at most once per round
 
     private CutAndChoosePlayerDatabase gameDatabase = new CutAndChoosePlayerDatabase();
     //private Task databaseTask;
@@ -56,7 +96,7 @@ public class Player : MonoBehaviourPunCallbacks
         }
 
         this.InitDatabaseAsync();
-        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)", false);
+        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)\n\nYou can redraw it until you click the confirm button.", false, "אנא חלקו את המפה לשני חלקים (אם תחלקו לשני חלקים שווים, מובטח שתקבלו לפחות 50%)\n\nאפשר לשרטט מחדש עד שתלחצו על אישור החלוקה.");
 
 
     }
@@ -71,7 +111,12 @@ public class Player : MonoBehaviourPunCallbacks
         //this.gameDatabase.PlayerID = 20548; // Need to add the real id from the user
         int[] tempChoosen = { -1, -1 };
         this.gameDatabase.PlayerChoosenColors = tempChoosen;
-        // this.SetDataFromURL();
+        this.SetDataFromURL();
+        // Run identity (Cloud Save batch): the experiment's shared run ID and this client's role, read from the room.
+        this.gameDatabase.RunId = ExperimentRun.CaptureFromRoom() ?? ExperimentRun.EnsureRunId();
+        this.gameDatabase.RunIdShared = ExperimentRun.RunIdShared;
+        this.gameDatabase.PlayerRole = ExperimentRun.PlayerRole;
+        this.gameDatabase.RoomName = ExperimentRun.RoomName;
 
         /*        await UnityServices.InitializeAsync();
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
@@ -122,11 +167,11 @@ public class Player : MonoBehaviourPunCallbacks
         this.gameDatabase.surveyID = surveyID;
         Config.inst.userID = userID;
         Config.inst.surveyID = surveyID;
-        // Open new tab for the player's survey
-        // Application.OpenURL("http://www.panel4all.co.il");
-        // http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID=XXXXX&userID=YYYYY&status=finish
-        // http://www.panel4all.co.il/survey_runtime/external_survey_status.php?surveyID=XXXXX&userID=YYYYY&status=filterout
-
+        if (PlayerData.inst != null)
+        {
+            PlayerData.inst.SurveyID = surveyID;
+            PlayerData.inst.UserID = userID;
+        }
     }
 
     [Serializable]
@@ -141,6 +186,7 @@ public class Player : MonoBehaviourPunCallbacks
     {
 
         GameObject[] tempSquares = GameObject.FindGameObjectsWithTag("SquarePoint");
+        tempSquares = IncludeMapCellsHiddenByHelp(tempSquares); // Batch 6 fix: also the cells hidden by the Help page
         int palyerId = PhotonNetwork.IsMasterClient ? 0 : 1;
 
 
@@ -150,9 +196,57 @@ public class Player : MonoBehaviourPunCallbacks
 
     }
 
+    // Batch 6 fix (owner-approved): the Help page, auto-opened 1 s after the round scene starts (HelpPageCountdown),
+    // deactivates the shared map parent Canvas/States, and FindGameObjectsWithTag skips inactive objects. An InitSquares
+    // that arrived after that found no cells: empty squares, an empty Cut and a KeyNotFoundException on the partner.
+    // The map cells are exactly the PointOfState children of this scene's Canvas/States (all tagged SquarePoint). They are
+    // active from the scene load until Help opens, so their Start (key, sprites) has already run. The tag search is
+    // kept whenever it already finds every map cell (unchanged behaviour and order); otherwise exactly those cells
+    // are used, including the ones Help has hidden.
+    private GameObject[] IncludeMapCellsHiddenByHelp(GameObject[] activeCells)
+    {
+        Transform states = null;
+        foreach (GameObject root in this.gameObject.scene.GetRootGameObjects())
+        {
+            if (root.name == "Canvas")
+            {
+                states = root.transform.Find("States");
+                if (states != null)
+                {
+                    break;
+                }
+            }
+        }
+        if (states == null)
+        {
+            return activeCells;
+        }
+        List<GameObject> mapCells = new List<GameObject>();
+        foreach (PointOfState cell in states.GetComponentsInChildren<PointOfState>(true))
+        {
+            if (cell.CompareTag("SquarePoint"))
+            {
+                mapCells.Add(cell.gameObject);
+            }
+        }
+        if (mapCells.Count == activeCells.Length)
+        {
+            return activeCells;
+        }
+        Debug.LogWarning("INIT-SQUARES: " + activeCells.Length + " active map cells (Help page open); using the "
+            + mapCells.Count + " map cells under Canvas/States");
+        return mapCells.ToArray();
+    }
+
     private IEnumerator withSec(float sec, GameObject[] tempSquares)
     {
         yield return new WaitForSeconds(sec);
+        if (this.squares.Count > 0)
+        {
+            // Batch 6: the map is set up once per scene; a repeated InitSquares would add every value to sumPlayer twice.
+            Debug.LogWarning("INIT-SQUARES: map already set up (" + this.squares.Count + " cells); repeated call ignored");
+            yield break;
+        }
 
         int j1 = 1, j2 = 2;
         for (int i = 0; i < tempSquares.Length; i++)
@@ -198,6 +292,7 @@ public class Player : MonoBehaviourPunCallbacks
     {
         yield return new WaitForSeconds(sec);
         Manager.inst?.cutBt.SetActive(true);
+        UpdatePhaseInstruction();
     }
 
     public void setAllStateTitle(int playerNum)
@@ -251,12 +346,25 @@ public class Player : MonoBehaviourPunCallbacks
             }
             this.gameDatabase.playerCutSquares = tempPlayerWithParentName;
             view.RPC("Cut", RpcTarget.All, tempPlayer, playerNum);
+            // UX-004 (owner-approved): no local drawing after the cut was sent, with or without a line.
+            FindLineManager()?.LockDrawingAfterCut();
             Manager.inst.setViewAfterCut();
-            Manager.inst.setNote(-1, "Please wait for the other player to cut", false);
+            // Display only: after the own cut the readout shows the submitted split (also for a cut without a line).
+            if (!isAllTrue())
+            {
+                SetCutReadoutRTL(lastOwnGreenVal, false);
+            }
+            UpdatePhaseInstruction();
+            // RpcTarget.All runs Cut locally at once: for the second cutter setAllState has already shown the turn note.
+            if (!isAllTrue())
+            {
+                // Display only: the waiting overlay shows this; the note paper is cleared (hidden while empty).
+                Manager.inst.setNote(-1, "", false, "");
+            }
         }
         else
         {
-            Manager.inst.setNote(7f, "Waiting for the other player to connect!", true);
+            Manager.inst.setNote(7f, "Waiting for the other player to connect!", true, "ממתינים להתחברות השחקן השני!");
         }
         /*
         if (isAllTrue())
@@ -339,6 +447,10 @@ public class Player : MonoBehaviourPunCallbacks
         buttonsValueText[1].text = "Part 2 (O) value: " + (sumRGYB[1]) + "%";
         buttonsValueText[2].text = "Part 3 (O) value: " + (sumRGYB[2]) + "%";
         buttonsValueText[3].text = "Part 4 (X) value: " + (sumRGYB[3]) + "%";
+        for (int k = 0; k < sumRGYB.Length; k++)
+        {
+            SetRegionLabelRTL(k, "שווה לכם: " + sumRGYB[k].ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "%");
+        }
         Manager.inst.initialSeeOtherPlayerBT();
         if (isIntuitive(sumRGYB))
         {
@@ -349,16 +461,194 @@ public class Player : MonoBehaviourPunCallbacks
 
             if (playerNum == 1)
             {
-                Manager.inst.setNote(-1, "The meaning:\nO =  player 2 choose green\nX =  player 2 choose red\n\nPlease choose one color", false);
+                Manager.inst.setNote(-1, "", false, "");
             }
             else if (playerNum == 2)
             {
-                Manager.inst.setNote(-1, "The meaning:\nO =  player 2 choose green\nX =  player 2 choose red\n\nPlease wait player 1 choose one color,\nafter that you choose 2 colors", false);
+                Manager.inst.setNote(-1, "", false, "");
             }
+        }
+        UpdatePhaseInstruction();
+        UpdateLineOwnerLabel(FindLineManager());
+    }
+
+    // Display only: Hebrew region label "חלק N - צבע" plus a second line (value or who took it).
+    private void SetRegionLabelRTL(int i, string secondLine)
+    {
+        SetButtonLabelRTL(i, regionNamesRTL[i] + "\n" + secondLine);
+    }
+
+    // Display only: cut-phase readout on the red/green buttons (0, 1) with the unchanged value precision.
+    private void SetCutSideLabelRTL(int i, string secondLine)
+    {
+        SetButtonLabelRTL(i, (i < cutSideNamesRTL.Length ? cutSideNamesRTL[i] : regionNamesRTL[i]) + "\n" + secondLine);
+    }
+
+    // Display only: the live cut readout on the red/green buttons, same values and precision as the legacy text.
+    private void SetCutReadoutRTL(float greenVal, bool showingOtherPlayer)
+    {
+        string prefix = showingOtherPlayer ? "שווה לשחקן השני: " : "שווה לכם: ";
+        SetCutSideLabelRTL(0, prefix + ((1 - greenVal) * 100) + "%");
+        SetCutSideLabelRTL(1, prefix + (greenVal * 100) + "%");
+    }
+
+    private LineDrawingManager FindLineManager()
+    {
+        if (cachedLineManager == null)
+        {
+            GameObject lineManagerObj = GameObject.Find("LineDrawingManager");
+            cachedLineManager = lineManagerObj != null ? lineManagerObj.GetComponent<LineDrawingManager>() : null;
+        }
+        return cachedLineManager;
+    }
+
+    // Display only: the single phase instruction ("what do I do now?") and the waiting overlay, derived from the
+    // line state, Manager.isCut, isAllTrue, the local role and chooseNum. It gates nothing; all rules keep their own checks.
+    // Cut phase uses the plate above the cut button, choose phase the plate under the region buttons; at most one shows.
+    public void UpdatePhaseInstruction()
+    {
+        if (Manager.inst == null)
+        {
+            return;
+        }
+        int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        bool bothCut = isAllTrue();
+        string action = null;
+        string waiting = null;
+        LineDrawingManager lineManager = FindLineManager();
+        if (!bothCut)
+        {
+            if (Manager.inst.getIsCut())
+            {
+                waiting = "ממתינים לחיתוך של השחקן השני";
+            }
+            else if (lineManager != null && !Manager.inst.getIsShowView())
+            {
+                action = lineManager.HasDrawnLine() ? "לחצו על אישור החלוקה" : "שרטטו קו על המפה";
+            }
+        }
+        else if (chooseNum < 3)
+        {
+            if (playerNum == 1 && chooseNum == 0)
+            {
+                action = "בחרו חלק אחד";
+            }
+            else if (playerNum == 2 && chooseNum == 1)
+            {
+                action = "בחרו שני חלקים";
+            }
+            else if (playerNum == 2 && chooseNum == 2)
+            {
+                action = "בחרו חלק נוסף";
+            }
+            else
+            {
+                waiting = "ממתינים לבחירת השחקן השני";
+            }
+        }
+        else if (roundTransitionText != null)
+        {
+            // UX-030: both players pressed Next; the next scene is being loaded.
+            waiting = roundTransitionText;
+        }
+        else if (localNextPressed)
+        {
+            // UX-030: this player pressed Next and waits for the other player's Next.
+            waiting = waitingForNextRTL;
+        }
+        if (GameSessionDialogs.IsConnectionLost)
+        {
+            // UX-016: the connection notice explains the state; no round instruction or waiting message under it.
+            action = null;
+            waiting = null;
+        }
+        SetInstructionPlate(cutStatusPlate, cutStatusRTL, bothCut ? null : action);
+        SetInstructionPlate(turnLabelPlate, turnLabelRTL, bothCut ? action : null);
+        if (waitingOverlay != null && waitingOverlayRTL != null)
+        {
+            waitingOverlay.SetActive(waiting != null);
+            if (waiting != null)
+            {
+                waitingOverlayRTL.text = waiting;
+            }
+        }
+        // Display only (game-feel batch): region card styling follows the same derived state; it gates nothing.
+        RegionSelectionView.NotifyPhase(bothCut, bothCut && action != null);
+    }
+
+    private static void SetInstructionPlate(Image plate, TextMeshProUGUI label, string text)
+    {
+        if (plate == null || label == null)
+        {
+            return;
+        }
+        plate.gameObject.SetActive(text != null);
+        if (text != null)
+        {
+            label.text = text;
         }
     }
 
+    // Display only: names the revealed lines by their actual colours (own line renderer, other player's colour).
+    private void UpdateLineOwnerLabel(LineDrawingManager lineManager)
+    {
+        if (lineOwnerPlate == null || lineOwnerRTL == null)
+        {
+            return;
+        }
+        int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
+        string mine = null, other = null;
+        if (lineManager != null && lineManager.playerLineRenderer != null)
+        {
+            // Name a line only if it is actually shown (a cut submitted without a line has none).
+            if (lineManager.playerLineRenderer.enabled)
+            {
+                mine = LineColorNameRTL(lineManager.playerLineRenderer.startColor);
+            }
+            foreach (LineRenderer line in lineManager.GetComponentsInChildren<LineRenderer>())
+            {
+                if (line != lineManager.playerLineRenderer && line.enabled)
+                {
+                    other = LineColorNameRTL(otherPlayerNum == 1 ? lineManager.player1LineColor : lineManager.player2LineColor);
+                }
+            }
+        }
+        if (mine != null && mine == other)
+        {
+            mine = other = null;
+        }
+        string text = "";
+        if (mine != null)
+        {
+            text = "הקו " + mine + ": החיתוך שלכם";
+        }
+        if (other != null)
+        {
+            text += (text.Length > 0 ? "\n" : "") + "הקו " + other + ": החיתוך של השחקן השני";
+        }
+        bool show = isAllTrue() && text.Length > 0;
+        lineOwnerPlate.gameObject.SetActive(show);
+        if (show)
+        {
+            lineOwnerRTL.text = text;
+        }
+    }
 
+    private static string LineColorNameRTL(Color c)
+    {
+        if (c.r < 0.2f && c.g < 0.2f && c.b < 0.2f) return "השחור";
+        if (c.r > 0.8f && c.g > 0.8f && c.b > 0.8f) return "הלבן";
+        return null;
+    }
+
+    private void SetButtonLabelRTL(int i, string text)
+    {
+        if (buttonsValueTextRTL == null || i < 0 || i >= buttonsValueTextRTL.Length || buttonsValueTextRTL[i] == null)
+        {
+            return;
+        }
+        buttonsValueTextRTL[i].text = Manager.PrepareRtlNote(text);
+    }
 
     private bool isIntuitive(float[] sumRGYB)
     {
@@ -375,35 +665,39 @@ public class Player : MonoBehaviourPunCallbacks
             if (playerNum == 1 && chooseNum < 1)
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
+                endExplanationPlayersRTL[playerNum - 1] += getExplanationPlayerRTL(i, tempSum);
                 choosePlayer[playerNum - 1] = tempSum;
                 this.gameDatabase.SetPlayerChoosenColors(0, i);
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 1 choose, please pick 2 parts");
-                Manager.inst.setNote(-1, "Please wait for player 2 to pick 2 parts)", false);
+                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 1 chose one part.\nIt is your turn to choose two parts.", "שחקן 1 בחר חלק אחד.\nתורכם לבחור שני חלקים.");
+                Manager.inst.setNote(-1, "", false, "");
 
 
             }
             else if (playerNum == 2 && chooseNum == 1)
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
+                endExplanationPlayersRTL[playerNum - 1] += getExplanationPlayerRTL(i, tempSum);
                 choosePlayer[playerNum - 1] += tempSum;
                 this.gameDatabase.SetPlayerChoosenColors(0, i);
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 2 choose 1 part");
-                Manager.inst.setNote(-1, "Please pick one more part)", false);
+                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "Player 2 chose one part.\nPlease wait for the other player to choose.", "שחקן 2 בחר חלק אחד.\nהמתינו לבחירת השחקן השני.");
+                Manager.inst.setNote(-1, "", false, "");
             }
             else if (playerNum == 2 && chooseNum == 2)
             {
                 endExplanationPlayers[playerNum - 1] += getExplanationPlayer(i, tempSum);
+                endExplanationPlayersRTL[playerNum - 1] += getExplanationPlayerRTL(i, tempSum);
                 choosePlayer[playerNum - 1] += tempSum;
                 this.gameDatabase.SetPlayerChoosenColors(1, i);
                 view.RPC("Choose", RpcTarget.All, i, playerNum);
                 buttonsValueText[i].text += " (You)";
                 view.RPC("GetValues", RpcTarget.All);
-                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "You got the last remaining part");
-                Manager.inst.setNote(-1, "Player 1 got the last remaining part)", false);
+                view.RPC("SetNoteForOtherPlayer", RpcTarget.Others, "You got the last remaining part", "קיבלתם את החלק האחרון שנשאר");
+                // No local note here: GetValues (already run locally via RpcTarget.All) shows the result breakdown,
+                // which must stay visible. The remainder is shown on its region button.
             }
 
         }
@@ -413,21 +707,34 @@ public class Player : MonoBehaviourPunCallbacks
     private void Choose(int i, int playerNum)
     {
         buttonsValueText[i].text = "Taken By Player " + playerNum;
+        int localPlayerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
+        SetRegionLabelRTL(i, playerNum == localPlayerNum ? "נבחר על ידכם" : "נבחר על ידי שחקן " + playerNum);
         colorsValueObj[i].GetComponent<Button>().interactable = false;
         //colorsValueObj[i].SetActive(false);
         chooseNum++;
+        UpdatePhaseInstruction();
+        RegionSelectionView.NotifyTaken(i, playerNum == localPlayerNum); // display only, after the unchanged logic
 
     }
     [PunRPC]
-    private void SetNoteForOtherPlayer(string message)
+    private void SetNoteForOtherPlayer(string message, string messageRTL)
     {
-        Manager.inst.setNote(-1, message, false);
+        // Display only: the RPC and its texts are unchanged, but turn notes are no longer shown. The phase
+        // instruction and the waiting overlay show whose turn it is, and the result breakdown must stay visible.
 
     }
     private string getExplanationPlayer(int color, float value)
     {
-        string[] strColors = { "RED-X", "GREEN-O", "RED-O", "GREEN-X" };
-        return "" + strColors[color] + " with value: " + value + "\n";
+        string[] strColors = { "Red", "Green", "Yellow", "Blue" };
+        return "" + strColors[color] + " with value: " + value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "%\n";
+    }
+
+    private string getExplanationPlayerRTL(int color, float value)
+    {
+        string[] strColors = { "אדום", "ירוק", "צהוב", "כחול" };
+        // Digit order in the RTL note is handled by Manager.PrepareRtlNote; no manual reversal here.
+        string valueText = value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+        return "" + strColors[color] + ": " + valueText + "%\n";
     }
 
     [PunRPC]
@@ -436,20 +743,24 @@ public class Player : MonoBehaviourPunCallbacks
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         int last = GetLast();
         buttonsValueText[last].text = "Taken By Player 1";
+        SetRegionLabelRTL(last, PhotonNetwork.IsMasterClient ? "החלק שנשאר - שלכם" : "החלק שנשאר - לשחקן 1");
         if (PhotonNetwork.IsMasterClient)
         {
             this.gameDatabase.SetPlayerChoosenColors(1, last);
             float tempSum = Manager.inst.getSumRGYB(last);
             endExplanationPlayers[playerNum - 1] += getExplanationPlayer(last, tempSum);
+            endExplanationPlayersRTL[playerNum - 1] += getExplanationPlayerRTL(last, tempSum);
             choosePlayer[playerNum - 1] += tempSum;
             chooseNum++;
             buttonsValueText[last].text += " (You)";
         }
         colorsValueObj[last].GetComponent<Button>().interactable = false;
         //colorsValueObj[last].SetActive(false);
-        Manager.inst.setNote(-1, endExplanationPlayers[playerNum - 1], false);
+        Manager.inst.setNote(-1, endExplanationPlayers[playerNum - 1], false, endExplanationPlayersRTL[playerNum - 1]);
         Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1]);
         this.gameDatabase.SumOfMyPart = choosePlayer[playerNum - 1];
+        UpdatePhaseInstruction();
+        RegionSelectionView.NotifyTaken(last, PhotonNetwork.IsMasterClient); // display only: the remainder goes to Player 1
     }
 
     // Get the last number of the remaining color
@@ -498,7 +809,7 @@ public class Player : MonoBehaviourPunCallbacks
             // p.setChildText(colorText);
             sumRGYB[spriteStatus - 1] += val;
             statusCounter[spriteStatus - 1]++;
-            p.setSpriteStatus(spriteStatus, 1);
+            p.setSpriteStatus(spriteStatus, j);
 
         }
         this.gameDatabase.SetAmountOfColor(statusCounter);
@@ -543,12 +854,24 @@ public class Player : MonoBehaviourPunCallbacks
             }
             else
             {
+                lastOwnGreenVal = greenVal;
                 buttonsValueText[0].text = "Part 1 value: " + ((1 - greenVal) * 100) + "%";
                 buttonsValueText[1].text = "Part 2 value: " + (greenVal * 100) + "%";
             }
+            // Display only: before the first line the default all-red split is not shown as a result.
+            LineDrawingManager lineManager = FindLineManager();
+            if (lineManager != null && !lineManager.HasLineStarted() && !Manager.inst.getIsCut())
+            {
+                SetButtonLabelRTL(0, cutReadoutPlaceholderRTL);
+                SetButtonLabelRTL(1, cutReadoutPlaceholderRTL);
+            }
+            else
+            {
+                SetCutReadoutRTL(greenVal, showingOtherPlayer);
+            }
             if ((greenVal * 100) == 50)
             {
-                Manager.inst.setNote(-1, "The map is divided into 50%\n(if you wish, you can change the division or choose not to divide equally)", false);
+                Manager.inst.setNote(-1, "The map is divided into 50%\n(if you wish, you can change the division or choose not to divide equally)", false, "המפה מחולקת ל־50%\n(אם תרצו, תוכלו לשנות את החלוקה או לבחור שלא לחלק באופן שווה)");
 
             }
             return (greenVal * 100);
@@ -558,6 +881,11 @@ public class Player : MonoBehaviourPunCallbacks
     // This method is used to retrieve the other player's Heatmap.
     public void getOtherView()
     {
+        // Info rule: the other player's valuation may be viewed only before this player's own cut.
+        if (!Config.inst.getSeeOtherEnable() || Manager.inst.getIsCut())
+        {
+            return;
+        }
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         int otherPlayerNum = PhotonNetwork.IsMasterClient ? 2 : 1;
         this.gameDatabase.AddCountPlayerSeeOther();
@@ -645,9 +973,24 @@ public class Player : MonoBehaviourPunCallbacks
             buttonsValueText[1].text = "Other player val: " + sumRGYB[1].ToString("F5") + "%";
             buttonsValueText[2].text = "Other player val: " + sumRGYB[2].ToString("F5") + "%";
             buttonsValueText[3].text = "Other player val: " + sumRGYB[3].ToString("F5") + "%";
+            // Display only: before the first line the default all-red split is not shown as a result.
+            LineDrawingManager lineManager = FindLineManager();
+            bool noLineYet = lineManager != null && !lineManager.HasLineStarted();
+            for (int k = 0; k < sumRGYB.Length; k++)
+            {
+                if (noLineYet && k < 2)
+                {
+                    SetButtonLabelRTL(k, cutReadoutPlaceholderRTL);
+                }
+                else
+                {
+                    SetCutSideLabelRTL(k, "שווה לשחקן השני: " + sumRGYB[k].ToString("F5") + "%");
+                }
+            }
         }
 
         Manager.inst.changeSeeOtherPlayerBT();
+        UpdatePhaseInstruction();
     }
 
 
@@ -731,7 +1074,7 @@ public class Player : MonoBehaviourPunCallbacks
     {
         if (this.chatInput.text.Length >= 1)
         {
-            addMessageToList(PhotonNetwork.NickName, this.chatInput.text);
+            addMessageToList(PhotonNetwork.NickName, this.chatInput.text, true);
             view.RPC("sendMessageToAll", RpcTarget.Others, PhotonNetwork.NickName, this.chatInput.text);
             this.chatInput.text = "";
             getAllMessages();
@@ -742,15 +1085,20 @@ public class Player : MonoBehaviourPunCallbacks
 
     // Adds a new chat message to the chat history list.
     // If the chat history has more than 11 messages, it removes the oldest message.
-    private void addMessageToList(string name, string newMessage)
+    private void addMessageToList(string name, string newMessage, bool isLocal = false)
     {
-        // Save only the last 200 messeges 
+        // Save only the last 200 messeges
         if (this.chatHistory.Count() >= 200)
         {
             this.chatHistory.RemoveAt(0);
+            if (this.chatIsLocal.Count > 0)
+            {
+                this.chatIsLocal.RemoveAt(0);
+            }
         }
         ChatMessage tempMessage = new ChatMessage(name, newMessage);
         this.chatHistory.Add(tempMessage);
+        this.chatIsLocal.Add(isLocal); // Display only: who sent it, from the call site (not from the nickname)
         this.gameDatabase.ChatHistory = this.chatHistory; // Save chat (this func is called twice)
 
     }
@@ -770,7 +1118,72 @@ public class Player : MonoBehaviourPunCallbacks
             }
             i++;
         }
+        RefreshChatMessagesRTL();
 
+    }
+
+    // Display only (UX-013/UX-031): the same last messages in chronological order, newest at the bottom.
+    // Own lines: "אני" label, right-aligned; other player's lines: "השחקן השני" label, left-aligned.
+    // Oldest lines are left out (not clipped) when they do not fit the panel. The message text is not altered.
+    private void RefreshChatMessagesRTL()
+    {
+        if (this.chatMessagesRTL == null)
+        {
+            return;
+        }
+        if (!this.chatMessagesMaterialReady)
+        {
+            // The shared Hebrew material has a green face colour that tints every vertex colour; this text gets its own
+            // runtime instance with a white face so the sender colours show as set (no asset is changed).
+            this.chatMessagesRTL.fontMaterial.SetColor(ShaderUtilities.ID_FaceColor, Color.white);
+            this.chatMessagesMaterialReady = true;
+        }
+        int first = Math.Max(0, this.chatHistory.Count - chatShownMessages);
+        float boxHeight = this.chatMessagesRTL.rectTransform.rect.height;
+        this.chatMessagesRTL.enableAutoSizing = false; // measure at the normal size
+        // Measured on the laid-out text (GetPreferredValues under-measured the paragraph spacing at runtime).
+        float height = SetChatMessagesAndMeasure(first);
+        while (first < this.chatHistory.Count - 1 && height > boxHeight)
+        {
+            first++;
+            height = SetChatMessagesAndMeasure(first);
+        }
+        // Only a single message longer than the whole panel is shrunk (down to fontSizeMin) instead of overflowing.
+        this.chatMessagesRTL.enableAutoSizing = height > boxHeight;
+    }
+
+    private float SetChatMessagesAndMeasure(int first)
+    {
+        this.chatMessagesRTL.text = BuildChatMessagesRTL(first);
+        this.chatMessagesRTL.ForceMeshUpdate();
+        return this.chatMessagesRTL.preferredHeight;
+    }
+
+    private string BuildChatMessagesRTL(int first)
+    {
+        System.Text.StringBuilder lines = new System.Text.StringBuilder();
+        for (int k = first; k < this.chatHistory.Count; k++)
+        {
+            bool isLocal = k < this.chatIsLocal.Count && this.chatIsLocal[k];
+            string line = (isLocal ? "<align=right><color=#8FE3FF><b>" + chatOwnLabelRTL : "<align=left><color=#FFD36B><b>" + chatOtherLabelRTL)
+                + ":</b></color> <noparse>" + this.chatHistory[k].Message + "</noparse></align>";
+            if (lines.Length > 0)
+            {
+                lines.Append('\n');
+            }
+            lines.Append(FixRtlForTmp(line));
+        }
+        return lines.ToString();
+    }
+
+    // RTLTMPro's own conversion (as in RTLTextMeshPro.GetFixedText), for a TMP text with isRightToLeftText enabled:
+    // Hebrew, Latin words and numbers keep their reading order and rich-text tags stay valid.
+    private static string FixRtlForTmp(string input)
+    {
+        RTLTMPro.FastStringBuilder output = new RTLTMPro.FastStringBuilder(RTLTMPro.RTLSupport.DefaultBufferSize);
+        RTLTMPro.RTLSupport.FixRTL(input, output, false, true, true);
+        output.Reverse();
+        return output.ToString();
     }
 
     // Sends the message to the other players
@@ -815,8 +1228,14 @@ public class Player : MonoBehaviourPunCallbacks
     public void NextGame(string sceneName)
     {
         //Manager.inst.setNote(-1,"Other player left the game...", false); // need to send in RPC!
+        if (this.localNextPressed)
+        {
+            return; // B2: this client's Next (save + readiness message) runs once per round
+        }
         int playerNum = PhotonNetwork.IsMasterClient ? 1 : 2;
         this.palyersGameOver[playerNum - 1] = true;
+        this.localNextPressed = true; // display only
+        this.localNextSceneName = sceneName;
         Manager.inst.NextSceneClick();
         this.SaveData();
         if (this.palyersGameOver[0] && this.palyersGameOver[1])
@@ -828,6 +1247,13 @@ public class Player : MonoBehaviourPunCallbacks
         {
             photonView.RPC("GameOverClicked", RpcTarget.Others, playerNum);
         }
+        UpdatePhaseInstruction(); // UX-030, display only: waiting for the other player's Next (or the transition)
+    }
+
+    // Display only (UX-025): the exit confirmation says "not saved" until this player has pressed Next in this round.
+    public bool HasPressedNext()
+    {
+        return this.localNextPressed;
     }
 
     [PunRPC]
@@ -835,15 +1261,24 @@ public class Player : MonoBehaviourPunCallbacks
     {
         // Master client loads the scene on behalf of non-master clients
         this.palyersGameOver[playerNum - 1] = true;
-        Manager.inst.setNote(-1, "Other player continue the game...", false); // need to send in RPC!
+        Manager.inst.setNote(-1, "Other player continue the game...", false, "השחקן השני ממשיך במשחק..."); // need to send in RPC!
+        // B1: both players pressed Next before either readiness message arrived (the two GameOverClicked RPCs crossed), so
+        // neither NextGame saw both flags and nobody sent MasterNextGame. Only the master resolves this case, which keeps a
+        // single sender: when a NextGame already saw both flags it sent MasterNextGame instead of GameOverClicked.
+        if (PhotonNetwork.IsMasterClient && this.localNextPressed && this.palyersGameOver[0] && this.palyersGameOver[1])
+        {
+            photonView.RPC("MasterNextGame", RpcTarget.All, this.localNextSceneName);
+        }
     }
 
     [PunRPC]
     private void MasterNextGame(string sceneName)
     {
+        ShowRoundTransition(); // UX-030, display only; runs before the unchanged logic below and cannot stop it
         // Master client loads the scene on behalf of non-master clients
-        if (PhotonNetwork.IsMasterClient)
+        if (PhotonNetwork.IsMasterClient && !this.masterTransitionStarted)
         {
+            this.masterTransitionStarted = true; // B2: one round advance / payment draw per round, even if this RPC repeats
             int roundNumberConfig = Config.inst.addRoundNumber();
             //roundNumberConfig = 4;
             //Debug.LogError("scenarioNum= " + roundNumberConfig);
@@ -876,6 +1311,22 @@ public class Player : MonoBehaviourPunCallbacks
         }
     }
 
+    // Display only (UX-030): MasterNextGame reaches both clients once both pressed Next. The round index is read before the
+    // master advances it; after the last real round both players go to EndGameFlow, so no next round is promised there.
+    private void ShowRoundTransition()
+    {
+        try
+        {
+            bool lastRound = Config.inst != null && Config.inst.getRoundNumber() >= lastRealRoundIndex;
+            this.roundTransitionText = lastRound ? endGameTransitionRTL : nextRoundTransitionRTL;
+            UpdatePhaseInstruction();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("UX-030: transition message failed: " + ex.Message);
+        }
+    }
+
     [PunRPC]
     private void SetRandomPaymentRound(int randRound)
     {
@@ -893,7 +1344,7 @@ public class Player : MonoBehaviourPunCallbacks
 
     public void LeaveGame(string sceneName, bool isRedirectToSurvey = false)
     {
-
+        GameSessionDialogs.NoteLocalLeave(); // display only: this client started the leave, so it gets no partner-exit notice
         photonView.RPC("LeaveGameForAll", RpcTarget.All, sceneName, isRedirectToSurvey);
     }
     [PunRPC]
@@ -905,6 +1356,7 @@ public class Player : MonoBehaviourPunCallbacks
     [PunRPC]
     private void LeaveGameForAll(string sceneName, bool isRedirectToSurvey = false)
     {
+        GameSessionDialogs.NoteLeaveGameForAll(sceneName); // display only: remembers a partner's exit for the lobby notice
         // Only for test 
         // Config.inst.RedirectToSurvey(isRedirectToSurvey);
         PhotonNetwork.LeaveRoom();

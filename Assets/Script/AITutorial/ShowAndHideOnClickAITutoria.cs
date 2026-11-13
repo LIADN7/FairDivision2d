@@ -14,6 +14,7 @@ public class ShowAndHideOnClickAITutoria : MonoBehaviour
     [SerializeField] public UnityEvent onHideEvent;
 
     private bool hasTriggeredTutorialFirstTime = false;
+    private bool[] hiddenLayersWereActive;
 
 
     void Start()
@@ -32,9 +33,23 @@ public class ShowAndHideOnClickAITutoria : MonoBehaviour
 
     public void ShowAndHide()
     {
+        // On close, restore each hidden layer to its state before opening, so closing the panel
+        // does not re-activate objects that were hidden meanwhile (e.g. SeeOtherPlayerBT after the cut).
+        if (!isShown)
+        {
+            hiddenLayersWereActive = new bool[layersToHide.Length];
+        }
         for (int i = 0; i < layersToHide.Length; i++)
         {
-            layersToHide[i].SetActive(isShown);
+            if (!isShown)
+            {
+                hiddenLayersWereActive[i] = layersToHide[i].activeSelf;
+                layersToHide[i].SetActive(false);
+            }
+            else
+            {
+                layersToHide[i].SetActive(hiddenLayersWereActive == null || hiddenLayersWereActive[i]);
+            }
         }
         isShown = !isShown;
         for (int i = 0; i < layersToShow.Length; i++)

@@ -1,0 +1,102 @@
+{
+  "CC_20261112-204719-a9f9be_P1_R2": {
+    "AmountOfColor": {
+      "GreenO": 179,
+      "GreenX": 41,
+      "RedO": 89,
+      "RedX": 165
+    },
+    "ChatHistory": [
+      {
+        "Date": "2026-11-12T22:55:02.269+02:00",
+        "Message": "שלום! אני מציע לחלק 50/50 (בערך).",
+        "PlayerName": "QA-Editor"
+      },
+      {
+        "Date": "2026-11-12T22:55:07.126+02:00",
+        "Message": "OK, agreed - 50/50 sounds fair",
+        "PlayerName": "QA-Web"
+      },
+      {
+        "Date": "2026-11-12T22:55:48.467+02:00",
+        "Message": "My pick is done, your turn :)",
+        "PlayerName": "QA-Web"
+      }
+    ],
+    "CountPlayerSeeOther": 0,
+    "OtherPlayerColorValues": {
+      "GreenO": 45.2602234,
+      "GreenX": 3.81040883,
+      "RedO": 25.6505585,
+      "RedX": 25.27881
+    },
+    "PlayerChoosenColors": [
+      2,
+      3
+    ],
+    "PlayerColorValues": {
+      "GreenO": 44.93927,
+      "GreenX": 4.14979744,
+      "RedO": 10.2226715,
+      "RedX": 40.68826
+    },
+    "PlayerCutValues": {
+      "Green": 49.08907,
+      "Red": 50.91093
+    },
+    "PlayerName": "QA-Web",
+    "PlayerRole": 1,
+    "PlayerStartTime": "2026-11-12T22:54:22.029+02:00",
+    "PlayerTimeCut": "2026-11-12T22:55:17.59+02:00",
+    "RecordType": "round",
+    "RoomName": "Room_1",
+    "RunId": "20261112-204719-a9f9be",
+    "RunIdShared": true,
+    "ScenarioNum": 2,
+    "ScenarioType": "Chat",
+    "SchemaVersion": 2,
+    "SumOfMyPart": 14.3724689,
+    "UnityPlayerId": "player-A (WebGL)",
+    "isAgreed": false,
+    "otherPlayerName": "QA-Editor",
+    "playerCutSquares": {
+      "1000": {
+        "1": "Donegal"
+      },
+      "1001": {
+        "1": "Down"
+      },
+      "1002": {
+        "1": "Derry"
+      },
+      "...": "(474 cells in the stored record; shortened here)"
+    },
+    "surveyID": "TEST_cs_s",
+    "userID": "TEST_cs_w"
+  },
+  "CC_20261112-204719-a9f9be_P1_final": {
+    "Email": "",
+    "ID": "",
+    "Name": "QA-Web",
+    "PhoneNumber": "",
+    "PlayerRole": 1,
+    "RecordType": "final",
+    "RoomName": "Room_1",
+    "RoundKeys": [
+      "CC_20261112-204719-a9f9be_P1_R0",
+      "CC_20261112-204719-a9f9be_P1_R1",
+      "CC_20261112-204719-a9f9be_P1_R2",
+      "CC_20261112-204719-a9f9be_P1_R3",
+      "CC_20261112-204719-a9f9be_P1_R4",
+      "CC_20261112-204719-a9f9be_P1_R5"
+    ],
+    "RunId": "20261112-204719-a9f9be",
+    "RunIdShared": true,
+    "SchemaVersion": 2,
+    "SurveyID": "TEST_cs_s",
+    "UnityPlayerId": "player-A (WebGL)",
+    "UserID": "TEST_cs_w",
+    "WinRandIndex": 0,
+    "Winnings": 33.40081
+  }
+}

@@ -213,7 +213,8 @@ public class PCPlayerAITutorial : MonoBehaviour
 
         if (pcPlayerNum == 1)
         {
-            Manager.inst.setNote(-1, "Player 1 choose, please pick 2 parts", false);
+            // Display only: the phase instruction now says it is the player's turn.
+            Manager.inst.setNote(-1, "", false, "");
         }
 
         // // When PC is Player 2 and completes its 2 choices (making 3 chosen total), wait 0.5s and assign 4th piece to Player 1

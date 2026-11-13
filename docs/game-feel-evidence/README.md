@@ -1,0 +1,56 @@
+# Game-feel batch — visual evidence (Stages 1–2, CutScene)
+
+Left = before (`dev` `ce2350d`), right = after (`feat/game-feel-visual-polish`).
+
+| File | What it shows | Source |
+|---|---|---|
+| `01_region_selection_your_turn_before_after.jpg` | Choose phase, Player 1's turn | Edit-mode staged state* |
+| `02_taken_states_player2_before_after.jpg` | Player 2: region taken by Player 1, region taken by you, second pick | Edit-mode staged state* |
+| `03_waiting_state_before_after.jpg` | Player 1 waiting for Player 2's choice | Edit-mode staged state* |
+| `04_result_before_after.jpg` | End of round: ownership badges, note, result, Next | Edit-mode staged state* |
+| `05_cut_phase_960x600_before_after.jpg` | Cut phase at the WebGL test size | Edit-mode staged state* |
+| `06_help_page_before_after.jpg` | Help page | Edit-mode capture (layers as at runtime) |
+| `07_runtime_editor_player1_cut_turn_result.jpg` | Player 1 (Editor, Play Mode): cut, your turn, waiting, result | Runtime, two-client test mode |
+| `08_runtime_webgl_player2_960x600.jpg` | Player 2 (WebGL Development, real mouse): line, choose, after first pick, result, waiting for Next, exit dialog | Runtime, two-client test mode |
+| `09_runtime_webgl_selection_motion_frames.jpg` | Frames around a real click: hover outline → flash and outline grow → amber outline → check badge | Runtime WebGL |
+| `10_runtime_webgl_waiting_entrance_frames.jpg` | Waiting plate settling in and the cards' "values ready" flash after both cuts | Runtime WebGL |
+| `11_runtime_chat_help_transition.jpg` | Chat round (Editor + WebGL message), Help on WebGL, round transition | Runtime |
+
+Tutorial (practice, `CutSceneAITutorial`) — added in the tutorial pass:
+
+| File | What it shows | Source |
+|---|---|---|
+| `12_tutorial_step0_explanation_before_after.jpg` | Step 0 explanation (cut instructions, map spotlight) | Edit-mode staged state* |
+| `13_tutorial_step1_player1_before_after.jpg` | Step 1, Player 1 wording (region spotlight) | Edit-mode staged state* |
+| `14_tutorial_step1_player2_before_after.jpg` | Step 1, Player 2 wording | Edit-mode staged state* |
+| `15_tutorial_gameplay_cut_960x600_before_after.jpg` | Practice cut phase at the WebGL test size | Edit-mode staged state* |
+| `16_tutorial_region_selection_before_after.jpg` | Practice choose phase, your turn | Edit-mode staged state* |
+| `17_tutorial_waiting_before_after.jpg` | Waiting for the computer's choice | Edit-mode staged state* |
+| `18_tutorial_result_before_after.jpg` | Practice result / completion state | Edit-mode staged state* |
+| `19_tutorial_runtime_editor_walkthrough.jpg` | Editor Player 1 run: Help auto-open, Step 0, Step 1, your turn, after the pick, result | Runtime (test mode) |
+| `21_tutorial_runtime_webgl_player2.jpg` | WebGL Player 2 (real mouse): Step 0, Step 1 (P2 wording), choices, result | Runtime (WebGL Development) |
+| `22_tutorial_to_round1_transition.jpg` | Both players finish practice (Editor P1 result, WebGL P2 waiting) → first real round (WebGL after both cuts, WebGL and Editor results) | Runtime (two clients) |
+
+The tutorial step entrance (0.22–0.30 s) finishes before an Editor capture returns, so no still shows it; it uses the same `UiAppear` component whose frames are shown for CutScene in sheets 09–10.
+
+\* Staged: CutScene opened in the Editor and put into the state with exactly the texts and interactable values that `Player` / `Manager` write (never saved). Map cells show their edit-time colour there (no runtime shading); the runtime sheets show real shading and lines. Screen-space-overlay dialogs (exit / connection notice) do not appear in camera captures; sheet 08 shows the exit dialog from WebGL.
+
+Stages 3–4 — lobby, session dialogs and `EndGameFlow` (added 2026-11-12). Before = this branch at `fe43858` (scene/prefab files taken from git and staged the same way); after = the Stage 4 working tree. These edit-mode captures render without MSAA (see PROJECT_CONTEXT §17, finding 3).
+
+| File | What it shows | Source |
+|---|---|---|
+| `23_lobby_states_960x600_before_after.jpg` | Lobby menu, connecting, joining, room-full message | Edit-mode staged state* |
+| `24_lobby_and_partner_notice_1280x720_before_after.jpg` | Lobby and the lobby partner-exit notice at 1280×720 | Edit-mode staged state* |
+| `25_partner_exit_notice_960x600_before_after.jpg` | Partner-exit notice (shown with `GameSessionDialogs`' own methods) | Edit-mode staged state* |
+| `26_exit_dialog_cutscene_before_after.jpg` | Exit dialog over a round ("not saved" line), shared prefab | Edit-mode staged state* |
+| `27_endgameflow_960x600_before_after.jpg` | Reward screen: 34.71 ₪, round 4 (real `PlayerData` formula and `SetWinnings`) | Edit-mode staged state* |
+| `28_endgameflow_1280x720_before_after.jpg` | Same at 1280×720 | Edit-mode staged state* |
+| `29_runtime_webgl_lobby_and_partner_notice.jpg` | WebGL: connecting card, lobby, real hover on Room 1, joining, partner-exit notice | Runtime WebGL Development (real mouse) |
+| `30_runtime_webgl_session_to_endgameflow.jpg` | WebGL: practice and round 1 (unchanged screens), "moving to the end", `EndGameFlow` entrance and settled state (112.50 ₪, round 5) | Runtime, full two-client session |
+| `31_endgameflow_entrance_motion_frames.jpg` | `EndGameFlow` entrance after a real scene load: hidden until the first normal frame, then badge/card/chip easing in; settled frame | Runtime Editor Play Mode |
+| `32_runtime_editor_dialog_room_full_endgame.jpg` | Editor: practice exit dialog (Editor 2× MSAA shading visible), lobby room-full plate, Player 2's real `EndGameFlow` (30 ₪, round 5) | Runtime Editor Play Mode |
+| `33_recovery_head_runtime_editor.jpg` | Recovery check of the committed `HEAD` (`b8bce1b`) after an interrupted session: lobby, room-full plate, `EndGameFlow` (78.45 ₪, round 5). Not a before/after sheet — no visual change was made in that session | Runtime Editor Play Mode (test mode) |
+| `34_endgameflow_home_hidden_before_after.jpg` | Final polish: `EndGameFlow` at 960×600, 1600×900 and 1920×1080 — Home visible before on the two tall sizes, absent after; reward explanation line slightly larger and brighter | Runtime Editor Play Mode (test mode), before = `4e34895` |
+| `35_note_and_secondary_text_before_after.jpg` | Final polish: note paper text (cut phase, result), value caption and line-owner label at 960×600. The map line differs between columns because the computer's practice cut is random | Runtime Editor Play Mode (test mode, practice), before = `4e34895` |
+
+To see the motion live: run a test-mode two-client round (`docs/PROJECT_CONTEXT.md` §13.2) or Play Mode in the Editor. F8 toggles the UI effects in the Editor and in Development builds (since Stage 4 also in the lobby and `EndGameFlow`). The lobby fade plays when the menu appears after connecting, the loading dots pulse while connecting or joining, and the `EndGameFlow` entrance plays on every load of that scene.

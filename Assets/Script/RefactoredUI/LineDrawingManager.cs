@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using Photon.Pun;
 using System.Collections.Generic;
 
@@ -25,6 +26,14 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
     [Header("Auto Coloring")]
     public bool autoColorOnFinish = true; // Automatically color squares when line is finished
 
+    [Header("UI Input Safety")]
+    public GameObject[] inputBlockingPanels; // Active panels over the map (Help Page): a press on them starts no line
+
+    [Header("Line Outline (display only)")]
+    public float outlineWidthFactor = 2f; // Outline width = line width * factor; the line itself is unchanged
+    private readonly Dictionary<LineRenderer, LineRenderer> lineOutlines = new Dictionary<LineRenderer, LineRenderer>();
+    private Transform outlineRoot;
+
     // Auto-created components
     public LineRenderer playerLineRenderer; // Made public for cross-manager access
     private RectTransform mapBounds;
@@ -37,6 +46,9 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
     private bool isDrawing = false;
     private bool hasDrawnLine = false;
     private bool isSubmitted = false; // New: tracks if player has submitted their line
+    // UX-004 (owner-approved input lock): set once this player's cut has been sent, with or without a line.
+    // isSubmitted stays false for a no-line cut, so it alone does not stop later local drawing. Local input only.
+    private bool cutSent = false;
     private int playerNumber; // 1 or 2
 
     // Real-time coloring optimization
@@ -80,6 +92,155 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         {
             HandleLineDrawing();
         }
+    }
+
+    void LateUpdate()
+    {
+        SyncLineOutlines();
+    }
+
+    void OnDestroy()
+    {
+        if (outlineRoot != null)
+        {
+            Destroy(outlineRoot.gameObject);
+        }
+    }
+
+    /// <summary>
+    /// Display only: keeps a wider black or white copy behind every cut line of this manager, so the black and
+    /// white lines stay readable on any cell colour. Outlines live beside this object (not under it), copy the
+    /// line points every frame and are never read by drawing, classification or networking code.
+    /// </summary>
+    private void SyncLineOutlines()
+    {
+        if (lineMaterial == null)
+        {
+            return;
+        }
+        if (outlineRoot == null)
+        {
+            // Sibling of this manager (not a child, so line clean-up never touches it): when the Help Page hides
+            // the map hierarchy, the outlines are hidden together with the lines. Positions are world space.
+            outlineRoot = new GameObject(gameObject.name + "Outlines").transform;
+            outlineRoot.SetParent(transform.parent, false);
+        }
+
+        // Display only: while an input-blocking panel (Help Page) is open, the cut lines render in front of it,
+        // so they are not drawn. forceRenderingOff leaves enabled, points and all line state untouched.
+        bool hideForPanel = IsBlockingPanelOpen();
+        foreach (LineRenderer line in GetComponentsInChildren<LineRenderer>(true))
+        {
+            line.forceRenderingOff = hideForPanel;
+            if (!lineOutlines.TryGetValue(line, out LineRenderer outline) || outline == null)
+            {
+                GameObject outlineObj = new GameObject(line.gameObject.name + "Outline");
+                outlineObj.transform.SetParent(outlineRoot, false);
+                outline = outlineObj.AddComponent<LineRenderer>();
+                outline.material = lineMaterial;
+                outline.positionCount = 2;
+                outline.useWorldSpace = true;
+                lineOutlines[line] = outline;
+            }
+
+            outline.enabled = line.enabled && line.gameObject.activeInHierarchy;
+            outline.forceRenderingOff = hideForPanel;
+            if (!outline.enabled)
+            {
+                continue;
+            }
+
+            // Slightly further from the camera than the line, so it is drawn just behind it.
+            Vector3 behind = new Vector3(0f, 0f, 0.05f);
+            outline.SetPosition(0, line.GetPosition(0) + behind);
+            outline.SetPosition(1, line.GetPosition(1) + behind);
+            outline.startWidth = line.startWidth * outlineWidthFactor;
+            outline.endWidth = line.endWidth * outlineWidthFactor;
+            outline.sortingLayerID = line.sortingLayerID;
+            outline.sortingOrder = line.sortingOrder;
+
+            Color shown = line.startColor * (line.sharedMaterial != null ? line.sharedMaterial.color : Color.white);
+            float brightness = 0.299f * shown.r + 0.587f * shown.g + 0.114f * shown.b;
+            Color outlineColor = brightness < 0.5f ? new Color(1f, 1f, 1f, 0.9f) : new Color(0f, 0f, 0f, 0.85f);
+            outline.startColor = outlineColor;
+            outline.endColor = outlineColor;
+        }
+
+        List<LineRenderer> removed = null;
+        foreach (var kvp in lineOutlines)
+        {
+            if (kvp.Key == null)
+            {
+                if (kvp.Value != null)
+                {
+                    Destroy(kvp.Value.gameObject);
+                }
+                (removed ??= new List<LineRenderer>()).Add(kvp.Key);
+            }
+        }
+        if (removed != null)
+        {
+            foreach (LineRenderer key in removed)
+            {
+                lineOutlines.Remove(key);
+            }
+        }
+    }
+
+    private bool IsBlockingPanelOpen()
+    {
+        if (inputBlockingPanels == null)
+        {
+            return false;
+        }
+        foreach (GameObject panel in inputBlockingPanels)
+        {
+            if (panel != null && panel.activeInHierarchy)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// UI input safety: true when the topmost UI element under the pointer is interactive (button, toggle,
+    /// input field...) or part of an active input-blocking panel (Help Page). Non-interactive overlays such as
+    /// county labels and notes do not block drawing.
+    /// </summary>
+    private bool IsPointerOverBlockingUI()
+    {
+        EventSystem eventSystem = EventSystem.current;
+        if (eventSystem == null)
+        {
+            return false;
+        }
+
+        PointerEventData pointerData = new PointerEventData(eventSystem) { position = Input.mousePosition };
+        List<RaycastResult> hits = new List<RaycastResult>();
+        eventSystem.RaycastAll(pointerData, hits);
+        if (hits.Count == 0)
+        {
+            return false;
+        }
+
+        // The first result is the element that receives the click.
+        GameObject top = hits[0].gameObject;
+        if (ExecuteEvents.GetEventHandler<IPointerClickHandler>(top) != null || ExecuteEvents.GetEventHandler<IPointerDownHandler>(top) != null)
+        {
+            return true;
+        }
+        if (inputBlockingPanels != null)
+        {
+            foreach (GameObject panel in inputBlockingPanels)
+            {
+                if (panel != null && panel.activeInHierarchy && top.transform.IsChildOf(panel.transform))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /// <summary>
@@ -180,7 +341,17 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
     /// </summary>
     private bool CanDrawLine()
     {
-        return IsMyTurnToDraw() && !isSubmitted; // Cannot draw after submission
+        return IsMyTurnToDraw() && !isSubmitted && !cutSent; // Cannot draw after submission
+    }
+
+    /// <summary>
+    /// UX-004: called by Player.CutView after the cut was sent. Stops any further local drawing for this round
+    /// (the manager is a scene object, so a new round starts unlocked). Nothing is sent or stored.
+    /// </summary>
+    public void LockDrawingAfterCut()
+    {
+        cutSent = true;
+        isDrawing = false;
     }
 
     /// <summary>
@@ -214,7 +385,11 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
 
         if (Input.GetMouseButtonDown(0))
         {
-            StartDrawing();
+            // A press on a button or on the open Help Page is a UI click, not the start of a cut.
+            if (!IsPointerOverBlockingUI())
+            {
+                StartDrawing();
+            }
         }
         else if (Input.GetMouseButton(0) && isDrawing)
         {
@@ -237,6 +412,7 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
             playerLineRenderer.enabled = false;
         }
         Debug.Log("Line drawing canceled");
+        Player.inst?.UpdatePhaseInstruction();
     }
 
     /// <summary>
@@ -272,6 +448,7 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
             playerLineRenderer.enabled = true;
             playerLineRenderer.SetPosition(0, startPoint);
             playerLineRenderer.SetPosition(1, startPoint);
+            Player.inst?.UpdatePhaseInstruction();
         }
         else
         {
@@ -348,6 +525,7 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         // Only notify local systems that line is complete
         // DO NOT send to other players yet - they will see it after submit
         OnLineCompleted?.Invoke(startPoint, endPoint, playerNumber);
+        Player.inst?.UpdatePhaseInstruction();
 
     }
 
@@ -466,6 +644,22 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
     {
         start = startPoint;
         end = endPoint;
+        return hasDrawnLine;
+    }
+
+    /// <summary>
+    /// Display only: true while a line is being dragged or once one is drawn (the live readout is meaningful).
+    /// </summary>
+    public bool HasLineStarted()
+    {
+        return hasDrawnLine || isDrawing;
+    }
+
+    /// <summary>
+    /// Display only: true once a drawn line is complete (released and not replaced).
+    /// </summary>
+    public bool HasDrawnLine()
+    {
         return hasDrawnLine;
     }
 

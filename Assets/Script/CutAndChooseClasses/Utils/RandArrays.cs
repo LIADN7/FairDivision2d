@@ -54,6 +54,16 @@ public class RandArrays : MonoBehaviour
         this.floatList.ForEach(x => Debug.Log(x));
     }
 
+    // Batch 6 (owner-approved): empties the result list when a new experiment starts on this client (Launcher room
+    // buttons, in the lobby). Never called during an experiment: rounds keep appending and the round-6 payment draw
+    // reads this session's results only.
+    public int Clear()
+    {
+        int previous = floatList.Count;
+        floatList.Clear();
+        return previous;
+    }
+
     // Function to get the size of the List
     public int GetSize()
     {

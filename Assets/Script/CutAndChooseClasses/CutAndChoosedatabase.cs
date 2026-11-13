@@ -8,7 +8,16 @@ using Newtonsoft.Json;
 [Serializable]
 public class CutAndChoosePlayerDatabase
 {
-    private string ScenraioName = "CutAChoose";
+    // Run identity (Cloud Save & data integrity batch, schema 2). Added fields only: every field below keeps its meaning.
+    // Saved under ExperimentRun.RoundKey(PlayerRole, ScenarioNum) instead of the legacy "CutAChoose_<round>_<type>" key.
+    public int SchemaVersion { get; set; } = ExperimentRun.SchemaVersion;
+    public string RecordType { get; set; } = "round";
+    public string RunId { get; set; } = "";          // shared by both players of one experiment (Photon room property)
+    public bool RunIdShared { get; set; } = false;   // false only for a local fallback ID (room without the property)
+    public int PlayerRole { get; set; } = 0;         // 1 = Player 1 (master client), 2 = Player 2
+    public string UnityPlayerId { get; set; } = "";  // anonymous Unity Authentication player ID (owner of the record)
+    public string RoomName { get; set; } = "";       // Photon room, e.g. Room_1
+
     public string userID { get; set; } = "defaultUserID"; // A User ID of the player
     public string surveyID { get; set; } = "defaultSurveyID"; // A survey ID of the survey
 
@@ -189,13 +198,16 @@ public class CutAndChoosePlayerDatabase
         string keyName = "CutAChoose_0_1";
         DatabaseManager.inst.LoadData(keyName); 
             }
-    public async Task<bool> SaveDatabaseAsync(string fileName)
-        {
-        string keyName = this.ScenraioName + "_" + this.ScenarioNum + "_" + this.ScenarioType;
-
-            DatabaseManager.inst.SaveData(keyName, ToJson());
-            return true; // This might be premature, consider returning based on task completion
-        }
+    // Saves this round record under its run-scoped key (one key per player and round; never overwrites another run).
+    // The payload is a snapshot taken now; ScenarioNum is the round index 0-5 and ScenarioType stays in the record.
+    // The save runs in the background (gameplay is not held); ResearchSaveQueue tracks it, retries a failure a few
+    // times, and the EndGameFlow Save button waits for it (or retries it) before reporting success.
+    public void SaveDatabaseAsync(string fileName)
+    {
+        string keyName = ExperimentRun.RoundKey(this.PlayerRole, this.ScenarioNum);
+        ExperimentRun.NoteRoundRecord(keyName);
+        ResearchSaveQueue.Submit(keyName, ExperimentRun.ToPayload(this));
+    }
 
 
 
