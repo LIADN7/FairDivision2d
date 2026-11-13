@@ -205,8 +205,8 @@ public class CutAndChoosePlayerDatabase
     public void SaveDatabaseAsync(string fileName)
     {
         string keyName = ExperimentRun.RoundKey(this.PlayerRole, this.ScenarioNum);
-        ExperimentRun.NoteRoundRecord(keyName);
-        ResearchSaveQueue.Submit(keyName, ExperimentRun.ToPayload(this));
+        bool accepted = ResearchSaveQueue.Submit(keyName, ExperimentRun.ToPayload(this));
+        ExperimentRun.NoteRoundRecord(this.ScenarioNum, keyName, accepted); // a refused record makes the gate fail
     }
 
 

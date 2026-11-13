@@ -33,6 +33,8 @@ public class EndGamePlayerDataManager : MonoBehaviour
     private const string savingRTL = "שומרים את הנתונים...";
     private const string savedRTL = "הנתונים נשמרו בהצלחה.";
     private const string saveFailedRTL = "השמירה נכשלה. בדקו את החיבור לאינטרנט ולחצו שוב על \"שלח\".";
+    // Shown instead when a round record was never collected (or conflicted): pressing Save again cannot repair it.
+    private const string saveIncompleteRTL = "חסרים נתונים מאחד הסבבים ולא ניתן להשלים את השמירה. אנא פנו לצוות המחקר.";
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     private const string returnUnavailableTestRTL = "מצב בדיקה: המעבר לסקר אינו זמין.";
 #endif
@@ -166,7 +168,9 @@ public class EndGamePlayerDataManager : MonoBehaviour
         }
         else
         {
-            SetSaveStatus(saveFailedRTL, saveFailedColor);
+            // Same failure state as before (no success, no return button, Save enabled for a manual retry, which still
+            // saves any record that is not confirmed yet). Only the explanation differs when rounds are missing.
+            SetSaveStatus(ExperimentRun.RoundsComplete ? saveFailedRTL : saveIncompleteRTL, saveFailedColor);
             if (submit != null)
             {
                 submit.interactable = true; // manual retry

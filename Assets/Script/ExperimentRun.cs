@@ -32,10 +32,36 @@ public static class ExperimentRun
     public static int PlayerRole { get; private set; }    // 1 = master client (Player 1), 2 = Player 2, 0 = unknown
     public static string RoomName { get; private set; } = "";
 
+    // Real rounds of one experiment: indices 0-5 (the practice round is never saved).
+    public const int RequiredRounds = 6;
+
     private static readonly List<string> roundKeys = new List<string>();
+    private static readonly Dictionary<int, string> roundKeyByIndex = new Dictionary<int, string>();
+    private static readonly List<string> roundConflicts = new List<string>();
 
     // Keys of the round records this client submitted in the current run, in submission order.
     public static IReadOnlyList<string> RoundKeys => roundKeys.AsReadOnly();
+
+    // Problems found while recording rounds (refused or second record for one round, index outside 0-5, invalid key).
+    public static IReadOnlyList<string> RoundConflicts => roundConflicts.AsReadOnly();
+
+    // Round indices 0-5 for which this client has no accepted round record in the current run.
+    public static List<int> MissingRounds()
+    {
+        var missing = new List<int>();
+        for (int i = 0; i < RequiredRounds; i++)
+        {
+            if (!roundKeyByIndex.ContainsKey(i))
+            {
+                missing.Add(i);
+            }
+        }
+        return missing;
+    }
+
+    // True when every round 0-5 has exactly one accepted record and nothing conflicted. A missing round cannot be
+    // repaired by a later save retry: it was never collected.
+    public static bool RoundsComplete => MissingRounds().Count == 0 && roundConflicts.Count == 0;
 
     // Lobby room buttons: a new experiment starts on this client. The next room provides a new run ID.
     public static void BeginNewExperiment()
@@ -46,6 +72,8 @@ public static class ExperimentRun
         PlayerRole = 0;
         RoomName = "";
         roundKeys.Clear();
+        roundKeyByIndex.Clear();
+        roundConflicts.Clear();
         Debug.Log("RUN: new experiment (previous run " + (previous ?? "none") + ")");
     }
 
@@ -108,12 +136,39 @@ public static class ExperimentRun
         return KeyPrefix + "_" + EnsureRunId() + "_P" + PlayerRole + "_final";
     }
 
-    public static void NoteRoundRecord(string key)
+    // Records the round record this client submitted for roundIndex. accepted = false when the save queue refused it
+    // (the key already holds a different payload, whose first version is kept). A refused record, a second record for
+    // the same round under another key, or an index outside 0-5 is a conflict: the completion gate then fails instead
+    // of reporting a false success. Re-submitting the identical record is accepted and changes nothing.
+    public static void NoteRoundRecord(int roundIndex, string key, bool accepted)
     {
+        if (!accepted)
+        {
+            NoteRoundConflict("R" + roundIndex + " refused: " + key + " already holds a different record");
+            return;
+        }
         if (!roundKeys.Contains(key))
         {
-            roundKeys.Add(key);
+            roundKeys.Add(key); // accepted records are saved and confirmed by the gate, even when they conflict
         }
+        if (roundIndex < 0 || roundIndex >= RequiredRounds)
+        {
+            NoteRoundConflict("R" + roundIndex + " is outside rounds 0-" + (RequiredRounds - 1) + ": " + key);
+        }
+        else if (roundKeyByIndex.TryGetValue(roundIndex, out string existing) && existing != key)
+        {
+            NoteRoundConflict("R" + roundIndex + " recorded twice: " + existing + " and " + key);
+        }
+        else
+        {
+            roundKeyByIndex[roundIndex] = key;
+        }
+    }
+
+    public static void NoteRoundConflict(string problem)
+    {
+        roundConflicts.Add(problem);
+        Debug.LogError("SAVE: round conflict - " + problem);
     }
 
     // A record as a JSON object for Cloud Save. Serialized exactly as before (Newtonsoft defaults), then parsed without
