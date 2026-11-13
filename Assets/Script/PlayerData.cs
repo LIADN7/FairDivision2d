@@ -37,7 +37,7 @@ public class PlayerData : MonoBehaviour
         }
     }
 
-    // Save the final reward record of this run (CC_<runId>_P<role>_final; replaces the legacy fixed "PlayerData" key,
+    // Save the final reward record of this run (PlayerData_<runId>_P<role>; replaces the legacy fixed "PlayerData" key,
     // which every later experiment of the same anonymous player overwrote). Same eight fields and meanings as the legacy
     // record, plus the run identity and the keys of this player's round records.
     // Completion gate: returns true only when (1) this client recorded exactly one round record for each real round 0-5
@@ -49,6 +49,11 @@ public class PlayerData : MonoBehaviour
     public async Task<bool> SaveFinalRecordAsync()
     {
         string finalKey = ExperimentRun.FinalKey();
+        if (!ExperimentRun.IsValidKey(finalKey))
+        {
+            Debug.LogError("SAVE: invalid Cloud Save key " + finalKey + " - nothing saved"); // cannot happen with generated run IDs
+            return false;
+        }
         if (!ResearchSaveQueue.IsRegistered(finalKey))
         {
             ResearchSaveQueue.Register(finalKey, ExperimentRun.ToPayload(ToFinalRecord()));

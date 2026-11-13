@@ -151,9 +151,10 @@ public class DatabaseManager : MonoBehaviour
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     // TEST MODE ONLY (compiled out of Release builds): read-only validation helper. Reads THIS anonymous player's own
     // Cloud Save data back from the service: every key with its last-modified time, and the full values of the keys
-    // that start with keyPrefix (e.g. "CC_<runId>"; "CC_" for all new-schema records). Returns one JSON document:
+    // that contain keyFilter (e.g. a run ID for one run; "CutAChoose_" / "PlayerData_" / "CC_" for all records of a key
+    // style; a substring, because the run ID sits in the middle of the readable keys). Returns one JSON document:
     // {"playerId", "readAtUtc", "allKeys":[{"key","modified"}], "items":{key: value}}. Writes nothing; logs no tokens.
-    public async Task<string> TestReadBackAsync(string keyPrefix)
+    public async Task<string> TestReadBackAsync(string keyFilter)
     {
         if (!await EnsureInitialized())
         {
@@ -166,7 +167,7 @@ public class DatabaseManager : MonoBehaviour
         foreach (var k in keys)
         {
             allKeys.Add(new JObject { ["key"] = k.Key, ["modified"] = k.Modified?.ToUniversalTime().ToString("o") });
-            if (!string.IsNullOrEmpty(keyPrefix) && k.Key.StartsWith(keyPrefix, StringComparison.Ordinal))
+            if (!string.IsNullOrEmpty(keyFilter) && k.Key.IndexOf(keyFilter, StringComparison.Ordinal) >= 0)
             {
                 wanted.Add(k.Key);
             }
@@ -196,13 +197,13 @@ public class DatabaseManager : MonoBehaviour
     }
 
     // TEST MODE ONLY: WebGL entry point for TestReadBackAsync (unityInstance.SendMessage("DatabaseManager",
-    // "TestReadBackRecords", "<key prefix>")). The WebGL player truncates a log line at 8191 characters, so the JSON is
+    // "TestReadBackRecords", "<key filter>")). The WebGL player truncates a log line at 8191 characters, so the JSON is
     // logged in parts: "READBACK-PART <id> <i>/<n> <text>"; joining the parts in order gives the document.
-    public async void TestReadBackRecords(string keyPrefix)
+    public async void TestReadBackRecords(string keyFilter)
     {
         try
         {
-            string json = await TestReadBackAsync(keyPrefix);
+            string json = await TestReadBackAsync(keyFilter);
             const int partSize = 4000;
             int parts = (json.Length + partSize - 1) / partSize;
             string id = Guid.NewGuid().ToString("N").Substring(0, 8);

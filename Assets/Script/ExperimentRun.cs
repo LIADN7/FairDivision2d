@@ -17,15 +17,24 @@ using UnityEngine;
 // when the lobby starts a new experiment. The ID uses System.Guid and the UTC clock, never UnityEngine.Random, so the
 // gameplay random draws (condition, payment round, practice opponent) are unchanged.
 //
-// Cloud Save keys (pattern [A-Za-z0-9_-]{1,50}): CC_<runId>_P<role>_R<round> for each round record and
-// CC_<runId>_P<role>_final for the reward record. The role is part of the key so that two players who share one
-// anonymous identity (e.g. two tabs of one browser profile) still never overwrite each other's records.
+// Cloud Save keys (pattern [A-Za-z0-9_-]{1,50}), readable in the dashboard (owner-approved, schema 2 payload unchanged):
+//   CutAChoose_<round>_<ScenarioType>_<runId>_P<role>   round record, e.g. CutAChoose_2_Chat_20261113-101500-a3f9c1_P1
+//   PlayerData_<runId>_P<role>                          final reward record
+// They begin like the historical fixed keys (CutAChoose_<round>_<type>, PlayerData) but always carry the run and role,
+// so runs never overwrite each other. The role is part of the key so that two players who share one anonymous identity
+// (e.g. two tabs of one browser profile) still never overwrite each other's records. Earlier test builds of this schema
+// used CC_<runId>_P<role>_R<round> / CC_<runId>_P<role>_final; those records are left as they are.
 public static class ExperimentRun
 {
     public const int SchemaVersion = 2;
     public const string RoomPropertyKey = "ccRunId";
-    private const string KeyPrefix = "CC";
-    private const int MaxRunIdLength = 32; // keeps every key below the 50-character Cloud Save limit
+    public const int MaxKeyLength = 50;                  // Cloud Save key limit
+    private const string RoundKeyPrefix = "CutAChoose";
+    private const string FinalKeyPrefix = "PlayerData";
+    // The longest round key is "CutAChoose_5_InfoAChat_" (23) + run ID + "_P1" (3): a 24-character run ID gives exactly
+    // 50. Generated IDs have 22 characters (23 with the local "L" prefix); a longer room value is not accepted.
+    private const int MaxRunIdLength = 24;
+    private static readonly string[] ScenarioTypes = { "Normal", "Info", "Chat", "InfoAChat" };
 
     public static string RunId { get; private set; }
     public static bool RunIdShared { get; private set; }  // true when RunId came from the Photon room (both clients)
@@ -126,14 +135,40 @@ public static class ExperimentRun
         return RunId;
     }
 
-    public static string RoundKey(int role, int roundIndex)
+    // Key of one round record. scenarioType is the record's own ScenarioType (the condition of that round, set when the
+    // round started), never derived from the round index. An unexpected value is named "Unknown" and logged; the
+    // exporter then reports the mismatch with the record.
+    public static string RoundKey(int role, int roundIndex, string scenarioType)
     {
-        return KeyPrefix + "_" + EnsureRunId() + "_P" + role + "_R" + roundIndex;
+        string type = Array.IndexOf(ScenarioTypes, scenarioType) >= 0 ? scenarioType : "Unknown";
+        if (type == "Unknown")
+        {
+            Debug.LogError("SAVE: unexpected ScenarioType '" + scenarioType + "' for round " + roundIndex);
+        }
+        return RoundKeyPrefix + "_" + roundIndex + "_" + type + "_" + EnsureRunId() + "_P" + role;
     }
 
     public static string FinalKey()
     {
-        return KeyPrefix + "_" + EnsureRunId() + "_P" + PlayerRole + "_final";
+        return FinalKeyPrefix + "_" + EnsureRunId() + "_P" + PlayerRole;
+    }
+
+    // Cloud Save accepts keys of 1-50 characters from [A-Za-z0-9_-].
+    public static bool IsValidKey(string key)
+    {
+        if (string.IsNullOrEmpty(key) || key.Length > MaxKeyLength)
+        {
+            return false;
+        }
+        foreach (char c in key)
+        {
+            bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_';
+            if (!ok)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     // Records the round record this client submitted for roundIndex. accepted = false when the save queue refused it
