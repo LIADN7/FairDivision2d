@@ -56684,7 +56684,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 12
+  m_fontSize: 16
   m_fontSizeBase: 12
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -63290,6 +63290,13 @@ MonoBehaviour:
   - {fileID: 1525379605}
   - {fileID: 1450081912}
   - {fileID: 1024366755}
+  mapRoot: {fileID: 2008008950}
+  hoverOutline: {r: 1, g: 1, b: 1, a: 1}
+  mineOutline: {r: 1, g: 0.784, b: 0.341, a: 1}
+  outlineShadow: {r: 0.043, g: 0.078, b: 0.141, a: 0.9}
+  spotlightVeil: {r: 0.043, g: 0.078, b: 0.141, a: 0.55}
+  otherVeil: {r: 0.043, g: 0.078, b: 0.141, a: 0.38}
+  outlineWidth: 0.03
 --- !u!4 &1517579648
 Transform:
   m_ObjectHideFlags: 0
@@ -85289,7 +85296,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4293252039
+    rgba: 4294108636
   m_fontColor: {r: 0.8627451, g: 0.8980392, b: 0.9490196, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3

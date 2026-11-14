@@ -85303,6 +85303,13 @@ MonoBehaviour:
   - {fileID: 779432519}
   - {fileID: 557864682}
   - {fileID: 662487009}
+  mapRoot: {fileID: 2008008950}
+  hoverOutline: {r: 1, g: 1, b: 1, a: 1}
+  mineOutline: {r: 1, g: 0.784, b: 0.341, a: 1}
+  outlineShadow: {r: 0.043, g: 0.078, b: 0.141, a: 0.9}
+  spotlightVeil: {r: 0.043, g: 0.078, b: 0.141, a: 0.55}
+  otherVeil: {r: 0.043, g: 0.078, b: 0.141, a: 0.38}
+  outlineWidth: 0.03
 --- !u!4 &1830152986
 Transform:
   m_ObjectHideFlags: 0
