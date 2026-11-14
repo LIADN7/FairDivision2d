@@ -11574,7 +11574,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 0.88, g: 0.27, b: 0.27, a: 1}
+  m_Color: {r: 0.66, g: 0.11, b: 0.15, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -25948,7 +25948,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 0.88, g: 0.27, b: 0.27, a: 1}
+  m_Color: {r: 0.66, g: 0.11, b: 0.15, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -50140,7 +50140,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 0.88, g: 0.27, b: 0.27, a: 1}
+  m_Color: {r: 0.66, g: 0.11, b: 0.15, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -63624,9 +63624,10 @@ MonoBehaviour:
   hoverOutline: {r: 1, g: 1, b: 1, a: 1}
   mineOutline: {r: 1, g: 0.784, b: 0.341, a: 1}
   outlineShadow: {r: 0.043, g: 0.078, b: 0.141, a: 0.9}
-  spotlightVeil: {r: 0.043, g: 0.078, b: 0.141, a: 0.55}
+  spotlightVeil: {r: 0.043, g: 0.078, b: 0.141, a: 0.45}
   otherVeil: {r: 0.043, g: 0.078, b: 0.141, a: 0.38}
   outlineWidth: 0.03
+  mapTransition: 0.14
 --- !u!4 &1517579648
 Transform:
   m_ObjectHideFlags: 0
@@ -75310,7 +75311,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 0.88, g: 0.27, b: 0.27, a: 1}
+  m_Color: {r: 0.66, g: 0.11, b: 0.15, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
