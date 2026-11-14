@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 public class CutAndChoosePlayerDatabase
 {
     // Run identity (Cloud Save & data integrity batch, schema 2). Added fields only: every field below keeps its meaning.
-    // Saved under ExperimentRun.RoundKey(PlayerRole, ScenarioNum) instead of the legacy "CutAChoose_<round>_<type>" key.
+    // Saved under ExperimentRun.RoundKey (CutAChoose_<round>_<ScenarioType>_<runId>_P<role>), not the legacy fixed key.
     public int SchemaVersion { get; set; } = ExperimentRun.SchemaVersion;
     public string RecordType { get; set; } = "round";
     public string RunId { get; set; } = "";          // shared by both players of one experiment (Photon room property)
@@ -198,15 +198,22 @@ public class CutAndChoosePlayerDatabase
         string keyName = "CutAChoose_0_1";
         DatabaseManager.inst.LoadData(keyName); 
             }
-    // Saves this round record under its run-scoped key (one key per player and round; never overwrites another run).
+    // Saves this round record under its readable run-scoped key (one key per player and round; never overwrites another
+    // run). The key names the round and its condition from this record (ScenarioNum, ScenarioType).
     // The payload is a snapshot taken now; ScenarioNum is the round index 0-5 and ScenarioType stays in the record.
     // The save runs in the background (gameplay is not held); ResearchSaveQueue tracks it, retries a failure a few
     // times, and the EndGameFlow Save button waits for it (or retries it) before reporting success.
     public void SaveDatabaseAsync(string fileName)
     {
-        string keyName = ExperimentRun.RoundKey(this.PlayerRole, this.ScenarioNum);
-        ExperimentRun.NoteRoundRecord(keyName);
-        ResearchSaveQueue.Submit(keyName, ExperimentRun.ToPayload(this));
+        string keyName = ExperimentRun.RoundKey(this.PlayerRole, this.ScenarioNum, this.ScenarioType);
+        if (!ExperimentRun.IsValidKey(keyName))
+        {
+            // Cannot happen with generated run IDs (key <= 50 characters); never sent, and the completion gate fails.
+            ExperimentRun.NoteRoundConflict("R" + this.ScenarioNum + " invalid Cloud Save key " + keyName);
+            return;
+        }
+        bool accepted = ResearchSaveQueue.Submit(keyName, ExperimentRun.ToPayload(this));
+        ExperimentRun.NoteRoundRecord(this.ScenarioNum, keyName, accepted); // a refused record makes the gate fail
     }
 
 

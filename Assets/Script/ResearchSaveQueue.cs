@@ -43,11 +43,13 @@ public static class ResearchSaveQueue
     };
 
     // Registers the record (first payload wins) and starts saving it in the background. Returns at once; the outcome is
-    // kept in the entry and awaited later by EnsureSavedAsync.
-    public static void Submit(string key, JToken payload)
+    // kept in the entry and awaited later by EnsureSavedAsync. Returns false when the registration was refused (the key
+    // already holds a different payload, or key/payload are missing); the caller must not ignore that.
+    public static bool Submit(string key, JToken payload)
     {
-        Register(key, payload);
+        bool accepted = Register(key, payload);
         _ = SaveAsync(key);
+        return accepted;
     }
 
     // Registers a record without starting the save. Returns false when the key already holds a different payload

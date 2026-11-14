@@ -1,5 +1,11 @@
-RunId,PlayerRole,OwnerPlayerId,RoundsPresent,RoundsMissing,FinalPresent,WinRandIndex,PaymentRoundResult,Winnings,WinningsCheck,UserID,SurveyID,RoundKeysListed
-20261112-204719-a9f9be,1,player-A (WebGL),6,,True,0,47.26721,33.40081,ok,TEST_cs_w,TEST_cs_s,6
-20261112-204719-a9f9be,2,player-B (Editor),6,,True,0,61.2453537,54.36803,ok,defaultUserID,defaultSurveyID,6
-20261112-210655-f04a40,1,player-B (Editor),6,,True,3,46.2550621,31.8825932,ok,defaultUserID,defaultSurveyID,6
-20261112-210655-f04a40,2,player-A (WebGL),6,,True,3,70.3531647,68.02975,ok,TEST_cs_w,TEST_cs_s,6
+RunId,PlayerRole,OwnerPlayerId,RoundsPresent,RoundsMissing,FinalPresent,WinRandIndex,PaymentRoundResult,Winnings,WinningsCheck,UserID,SurveyID,RoundKeysListed,FinalKey
+20261112-204719-a9f9be,1,player-A (WebGL),6,,True,0,47.26721,33.40081,ok,TEST_cs_w,TEST_cs_s,6,CC_20261112-204719-a9f9be_P1_final
+20261112-204719-a9f9be,2,player-B (Editor),6,,True,0,61.2453537,54.36803,ok,defaultUserID,defaultSurveyID,6,CC_20261112-204719-a9f9be_P2_final
+20261112-210655-f04a40,1,player-B (Editor),6,,True,3,46.2550621,31.8825932,ok,defaultUserID,defaultSurveyID,6,CC_20261112-210655-f04a40_P1_final
+20261112-210655-f04a40,2,player-A (WebGL),6,,True,3,70.3531647,68.02975,ok,TEST_cs_w,TEST_cs_s,6,CC_20261112-210655-f04a40_P2_final
+20261112-221552-99791d,1,,2,2 3 4 5,False,,,,n/a,,,,
+20261112-221552-99791d,2,,2,2 3 4 5,False,,,,n/a,,,,
+20261112-222139-5bc301,1,,4,4 5,False,,,,n/a,,,,
+20261112-222139-5bc301,2,,4,4 5,False,,,,n/a,,,,
+20261113-093438-da6d43,1,player-C (Chrome),6,,True,3,59.51417,51.7712555,ok,TEST_keys_a,TEST_keys_s,6,PlayerData_20261113-093438-da6d43_P1
+20261113-093438-da6d43,2,player-D (Chrome),6,,True,3,35.5947952,30,ok,TEST_keys_b,TEST_keys_s,6,PlayerData_20261113-093438-da6d43_P2

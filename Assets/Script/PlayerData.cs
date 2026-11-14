@@ -37,28 +37,41 @@ public class PlayerData : MonoBehaviour
         }
     }
 
-    // Save the final reward record of this run (CC_<runId>_P<role>_final; replaces the legacy fixed "PlayerData" key,
+    // Save the final reward record of this run (PlayerData_<runId>_P<role>; replaces the legacy fixed "PlayerData" key,
     // which every later experiment of the same anonymous player overwrote). Same eight fields and meanings as the legacy
     // record, plus the run identity and the keys of this player's round records.
-    // Completion gate: returns true only when the final record AND every round record of this run are confirmed by
-    // Cloud Save. The final payload is built once (first call) and reused by every retry, so a retry never changes the
-    // reward or the payment round; failed round records are retried with their original payloads.
+    // Completion gate: returns true only when (1) this client recorded exactly one round record for each real round 0-5
+    // of this run with no conflict, and (2) the final record AND every round record are confirmed by Cloud Save. The
+    // final payload is built once (first call) and reused by every retry, so a retry never changes the reward or the
+    // payment round; failed round records are retried with their original payloads. A round that was never recorded
+    // cannot be repaired by a retry: the gate then fails (ExperimentRun.RoundsComplete is false), while the recorded
+    // rounds and the final record are still saved so that the data that exists reaches Cloud Save.
     public async Task<bool> SaveFinalRecordAsync()
     {
         string finalKey = ExperimentRun.FinalKey();
+        if (!ExperimentRun.IsValidKey(finalKey))
+        {
+            Debug.LogError("SAVE: invalid Cloud Save key " + finalKey + " - nothing saved"); // cannot happen with generated run IDs
+            return false;
+        }
         if (!ResearchSaveQueue.IsRegistered(finalKey))
         {
             ResearchSaveQueue.Register(finalKey, ExperimentRun.ToPayload(ToFinalRecord()));
         }
         var roundKeys = new System.Collections.Generic.List<string>(ExperimentRun.RoundKeys);
+        var missing = ExperimentRun.MissingRounds();
+        bool roundsComplete = ExperimentRun.RoundsComplete;
         Task<bool> rounds = roundKeys.Count > 0 ? ResearchSaveQueue.EnsureSavedAsync(roundKeys) : Task.FromResult(true);
         Task<bool> final = ResearchSaveQueue.SaveAsync(finalKey);
         bool roundsSaved = await rounds;
         bool finalSaved = await final;
+        bool passed = roundsComplete && roundsSaved && finalSaved;
         roundKeys.Add(finalKey);
-        Debug.Log("SAVE: completion gate " + (roundsSaved && finalSaved ? "PASSED" : "NOT PASSED") + " - "
+        string completeness = roundsComplete ? "" : "rounds never recorded: [" + string.Join(",", missing) + "]; conflicts: "
+            + ExperimentRun.RoundConflicts.Count + " (" + string.Join(" | ", ExperimentRun.RoundConflicts) + "); ";
+        Debug.Log("SAVE: completion gate " + (passed ? "PASSED" : "NOT PASSED") + " - " + completeness
             + ResearchSaveQueue.Describe(roundKeys));
-        return roundsSaved && finalSaved;
+        return passed;
     }
 
     private FinalRecordModel ToFinalRecord()
