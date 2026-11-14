@@ -34,6 +34,13 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
     private readonly Dictionary<LineRenderer, LineRenderer> lineOutlines = new Dictionary<LineRenderer, LineRenderer>();
     private Transform outlineRoot;
 
+    [Header("Line Extension (display only)")]
+    [Tooltip("Visible map box (MapBoundaries). A finished cut line is also drawn across this box along the same straight line. Empty = the drawable bounds.")]
+    public SpriteRenderer lineExtentBox;
+    private readonly Dictionary<LineRenderer, LineRenderer> lineExtensions = new Dictionary<LineRenderer, LineRenderer>();
+    private Rect cachedExtentRect;
+    private bool hasCachedExtentRect;
+
     // Auto-created components
     public LineRenderer playerLineRenderer; // Made public for cross-manager access
     private RectTransform mapBounds;
@@ -145,6 +152,10 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
 
             outline.enabled = line.enabled && line.gameObject.activeInHierarchy;
             outline.forceRenderingOff = hideForPanel;
+            Vector3 extentStart = Vector3.zero;
+            Vector3 extentEnd = Vector3.zero;
+            bool extended = outline.enabled && TryGetLineExtent(line, out extentStart, out extentEnd);
+            SyncLineExtension(line, extended, extentStart, extentEnd, hideForPanel);
             if (!outline.enabled)
             {
                 continue;
@@ -152,8 +163,8 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
 
             // Slightly further from the camera than the line, so it is drawn just behind it.
             Vector3 behind = new Vector3(0f, 0f, 0.05f);
-            outline.SetPosition(0, line.GetPosition(0) + behind);
-            outline.SetPosition(1, line.GetPosition(1) + behind);
+            outline.SetPosition(0, (extended ? extentStart : line.GetPosition(0)) + behind);
+            outline.SetPosition(1, (extended ? extentEnd : line.GetPosition(1)) + behind);
             outline.startWidth = line.startWidth * outlineWidthFactor;
             outline.endWidth = line.endWidth * outlineWidthFactor;
             outline.sortingLayerID = line.sortingLayerID;
@@ -166,8 +177,14 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
             outline.endColor = outlineColor;
         }
 
+        RemoveDestroyedLines(lineOutlines);
+        RemoveDestroyedLines(lineExtensions);
+    }
+
+    private static void RemoveDestroyedLines(Dictionary<LineRenderer, LineRenderer> copies)
+    {
         List<LineRenderer> removed = null;
-        foreach (var kvp in lineOutlines)
+        foreach (var kvp in copies)
         {
             if (kvp.Key == null)
             {
@@ -182,9 +199,132 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         {
             foreach (LineRenderer key in removed)
             {
-                lineOutlines.Remove(key);
+                copies.Remove(key);
             }
         }
+    }
+
+    /// <summary>
+    /// Display only (UX clarity batch): a finished cut line is drawn across the whole map box. The cells are classified
+    /// by the infinite straight line through the two drawn points (SquareLineCalculator), so this shows exactly the
+    /// division that is computed. The copy lives beside the outlines (never under this manager, so line lookups such as
+    /// the line-owner label are unchanged); the line's own points, startPoint / endPoint and everything sent or stored
+    /// are untouched. Not shown while this player is still dragging, and not when the shown segment differs from the
+    /// points the cells were coloured with (a press released before any drag update keeps an older end point).
+    /// </summary>
+    private void SyncLineExtension(LineRenderer line, bool extended, Vector3 start, Vector3 end, bool hideForPanel)
+    {
+        if (!lineExtensions.TryGetValue(line, out LineRenderer extension) || extension == null)
+        {
+            if (!extended)
+            {
+                return;
+            }
+            GameObject extensionObj = new GameObject(line.gameObject.name + "Extension");
+            extensionObj.transform.SetParent(outlineRoot, false);
+            extension = extensionObj.AddComponent<LineRenderer>();
+            extension.material = lineMaterial;
+            extension.positionCount = 2;
+            extension.useWorldSpace = true;
+            lineExtensions[line] = extension;
+        }
+
+        extension.enabled = extended;
+        extension.forceRenderingOff = hideForPanel;
+        if (!extended)
+        {
+            return;
+        }
+        // Between the line (z of its points) and its outline (+0.05), so the drawn segment stays on top.
+        Vector3 behind = new Vector3(0f, 0f, 0.02f);
+        extension.SetPosition(0, start + behind);
+        extension.SetPosition(1, end + behind);
+        extension.startWidth = line.startWidth;
+        extension.endWidth = line.endWidth;
+        extension.sortingLayerID = line.sortingLayerID;
+        extension.sortingOrder = line.sortingOrder;
+        Color shown = line.startColor * (line.sharedMaterial != null ? line.sharedMaterial.color : Color.white);
+        extension.startColor = shown;
+        extension.endColor = shown;
+    }
+
+    /// <summary>
+    /// Display only: the span of the line's infinite extension inside the visible map box, joined with the drawn
+    /// segment itself (which may reach slightly outside the box). False when there is nothing to extend.
+    /// </summary>
+    private bool TryGetLineExtent(LineRenderer line, out Vector3 start, out Vector3 end)
+    {
+        start = Vector3.zero;
+        end = Vector3.zero;
+        if (line == null || line.positionCount < 2)
+        {
+            return false;
+        }
+        Vector3 p0 = line.GetPosition(0);
+        Vector3 p1 = line.GetPosition(1);
+        if (line == playerLineRenderer)
+        {
+            if (isDrawing || !hasDrawnLine)
+            {
+                return false;
+            }
+            // Only when the shown segment is the one the cells were coloured with.
+            if ((p0 - startPoint).sqrMagnitude > 1e-8f || (p1 - endPoint).sqrMagnitude > 1e-8f)
+            {
+                return false;
+            }
+        }
+        Vector2 dir = new Vector2(p1.x - p0.x, p1.y - p0.y);
+        if (dir.sqrMagnitude < 1e-8f)
+        {
+            return false;
+        }
+
+        Rect box = GetLineExtentRect();
+        float tMin = float.NegativeInfinity;
+        float tMax = float.PositiveInfinity;
+        if (!ClipAxis(p0.x, dir.x, box.xMin, box.xMax, ref tMin, ref tMax) || !ClipAxis(p0.y, dir.y, box.yMin, box.yMax, ref tMin, ref tMax))
+        {
+            return false;
+        }
+        tMin = Mathf.Min(tMin, 0f);
+        tMax = Mathf.Max(tMax, 1f);
+        Vector3 d3 = new Vector3(dir.x, dir.y, 0f);
+        start = p0 + d3 * tMin;
+        end = p0 + d3 * tMax;
+        start.z = p0.z;
+        end.z = p0.z;
+        return true;
+    }
+
+    // One slab of a line/box clip on the parametric line p(t) = p0 + t * d.
+    private static bool ClipAxis(float p0, float d, float min, float max, ref float tMin, ref float tMax)
+    {
+        if (Mathf.Abs(d) < 1e-6f)
+        {
+            return p0 >= min && p0 <= max;
+        }
+        float t1 = (min - p0) / d;
+        float t2 = (max - p0) / d;
+        tMin = Mathf.Max(tMin, Mathf.Min(t1, t2));
+        tMax = Mathf.Min(tMax, Mathf.Max(t1, t2));
+        return tMin <= tMax;
+    }
+
+    private Rect GetLineExtentRect()
+    {
+        // Renderer bounds are only meaningful while the box is active (the Help page hides the map); keep the last ones.
+        if (lineExtentBox != null && lineExtentBox.gameObject.activeInHierarchy)
+        {
+            Bounds b = lineExtentBox.bounds;
+            cachedExtentRect = Rect.MinMaxRect(b.min.x, b.min.y, b.max.x, b.max.y);
+            hasCachedExtentRect = true;
+        }
+        if (hasCachedExtentRect)
+        {
+            return cachedExtentRect;
+        }
+        return new Rect(mapCenter.x - mapSize.x / 2f, mapCenter.y - mapSize.y / 2f, mapSize.x, mapSize.y);
     }
 
     private bool IsBlockingPanelOpen()

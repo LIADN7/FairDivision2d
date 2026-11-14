@@ -50231,6 +50231,7 @@ MonoBehaviour:
   inputBlockingPanels:
   - {fileID: 986799668}
   outlineWidthFactor: 2
+  lineExtentBox: {fileID: 1662220192}
   playerLineRenderer: {fileID: 0}
 --- !u!1 &1232205975
 GameObject:

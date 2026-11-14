@@ -36437,6 +36437,9 @@ MonoBehaviour:
   valueOwnerPlate: {fileID: 0}
   valueOwnerRTL: {fileID: 0}
   legendTitleRTL: {fileID: 604127527}
+  otherMapFrame: {fileID: 0}
+  seeOtherLabelRTL: {fileID: 0}
+  seeOtherActiveLabelColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!4 &764684018
 Transform:
   m_ObjectHideFlags: 0
@@ -55657,6 +55660,7 @@ MonoBehaviour:
   inputBlockingPanels:
   - {fileID: 986799668}
   outlineWidthFactor: 2
+  lineExtentBox: {fileID: 1662220192}
   playerLineRenderer: {fileID: 0}
 --- !u!1 &1231440714
 GameObject:
