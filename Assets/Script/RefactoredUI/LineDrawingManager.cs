@@ -235,10 +235,12 @@ public class LineDrawingManager : MonoBehaviourPunCallbacks
         {
             return;
         }
-        // Between the line (z of its points) and its outline (+0.05), so the drawn segment stays on top.
-        Vector3 behind = new Vector3(0f, 0f, 0.02f);
-        extension.SetPosition(0, start + behind);
-        extension.SetPosition(1, end + behind);
+        // On the line's own plane (z of its points): in front of the map's translucent white cover (MapBoundaries,
+        // z ~ 0, which would wash out anything behind it) and of the outline (+0.05). Same colour and width as the
+        // line, so where it overlaps the drawn segment nothing changes.
+        Vector3 inFront = new Vector3(0f, 0f, -0.001f);
+        extension.SetPosition(0, start + inFront);
+        extension.SetPosition(1, end + inFront);
         extension.startWidth = line.startWidth;
         extension.endWidth = line.endWidth;
         extension.sortingLayerID = line.sortingLayerID;
