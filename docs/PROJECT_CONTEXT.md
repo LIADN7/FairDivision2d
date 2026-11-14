@@ -176,7 +176,7 @@ After round 6 the master draws a round index uniformly from 0–5 and shares it;
 | Practice forks | `AITutorial/*` (`PlayerAITutorial`, `PointOfStateAITutorial`, `LineDrawingManagerAITutoria`, `SquareLineCalculatorAITutoria`, `SumSquaresAITutorial`, `HashValuesAITutorial`, `ShowAndHideOnClickAITutoria`, `HelpPageCountdownAITutoria`), `TutorialFplanManager`, `PCPlayerAITutorial` | Renamed copies of the core classes plus the tutorial and PC opponent |
 | UI helpers | `HelpPageCountdown.cs`, `ShowAndHideOnClick.cs`, `Hover.cs` | Help panel, show/hide |
 | Game feel (display only; CutScene, practice, lobby, EndGameFlow, session dialogs) | `UI/GameFeel/RegionSelectionView.cs`, `RegionCard.cs`, `RegionCardPointer.cs`, `UiAppear.cs`, `UiPointerFeedback.cs`, `UiTextPulse.cs`, `UiMotion.cs` (LeanTween wrapper), `UiLoadingDots.cs`, `UiTextPlate.cs`, `GameFeel.cs` / `GameFeelSettings.cs` (effects switch, F8 in Editor/Development) | Region-card states and UI motion; gate nothing (§17 "Game-feel batch") |
-| Tools | `Editor/LiveGameDataWindow.cs` (*Tools → Live Game Data Monitor*), `CutAndChooseClasses/DataScripts/UnityCloudDataScraper.cs` | Play-mode monitor; offline Cloud Save export |
+| Tools | `Editor/LiveGameDataWindow.cs` (*Tools → Live Game Data Monitor*); `tools/research_export/cc_export.py` (offline join/check of exported Cloud Save records) | Play-mode monitor; research export (the legacy `UnityCloudDataScraper` C#/Python scripts were removed 2026-11-14) |
 | Legacy / unused in C&C | `GameManager.cs`, `ChooseButton.cs`, `MapCut.cs`, `StateObj.cs`, `CutAndChooseClasses/ColorButtons.cs`, `HashValues.cs`, `PlayerVsAI.cs`, `PointOfStateAI.cs`, `DemoScripts/*`, `RRScripts/*` | Earlier iterations or other algorithms |
 
 ### 8.3 Prefabs (`Assets/Objects`)
@@ -226,9 +226,9 @@ Saved when the player clicks Next. Not saved: practice, rounds left via Home or 
 
 **Participant record** — `PlayerData` key `PlayerData`: SurveyID, UserID, Name, Email, PhoneNumber, ID, WinRandIndex, Winnings; saved on the EndGameFlow Finish button. Contains **personal data** (name, email). *(Schema 2: the same eight fields in `CC_<runId>_P<role>_final`; with the current lobby and end screen only the nickname is collected — the email, phone and ID inputs are inactive, so those fields are empty.)*
 
-**Tooling and leftovers**: `UnityCloudDataScraper` (REST export of Cloud Save data); `LiveGameDataWindow` (Editor monitor); `Assets/DataFiles/*` and root `CutAndChhosedatabase.dat` are old local test exports (content not reviewed).
+**Tooling and leftovers**: `UnityCloudDataScraper.cs` / `.py` (legacy REST export with embedded service-account credentials) were **removed on 2026-11-14** (`chore/remove-legacy-unity-credentials`); the offline exporter is `tools/research_export/cc_export.py` (RESEARCH_DATA.md §6); `LiveGameDataWindow` (Editor monitor); `Assets/DataFiles/*` and root `CutAndChhosedatabase.dat` are old local test exports (content not reviewed).
 
-> **Security — separate remediation required:** `UnityCloudDataScraper.cs` contains a hard-coded project ID and **commented-out service-account credentials committed to Git**. Treat them as exposed: rotate them in the Unity dashboard and remove them from the repository (and its history if required) as a separate, approved task. Never copy, print or test them.
+> **Security — credentials removed from the current tree (2026-11-14), still in Git history:** `UnityCloudDataScraper.cs` held commented-out service-account credentials and `UnityCloudDataScraper.py` held **active** ones of a **second, different key** of the same project. Both files (and a disabled scraper component in `MainScene`) were removed. The owner reported revoking the exposed credential in the Unity dashboard; whether that covers the second key must be confirmed by the owner. The public Git history still contains both; treat them as compromised. Never copy, print or test them.
 
 ---
 
@@ -290,7 +290,7 @@ Not yet performed or verified on any build. Before deploying to participants:
 5. Record the build profile, commit hash and deployment date with the research team.
 6. *(added 2026-11-13)* **Hosting:** the Release profile compresses with Brotli and has **no decompression fallback**, so the host must serve the `.br` files with `Content-Encoding: br` (and the right MIME types) over **HTTPS** — browsers accept Brotli content encoding only on secure origins. Load the build once on the target host before announcing it.
 7. *(added 2026-11-13)* **Survey destination:** in Release the end screen's "חזרה לאתר הסקר" button calls `Config.RedirectToSurvey`, which still opens the panel4all URL. Decide the destination (or keep the button hidden) before deployment; this is a research-owner decision, not a code default.
-8. *(added 2026-11-13)* **Credentials:** the repository is **public**. Revoke/rotate the service-account key that is still committed (commented out) in `UnityCloudDataScraper.cs` (§11) before collecting research data, and create a new read-only *Cloud Save Viewer* account for the export (RESEARCH_DATA.md §6).
+8. *(added 2026-11-13; updated 2026-11-14)* **Credentials:** the repository is **public**. Both service-account keys that were committed in the removed `UnityCloudDataScraper.cs` / `.py` (two different key IDs, §11) must be revoked before collecting research data, and create a new read-only *Cloud Save Viewer* account for the export (RESEARCH_DATA.md §6).
 
 ---
 
@@ -447,7 +447,7 @@ Follow-up fixes were re-verified in a single-client Editor practice session: ref
 - `EndGameFlow` intro text: was clipped at the top at 960×600; on `feat/ux-batch-5` it auto-sizes and fits (UX-010).
 - Room-full message, real keyboard name entry and **any Release build** are unverified. Release verification (§13.3) is required before any participant deployment.
 - Chat while the waiting overlay is shown: verified on `feat/ux-batch-5` (see Batch 5). Typing: since the Batch 5 final fixes the WebGL chat input is a native HTML input over the Unity field (correct Hebrew while typing). Where that input cannot be used (browser fullscreen — Unity makes the canvas itself the fullscreen element — and the Editor), the Unity field is typed into directly; since 2026-11-07 it shows an RTL-correct TMP copy of the typed text with a caret mark (`TypedTextRTL`) whenever the text contains Hebrew (see below).
-- Exposed historical service-account credentials in `UnityCloudDataScraper.cs` still need owner review/rotation (§11).
+- Exposed historical service-account credentials (removed from the tree 2026-11-14, still in Git history): owner revocation of both keys (§11).
 - Open research questions: §15.
 
 Test-tool notes: WebGL clicks need a hover before the press (Unity reads the last mouse-move position, so a bare press can start a line at the old cursor position); Editor `capture game_view` must save under the project and lands in `Assets/Temp` — move the file out and delete that folder via `AssetDatabase.DeleteAsset`.
@@ -738,3 +738,5 @@ No false disconnect notice was observed. Inferred, not verified: a hidden tab ke
 - Editor compile 0 errors; WebGL Development build 0 errors; build-profile assets and the TMP fallback font unchanged by the builds.
 
 *Remaining.* Release compile of this branch not repeated (only test-mode code and unconditional code changed; the Editor and Development builds compile them). New Hebrew text needs owner confirmation. Test data left in `development`: run `20261113-093438-da6d43` (two new test players) and three single-record key-limit runs (`20261113-990000-*`, Editor test identity). The old service-account credentials remain in Git history (owner revokes them in the Unity dashboard).
+
+**Legacy credential cleanup (2026-11-14, `chore/remove-legacy-unity-credentials` from `dev` `63f541e`; owner-authorized).** Removed `Assets/Script/CutAndChooseClasses/DataScripts/UnityCloudDataScraper.cs` and `UnityCloudDataScraper.py` with their `.meta` files and the then-empty `DataScripts` folder, plus the disabled scraper component that `MainScene` had added to its `DatabaseManager` prefab instance (scene diff: only that added-component override; the prefab asset never contained it). Dependencies checked: no C# reference, no other scene/prefab/asset reference to the script GUID, no Editor menu, not used by `cc_export.py`. The Python scraper held **active** credentials of a key different from the C# file's (same project ID); the owner reported revoking the exposed credential — confirm that both keys are revoked. Not touched: `DataScript_PY/all_player_data.py`, which reads a service-account file from outside the repository (no embedded secret). Verification: Editor compile 0 errors; no remaining reference to the removed GUID; `MainScene`, `CutSceneAITutorial`, `CutScene`, `EndGameFlow` 0 missing scripts and 0 broken references; `test_cc_export.py` 8/8. Git history is unchanged (no rewrite), so the removed values remain in the public history.
