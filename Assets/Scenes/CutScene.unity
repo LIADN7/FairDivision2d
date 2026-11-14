@@ -22772,6 +22772,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 544176010}
+  - component: {fileID: 544176011}
   m_Layer: 5
   m_Name: SquareValueExplane
   m_TagString: Untagged
@@ -22802,6 +22803,26 @@ RectTransform:
   m_AnchoredPosition: {x: -394, y: -262}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &544176011
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 544176009}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc15c8ec29e63fb4195cbea2dfed36ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HeatLegendView
+  lowGreen: {fileID: 392558237}
+  lowRed: {fileID: 497296836}
+  midGreen: {fileID: 696939979}
+  midRed: {fileID: 780653643}
+  highGreen: {fileID: 2013677750}
+  highRed: {fileID: 48707994}
+  mapCover: {r: 1, g: 1, b: 1, a: 0.318}
+  texSize: 40
 --- !u!1 &545240860
 GameObject:
   m_ObjectHideFlags: 0
