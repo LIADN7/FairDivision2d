@@ -16,7 +16,19 @@ public class LoadScene : MonoBehaviour
 
 
 
+    // Home button (CutScene). UX-025: asks first (GameSessionDialogs); the exit below runs only after "יציאה".
+    // The round record is saved only by Next, so the "not saved" line is shown until this player has pressed Next.
     public void LeaveRoomBeforeLoadTheScene(string sceneName)
+    {
+        bool roundUnsaved = Player.inst != null && !Player.inst.HasPressedNext();
+        if (GameSessionDialogs.RequestExit(() => LeaveRoomNow(sceneName), roundUnsaved))
+        {
+            return;
+        }
+        LeaveRoomNow(sceneName);
+    }
+
+    private void LeaveRoomNow(string sceneName)
     {
 
         try
@@ -43,7 +55,17 @@ public class LoadScene : MonoBehaviour
 
 
 
+    // Home button (CutSceneAITutorial). UX-025: asks first; practice is never saved, so no "not saved" line.
     public void LeaveRoomBeforeLoadTheSceneAITutorial(string sceneName)
+    {
+        if (GameSessionDialogs.RequestExit(() => LeaveRoomNowAITutorial(sceneName), false))
+        {
+            return;
+        }
+        LeaveRoomNowAITutorial(sceneName);
+    }
+
+    private void LeaveRoomNowAITutorial(string sceneName)
     {
 
         try

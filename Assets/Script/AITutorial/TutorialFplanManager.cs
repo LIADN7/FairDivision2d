@@ -240,6 +240,9 @@ public class TutorialFplanManager : MonoBehaviour
             raycastBlocker.blocksRaycasts = locked;
             raycastBlocker.interactable = locked;
         }
+
+        // Display only: the phase instruction and waiting overlay are hidden while a step is shown; refresh them.
+        PlayerAITutorial.inst?.UpdatePhaseInstruction();
     }
 
     /// <summary>

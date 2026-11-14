@@ -9,6 +9,10 @@ public class PlayerData : MonoBehaviour
 {
     public static PlayerData inst { get; private set; }
 
+    // Survey metadata
+    public string SurveyID { get; set; }
+    public string UserID { get; set; }
+
     // Player Info
     public string Name { get; set; }
     public string Email { get; set; }
@@ -33,12 +37,63 @@ public class PlayerData : MonoBehaviour
         }
     }
 
-    // Save player data to the cloud
-    public async Task<bool> SaveDatabaseAsync()
+    // Save the final reward record of this run (PlayerData_<runId>_P<role>; replaces the legacy fixed "PlayerData" key,
+    // which every later experiment of the same anonymous player overwrote). Same eight fields and meanings as the legacy
+    // record, plus the run identity and the keys of this player's round records.
+    // Completion gate: returns true only when (1) this client recorded exactly one round record for each real round 0-5
+    // of this run with no conflict, and (2) the final record AND every round record are confirmed by Cloud Save. The
+    // final payload is built once (first call) and reused by every retry, so a retry never changes the reward or the
+    // payment round; failed round records are retried with their original payloads. A round that was never recorded
+    // cannot be repaired by a retry: the gate then fails (ExperimentRun.RoundsComplete is false), while the recorded
+    // rounds and the final record are still saved so that the data that exists reaches Cloud Save.
+    public async Task<bool> SaveFinalRecordAsync()
     {
-        string keyName = "PlayerData";
-        DatabaseManager.inst.SaveData(keyName, ToJson());
-        return true;
+        string finalKey = ExperimentRun.FinalKey();
+        if (!ExperimentRun.IsValidKey(finalKey))
+        {
+            Debug.LogError("SAVE: invalid Cloud Save key " + finalKey + " - nothing saved"); // cannot happen with generated run IDs
+            return false;
+        }
+        if (!ResearchSaveQueue.IsRegistered(finalKey))
+        {
+            ResearchSaveQueue.Register(finalKey, ExperimentRun.ToPayload(ToFinalRecord()));
+        }
+        var roundKeys = new System.Collections.Generic.List<string>(ExperimentRun.RoundKeys);
+        var missing = ExperimentRun.MissingRounds();
+        bool roundsComplete = ExperimentRun.RoundsComplete;
+        Task<bool> rounds = roundKeys.Count > 0 ? ResearchSaveQueue.EnsureSavedAsync(roundKeys) : Task.FromResult(true);
+        Task<bool> final = ResearchSaveQueue.SaveAsync(finalKey);
+        bool roundsSaved = await rounds;
+        bool finalSaved = await final;
+        bool passed = roundsComplete && roundsSaved && finalSaved;
+        roundKeys.Add(finalKey);
+        string completeness = roundsComplete ? "" : "rounds never recorded: [" + string.Join(",", missing) + "]; conflicts: "
+            + ExperimentRun.RoundConflicts.Count + " (" + string.Join(" | ", ExperimentRun.RoundConflicts) + "); ";
+        Debug.Log("SAVE: completion gate " + (passed ? "PASSED" : "NOT PASSED") + " - " + completeness
+            + ResearchSaveQueue.Describe(roundKeys));
+        return passed;
+    }
+
+    private FinalRecordModel ToFinalRecord()
+    {
+        PlayerDataModel m = ToModel();
+        return new FinalRecordModel
+        {
+            SchemaVersion = ExperimentRun.SchemaVersion,
+            RunId = ExperimentRun.EnsureRunId(),
+            RunIdShared = ExperimentRun.RunIdShared,
+            PlayerRole = ExperimentRun.PlayerRole,
+            RoomName = ExperimentRun.RoomName,
+            SurveyID = m.SurveyID,
+            UserID = m.UserID,
+            Name = m.Name,
+            Email = m.Email,
+            PhoneNumber = m.PhoneNumber,
+            ID = m.ID,
+            WinRandIndex = m.WinRandIndex,
+            Winnings = m.Winnings,
+            RoundKeys = new System.Collections.Generic.List<string>(ExperimentRun.RoundKeys)
+        };
     }
 
     // Load data from cloud (you'd need to parse JSON back into model)
@@ -61,6 +116,8 @@ public class PlayerData : MonoBehaviour
             if (model != null)
             {
                 Debug.Log("Loaded Player Data:");
+                Debug.Log($"SurveyID: {model.SurveyID}");
+                Debug.Log($"UserID: {model.UserID}");
                 Debug.Log($"Name: {model.Name}");
                 Debug.Log($"Email: {model.Email}");
                 Debug.Log($"Phone: {model.PhoneNumber}");
@@ -183,6 +240,8 @@ public class PlayerData : MonoBehaviour
     {
         return new PlayerDataModel
         {
+            SurveyID = string.IsNullOrEmpty(this.SurveyID) ? Config.inst?.surveyID : this.SurveyID,
+            UserID = string.IsNullOrEmpty(this.UserID) ? Config.inst?.userID : this.UserID,
             Name = this.Name,
             Email = this.Email,
             PhoneNumber = this.PhoneNumber,
@@ -195,6 +254,8 @@ public class PlayerData : MonoBehaviour
     // Load from model
     private void LoadFromModel(PlayerDataModel model)
     {
+        SurveyID = model.SurveyID;
+        UserID = model.UserID;
         Name = model.Name;
         Email = model.Email;
         PhoneNumber = model.PhoneNumber;
@@ -207,11 +268,35 @@ public class PlayerData : MonoBehaviour
     [Serializable]
     public class PlayerDataModel
     {
+        public string SurveyID;
+        public string UserID;
         public string Name;
         public string Email;
         public string PhoneNumber;
         public string ID;
         public int WinRandIndex;
         public float Winnings;
+    }
+
+    // Final reward record (schema 2): run identity + the PlayerDataModel fields unchanged + this player's round keys.
+    [Serializable]
+    public class FinalRecordModel
+    {
+        public int SchemaVersion;
+        public string RecordType = "final";
+        public string RunId;
+        public bool RunIdShared;
+        public int PlayerRole;
+        public string UnityPlayerId = ""; // filled when the record is sent (owner of the record)
+        public string RoomName;
+        public string SurveyID;
+        public string UserID;
+        public string Name;
+        public string Email;
+        public string PhoneNumber;
+        public string ID;
+        public int WinRandIndex;
+        public float Winnings;
+        public System.Collections.Generic.List<string> RoundKeys;
     }
 }

@@ -1,0 +1,6 @@
+RunId,RunIdShared,RoomName,Roles,DistinctPlayerIds,Complete,SameWinRandIndex,CrossChecks,Issues,KeyFormats
+20261112-204719-a9f9be,True,Room_1,1 2,2,True,True,R0:ok R1:ok R2:ok R3:ok R4:ok R5:ok,,CC
+20261112-210655-f04a40,True,Room_1,1 2,2,True,True,R0:ok R1:ok R2:ok R3:ok R4:ok R5:ok,,CC
+20261112-221552-99791d,True,Room_1,1 2,2,False,False,R0:ok R1:ok,"P1 missing rounds [2, 3, 4, 5] | P1 final record missing | P2 missing rounds [2, 3, 4, 5] | P2 final record missing",CC
+20261112-222139-5bc301,True,Room_1,1 2,2,False,False,R0:ok R1:ok R2:ok R3:ok,"P1 missing rounds [4, 5] | P1 final record missing | P2 missing rounds [4, 5] | P2 final record missing",CC
+20261113-093438-da6d43,True,Room_3,1 2,2,True,True,R0:ok R1:ok R2:ok R3:ok R4:ok R5:ok,,readable

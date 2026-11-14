@@ -1,0 +1,86 @@
+{
+  "CutAChoose_2_Chat_20261113-093438-da6d43_P1": {
+    "AmountOfColor": {
+      "GreenO": 139,
+      "GreenX": 126,
+      "RedO": 99,
+      "RedX": 110
+    },
+    "ChatHistory": [],
+    "CountPlayerSeeOther": 0,
+    "OtherPlayerColorValues": {
+      "GreenO": 40.98513,
+      "GreenX": 23.4200745,
+      "RedO": 24.3494415,
+      "RedX": 11.2453537
+    },
+    "PlayerChoosenColors": [
+      3,
+      1
+    ],
+    "PlayerColorValues": {
+      "GreenO": 21.7611351,
+      "GreenX": 37.7530365,
+      "RedO": 29.1497974,
+      "RedX": 11.3360319
+    },
+    "PlayerCutValues": {
+      "Green": 59.51417,
+      "Red": 40.48583
+    },
+    "PlayerName": "QA-KeysA",
+    "PlayerRole": 1,
+    "PlayerStartTime": "2026-11-13T11:38:42.743+02:00",
+    "PlayerTimeCut": "2026-11-13T11:39:19.909+02:00",
+    "RecordType": "round",
+    "RoomName": "Room_3",
+    "RunId": "20261113-093438-da6d43",
+    "RunIdShared": true,
+    "ScenarioNum": 2,
+    "ScenarioType": "Chat",
+    "SchemaVersion": 2,
+    "SumOfMyPart": 59.51417,
+    "UnityPlayerId": "player-C (Chrome)",
+    "isAgreed": false,
+    "otherPlayerName": "QA-KeysB",
+    "playerCutSquares": {
+      "1000": {
+        "1": "Donegal"
+      },
+      "1001": {
+        "2": "Down"
+      },
+      "1002": {
+        "2": "Derry"
+      },
+      "...": "(474 cells; shortened for this example)"
+    },
+    "surveyID": "TEST_keys_s",
+    "userID": "TEST_keys_a"
+  },
+  "PlayerData_20261113-093438-da6d43_P1": {
+    "Email": "",
+    "ID": "",
+    "Name": "QA-KeysA",
+    "PhoneNumber": "",
+    "PlayerRole": 1,
+    "RecordType": "final",
+    "RoomName": "Room_3",
+    "RoundKeys": [
+      "CutAChoose_0_Normal_20261113-093438-da6d43_P1",
+      "CutAChoose_1_Normal_20261113-093438-da6d43_P1",
+      "CutAChoose_2_Chat_20261113-093438-da6d43_P1",
+      "CutAChoose_3_Chat_20261113-093438-da6d43_P1",
+      "CutAChoose_4_InfoAChat_20261113-093438-da6d43_P1",
+      "CutAChoose_5_InfoAChat_20261113-093438-da6d43_P1"
+    ],
+    "RunId": "20261113-093438-da6d43",
+    "RunIdShared": true,
+    "SchemaVersion": 2,
+    "SurveyID": "TEST_keys_s",
+    "UnityPlayerId": "player-C (Chrome)",
+    "UserID": "TEST_keys_a",
+    "WinRandIndex": 3,
+    "Winnings": 51.7712555
+  }
+}

@@ -188,6 +188,16 @@ public class PointOfStateAITutorial : MonoBehaviour
         return this.myKey;
     }
 
+    // Batch 6 (owner-approved): called only when a new experiment starts on this client (Launcher room buttons, in the
+    // lobby: not in a room, no map cells loaded, no round message pending). The practice scene (its keys stay local) also then numbers its cells
+    // exactly as after a fresh page load. Never call it while a round scene is loaded.
+    public static int ResetKeyCounter()
+    {
+        int previous = key;
+        key = 0;
+        return previous;
+    }
+
     public void setChildText(string x)
     {
         this.textChildObject.GetComponent<Text>().text = x;

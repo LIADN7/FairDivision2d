@@ -1,6 +1,7 @@
 using Photon.Pun;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -27,6 +28,7 @@ public class PlayerVsAI : MonoBehaviour
     private Dictionary<int, int> savePlayer2 = new Dictionary<int, int>(); //???????
     private int chooseNum = 0; //???????
     private string endExplanationPlayers = "You get:\n" ;
+    private string endExplanationPlayersRTL = "קיבלת:\n";
     private bool playerCut = false; 
     private bool palyersGameOver = false;
 
@@ -38,7 +40,7 @@ public class PlayerVsAI : MonoBehaviour
         inst = this;
         palyerName.text = "Demo Game, You Are Player 1";
         InitSquares();
-        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)", false);
+        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)", false, "אנא חלקו את המפה לשני חלקים (אם תחלקו לשני חלקים שווים, מובטח שתקבלו לפחות 50%)");
 
 
 
@@ -213,11 +215,11 @@ public class PlayerVsAI : MonoBehaviour
 
             if (playerNum == 1)
             {
-                Manager.inst.setNote(-1, "The meaning:\nO =  player 2 choose green\nX =  player 2 choose red\n\nPlease choose one color", false);
+                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease choose one color", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nאנא בחרו צבע אחד");
             }
             else if (playerNum == 2)
             {
-                Manager.inst.setNote(-1, "The meaning:\nO =  player 2 choose green\nX =  player 2 choose red\n\nPlease wait player 1 choose one color,\nafter that you choose 2 colors", false);
+                Manager.inst.setNote(-1, "The four colors are:\n1 = Red\n2 = Green\n3 = Yellow\n4 = Blue\n\nPlease wait for player 1 to choose one color,\nafter that choose 2 colors", false, "ארבעת הצבעים הם:\n1 = אדום\n2 = ירוק\n3 = צהוב\n4 = כחול\n\nהמתינו ששחקן 1 יבחר צבע אחד,\nולאחר מכן בחרו שני צבעים");
             }
         
     }
@@ -282,7 +284,7 @@ public class PlayerVsAI : MonoBehaviour
             buttonsValueText[1].text = "Part 2 value: " + (greenVal * 100) + "%";
             if ((greenVal * 100) == 50)
             {
-                Manager.inst.setNote(-1, "The map is divided into 50%\n(if you wish, you can change the division or choose not to divide equally)", false);
+                Manager.inst.setNote(-1, "The map is divided into 50%\n(if you wish, you can change the division or choose not to divide equally)", false, "המפה מחולקת ל־50%\n(אם תרצו, תוכלו לשנות את החלוקה או לבחור שלא לחלק באופן שווה)");
 
             }
             return (greenVal * 100);
@@ -297,6 +299,7 @@ public class PlayerVsAI : MonoBehaviour
             int playerNum = 1;
             float tempSum = Manager.inst.getSumRGYB(i);
             this.endExplanationPlayers += getExplanationPlayer(i, tempSum);
+            this.endExplanationPlayersRTL += getExplanationPlayerRTL(i, tempSum);
             choosePlayer[playerNum - 1] = tempSum;
             buttonsValueText[i].text = "Taken By Player 1 (You)";
             //colorsValueObj[i].SetActive(false);
@@ -304,6 +307,7 @@ public class PlayerVsAI : MonoBehaviour
             int last = getValuesForPlayer2(i);
             tempSum = Manager.inst.getSumRGYB(last);
             this.endExplanationPlayers += getExplanationPlayer(last, tempSum);
+            this.endExplanationPlayersRTL += getExplanationPlayerRTL(last, tempSum);
             choosePlayer[playerNum - 1] += tempSum;
             //colorsValueObj[i].SetActive(false);
             chooseNum++;
@@ -317,14 +321,21 @@ public class PlayerVsAI : MonoBehaviour
                 }
             }
 
-                Manager.inst.setNote(-1, endExplanationPlayers, false);
+                Manager.inst.setNote(-1, endExplanationPlayers, false, endExplanationPlayersRTL);
             Manager.inst.setEndGameLayer(choosePlayer[playerNum - 1],false);
         }
     }
     private string getExplanationPlayer(int color, float value)
     {
-        string[] strColors = { "RED-X", "GREEN-O", "RED-O", "GREEN-X" };
-        return "" + strColors[color] + " with value: " + value + "\n";
+        string[] strColors = { "Red", "Green", "Yellow", "Blue" };
+        return "" + strColors[color] + " with value: " + value + "%\n";
+    }
+
+    private string getExplanationPlayerRTL(int color, float value)
+    {
+        string[] strColors = { "אדום", "ירוק", "צהוב", "כחול" };
+        string valueText = new string(value.ToString().Reverse().ToArray());
+        return "" + strColors[color] + " בערך: " + valueText + "%\n";
     }
 
 
