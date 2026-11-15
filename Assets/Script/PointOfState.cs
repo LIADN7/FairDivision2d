@@ -178,7 +178,9 @@ public class PointOfState : MonoBehaviour
             spriteStatus = 4;
 
         }
-        this.childObject.GetComponent<SpriteRenderer>().color = new Color(colorPower * 0.5f, 0.5f, 0.5f, 0.8f);
+        // Display only (UX clarity batch): same level (colorPower), clearer lighter-is-higher colours. Was
+        // new Color(colorPower * 0.5f, 0.5f, 0.5f, 0.8f).
+        this.childObject.GetComponent<SpriteRenderer>().color = HeatShading.InnerColor(colorPower);
 
 
     }
