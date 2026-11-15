@@ -6,6 +6,7 @@ using UnityEngine;
 // failure here can never interrupt Player's RPC handlers, and Player's rules, RPCs and saves do not read anything back.
 // UX clarity batch: the same state also drives the map link (RegionMapHighlight): hovering or keyboard-focusing a card
 // spotlights its region on the map, and taken regions keep an outline (yours) or a veil (the other player's).
+// Visual polish: the map moves to each new state with a short fade (cosmetic; instant when effects are off).
 public class RegionSelectionView : MonoBehaviour
 {
     // Same order as Player.colorsValueObj: {red, green, yellow, blue}.
@@ -16,13 +17,15 @@ public class RegionSelectionView : MonoBehaviour
     [SerializeField] private Color hoverOutline = new Color(1f, 1f, 1f, 1f);
     [SerializeField] private Color mineOutline = new Color(1f, 0.784f, 0.341f, 1f); // amber #FFC857, as on the card
     [SerializeField] private Color outlineShadow = new Color(0.043f, 0.078f, 0.141f, 0.9f);
-    [SerializeField] private Color spotlightVeil = new Color(0.043f, 0.078f, 0.141f, 0.55f);
+    [SerializeField] private Color spotlightVeil = new Color(0.043f, 0.078f, 0.141f, 0.45f); // visual polish: was 0.55
     [SerializeField] private Color otherVeil = new Color(0.043f, 0.078f, 0.141f, 0.38f);
     [SerializeField] private float outlineWidth = 0.03f; // world units
+    [SerializeField] private float mapTransition = 0.14f; // seconds; fade between map-link states (display only)
 
     private static RegionSelectionView current;
 
     private RegionMapHighlight map;
+    private int mapTween = -1;
     private bool regionsShown;
     private int pointerIndex = -1;
     private int focusIndex = -1;
@@ -34,6 +37,7 @@ public class RegionSelectionView : MonoBehaviour
 
     private void OnDestroy()
     {
+        UiMotion.Stop(ref mapTween);
         if (current == this)
         {
             current = null;
@@ -188,5 +192,28 @@ public class RegionSelectionView : MonoBehaviour
         }
         int spotlight = pointerIndex >= 0 ? pointerIndex : focusIndex;
         map.Render(regionsShown && Application.isPlaying, spotlight, owners);
+
+        // Cosmetic fade from the shown look to the new one; restarting mid-fade continues from what is shown.
+        UiMotion.Stop(ref mapTween);
+        if (mapTransition > 0f && GameFeel.Animate(this))
+        {
+            RegionMapHighlight target = map;
+            mapTween = UiMotion.Play(gameObject, mapTransition, t =>
+            {
+                try
+                {
+                    target.Step(t);
+                }
+                catch (Exception ex)
+                {
+                    UiMotion.Stop(ref mapTween);
+                    Debug.LogWarning("GAMEFEEL: region map fade failed: " + ex.Message);
+                }
+            });
+        }
+        else
+        {
+            map.Step(1f);
+        }
     }
 }
