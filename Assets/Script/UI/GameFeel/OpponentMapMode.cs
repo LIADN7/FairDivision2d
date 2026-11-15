@@ -7,6 +7,8 @@ using UnityEngine.UI;
 // - map board: a subtle dim of the board BEHIND the cells (heat squares, cell colours and labels are not tinted);
 // - see-other toggle: deep-red fill (was plain red), white label, a light ring and one soft pulse when the mode starts;
 // - value-owner plate: deep-red fill with a light border; legend and map titles in a soft rose;
+// - red / green side readouts: a thin light border on each and a faint deep-red card behind the pair (their red and
+//   green fills, texts and interactable state are unchanged);
 // all with one short transition. Manager calls Set with the state it already derives (isShowView while the toggle is
 // available); this class reads nothing else, writes only colours / its own decor objects, and gates nothing. The
 // toggle's rules, CountPlayerSeeOther, the readouts and every text are unchanged.
@@ -36,6 +38,12 @@ public sealed class OpponentMapMode
     private const float GlowExtent = 0.34f; // world units beyond the frame bars
     private const float RingScale = 1.2f;   // ring image size / toggle size
     private const float PulseGrow = 0.10f;
+    private const float ReadoutBorderWidth = 1.5f;      // canvas units
+    private const float ReadoutBorderAlpha = 0.9f;
+    private const float ReadoutCardPadding = 9f;        // canvas units around the two readouts
+    // Opaque dark red: a translucent card would show its own border copies (UI Outline) through it as pink.
+    private static readonly Color ReadoutCardColor = new Color(0.27f, 0.05f, 0.09f, 1f);
+    private const float ReadoutCardBorderAlpha = 0.35f;
 
     private readonly MonoBehaviour owner;
     private readonly Parts parts;
@@ -49,6 +57,10 @@ public sealed class OpponentMapMode
     private SpriteRenderer boardDim;
     private Image ring;
     private Outline plateBorder;
+    private readonly RectTransform[] readouts; // the red / green side readouts (also region buttons later); colour-neutral decor only
+    private Outline[] readoutBorders;
+    private Image readoutCard;
+    private Outline readoutCardBorder;
     private float amount;   // shown: 0 own view .. 1 other player's view
     private bool target;
     private int tween = -1;
@@ -69,6 +81,12 @@ public sealed class OpponentMapMode
         Transform mapTexts = parts.frame != null && parts.frame.transform.parent != null ? parts.frame.transform.parent.Find("MapTexts/BelfastTitle") : null;
         mapTitle = mapTexts != null ? mapTexts.GetComponent<Text>() : null;
         mapTitleOwn = mapTitle != null ? mapTitle.color : Color.white;
+        Transform items = parts.plate != null ? parts.plate.transform.parent : null;
+        readouts = new[]
+        {
+            items != null ? items.Find("BackRedValue") as RectTransform : null,
+            items != null ? items.Find("BackGreenValue") as RectTransform : null,
+        };
     }
 
     // Called after Manager has written its own instant state (plate colour, toggle colour), so the shown blend is
@@ -174,6 +192,29 @@ public sealed class OpponentMapMode
                 if (plateBorder.enabled != on) plateBorder.enabled = on;
             }
         }
+        if (on) EnsureReadoutDecor();
+        if (readoutBorders != null)
+        {
+            Color b = AccentLight;
+            b.a = ReadoutBorderAlpha * amount;
+            foreach (Outline o in readoutBorders)
+            {
+                if (o == null) continue;
+                o.effectColor = b;
+                if (o.enabled != on) o.enabled = on;
+            }
+        }
+        if (readoutCard != null)
+        {
+            Color c = ReadoutCardColor;
+            c.a *= amount;
+            readoutCard.color = c;
+            if (readoutCard.enabled != on) readoutCard.enabled = on;
+            Color cb = AccentLight;
+            cb.a = ReadoutCardBorderAlpha * amount;
+            readoutCardBorder.effectColor = cb;
+            if (readoutCardBorder.enabled != on) readoutCardBorder.enabled = on;
+        }
         if (parts.legendTitle != null)
         {
             parts.legendTitle.color = Color.Lerp(legendOwn, TitleRose, amount);
@@ -254,6 +295,67 @@ public sealed class OpponentMapMode
     private static float SafeAbs(float v)
     {
         return Mathf.Abs(v) > 1e-6f ? Mathf.Abs(v) : 1f;
+    }
+
+    // The two side readouts: a thin light border on each (an Outline mesh effect on its own Image; the fill colour,
+    // label, interactable state and the RegionCard decor are untouched) and a faint deep-red rounded card behind the
+    // pair, inserted just before them under ViewItems (no layout group there; nothing reads its child order).
+    private void EnsureReadoutDecor()
+    {
+        if (readoutBorders != null || readouts[0] == null || readouts[1] == null)
+        {
+            return;
+        }
+        readoutBorders = new Outline[readouts.Length];
+        for (int i = 0; i < readouts.Length; i++)
+        {
+            Image img = readouts[i].GetComponent<Image>();
+            if (img == null) continue;
+            Outline o = img.gameObject.AddComponent<Outline>();
+            // The readouts are 1x1 rects scaled to their size, so express the border width in canvas units per axis.
+            Vector3 s = readouts[i].localScale;
+            o.effectDistance = new Vector2(ReadoutBorderWidth / SafeAbs(s.x), -ReadoutBorderWidth / SafeAbs(s.y));
+            o.useGraphicAlpha = false;
+            o.effectColor = new Color(1f, 1f, 1f, 0f);
+            o.enabled = false;
+            readoutBorders[i] = o;
+        }
+
+        Transform items = readouts[0].parent;
+        Vector2 min = new Vector2(float.MaxValue, float.MaxValue), max = new Vector2(float.MinValue, float.MinValue);
+        Vector3[] corners = new Vector3[4];
+        float z = 0f;
+        foreach (RectTransform r in readouts)
+        {
+            r.GetWorldCorners(corners);
+            foreach (Vector3 c in corners)
+            {
+                Vector3 l = items.InverseTransformPoint(c);
+                min = Vector2.Min(min, l);
+                max = Vector2.Max(max, l);
+            }
+            z = r.localPosition.z;
+        }
+        GameObject go = new GameObject("ModeReadoutCard", typeof(RectTransform));
+        RectTransform rt = (RectTransform)go.transform;
+        rt.SetParent(items, false);
+        rt.SetSiblingIndex(Mathf.Min(readouts[0].GetSiblingIndex(), readouts[1].GetSiblingIndex()));
+        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = (max - min) + Vector2.one * (2f * ReadoutCardPadding);
+        Vector2 centre = (min + max) * 0.5f;
+        rt.localPosition = new Vector3(centre.x, centre.y, z);
+        readoutCard = go.AddComponent<Image>();
+        readoutCard.sprite = parts.plate.sprite;
+        readoutCard.type = Image.Type.Sliced;
+        readoutCard.pixelsPerUnitMultiplier = parts.plate.pixelsPerUnitMultiplier;
+        readoutCard.raycastTarget = false;
+        readoutCard.color = new Color(1f, 1f, 1f, 0f);
+        readoutCard.enabled = false;
+        readoutCardBorder = go.AddComponent<Outline>();
+        readoutCardBorder.effectDistance = new Vector2(1.2f, -1.2f);
+        readoutCardBorder.useGraphicAlpha = false;
+        readoutCardBorder.enabled = false;
+        go.AddComponent<LayoutElement>().ignoreLayout = true;
     }
 
     // Thin light ring just outside the round toggle (a non-raycast child added last, so existing child indices and the

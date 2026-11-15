@@ -13,5 +13,8 @@ Captured 2026-11-15 on `feat/ux-clarity-batch` (local commit, not pushed), Unity
 | `05_outline_detail_zoom.jpg` | 2× crop of the same hover (Donegal, Tyrone, Fermanagh). |
 | `06_region_owned_before_after.jpg` | After the choices (green chosen, yellow remainder; computer red + blue): amber per-cell edges vs smooth amber contours; the computer's regions keep the same veil. |
 | `07_practice_states.jpg` | Practice after the change: no hover, hover green, hover fade held at 40 %, hover after the choices. |
+| `08_readout_buttons_own_vs_opponent.jpg` | Final refinement: the red / green side readouts (`ViewItems/BackRedValue`, `BackGreenValue`) on the own map vs the opponent map. |
+| `09_readout_buttons_closeup.jpg` | 2× close-up: original batch, previous polish (`f5cbeb0`), this change (thin light border on each button, opaque dark-red card behind the pair), and back on the own map. |
+| `10_readout_buttons_transition.jpg` | The same 0.17 s mode fade on the readouts: own map, held at 50 %, opponent map. |
 
 **Same values before and after (display-only check):** practice cards 26.82 / 31.68 / 17.31 / 24.19 %, received green 31.7 % + yellow 17.3 % = 49.0 %; CutScene own readouts 44.12955 / 55.87045 %, other player's 31.97026 / 68.02974 %, 187 / 287 cells per side; `CountPlayerSeeOther` 0 → 1 → 2 per toggle as before; returning to the own view restores every colour exactly; the Help page hides the frame, glow and toggle with the map.
