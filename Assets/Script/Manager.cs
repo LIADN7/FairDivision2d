@@ -31,7 +31,16 @@ public class Manager : MonoBehaviour
     private const string ownLegendTitleRTL = "שווי המשבצת עבורכם";
     private const string otherLegendTitleRTL = "שווי המשבצת עבור השחקן השני";
     private static readonly Color ownValuesPlateColor = new Color(0.08f, 0.13f, 0.26f, 0.92f);
-    private static readonly Color otherValuesPlateColor = new Color(0.45f, 0.07f, 0.07f, 0.92f);
+    // Visual polish: deep red of the opponent-map mode, opaque so the plate's light border does not show through it.
+    private static readonly Color otherValuesPlateColor = new Color(0.48f, 0.07f, 0.10f, 1f);
+    // Display only (UX clarity batch): while the other player's values are shown, a frame marks the map box and the
+    // see-other toggle's label turns white on its (existing) red fill. Same state as the plate; gates nothing.
+    // Optional: left empty in scenes without the Info feature (practice), where nothing changes.
+    [SerializeField] protected GameObject otherMapFrame;
+    [SerializeField] protected TextMeshProUGUI seeOtherLabelRTL;
+    [SerializeField] protected Color seeOtherActiveLabelColor = Color.white;
+    // Visual polish: the dark-red opponent-map mode (frame glow, board dim, toggle, plate, titles) built on the fields above.
+    private OpponentMapMode opponentMapMode;
     //[SerializeField] protected Text textChatAlert;
     //[SerializeField] protected SpriteRenderer backgraundStatus;
     float[] sumRGYB = { 0, 0, 0, 0 }; //GREEN, RED, YELLOW, BLUE (after cut!)
@@ -262,6 +271,48 @@ public class Manager : MonoBehaviour
         {
             this.valueOwnerPlate.color = this.isShowView ? otherValuesPlateColor : ownValuesPlateColor;
             this.valueOwnerPlate.gameObject.SetActive(this.SeeOtherPlayerBT.activeSelf && Config.inst.getSeeOtherEnable());
+        }
+        UpdateOtherMapIndicators();
+    }
+
+    // Display only (UX clarity batch): the frame is shown exactly while the other player's values are on the map
+    // (isShowView, toggle available: Info condition, before the own cut); returning to the own view restores the
+    // original look. Reads isShowView only; the toggle's rules, counter and timing are unchanged.
+    // Visual polish: OpponentMapMode shows that state as one dark-red mode with a short fade (the frame stays visible
+    // until its fade-out ends). Scenes without the Info feature (practice) leave the fields empty: nothing changes.
+    // Wrapped: setViewAfterCut runs this before it records the cut, so a display failure must never interrupt it.
+    private void UpdateOtherMapIndicators()
+    {
+        bool showingOther = this.isShowView && this.SeeOtherPlayerBT != null && this.SeeOtherPlayerBT.activeSelf
+            && Config.inst != null && Config.inst.getSeeOtherEnable();
+        try
+        {
+            if (this.opponentMapMode == null && (this.otherMapFrame != null || this.seeOtherLabelRTL != null))
+            {
+                this.opponentMapMode = new OpponentMapMode(this, new OpponentMapMode.Parts
+                {
+                    frame = this.otherMapFrame,
+                    toggle = this.SeeOtherPlayerBT != null ? this.SeeOtherPlayerBT.GetComponent<Image>() : null,
+                    toggleLabel = this.seeOtherLabelRTL,
+                    toggleLabelActive = this.seeOtherActiveLabelColor,
+                    plate = this.valueOwnerPlate,
+                    plateOwn = ownValuesPlateColor,
+                    plateOther = otherValuesPlateColor,
+                    legendTitle = this.legendTitleRTL,
+                });
+            }
+            if (this.opponentMapMode != null)
+            {
+                this.opponentMapMode.Set(showingOther);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning("GAMEFEEL: opponent-map mode display failed: " + ex.Message);
+            if (this.otherMapFrame != null && this.otherMapFrame.activeSelf != showingOther)
+            {
+                this.otherMapFrame.SetActive(showingOther); // plain fallback: the frame still marks the state
+            }
         }
     }
 

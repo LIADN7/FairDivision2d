@@ -42,6 +42,7 @@ public class RegionCard : MonoBehaviour
     private bool choosePhase;
     private bool myTurn;
     private bool hover;
+    private bool focus;
     private bool lastInteractable = true;
 
     private Look shown;
@@ -130,6 +131,19 @@ public class RegionCard : MonoBehaviour
         }
         hover = isHover;
         Refresh(false);
+        RegionSelectionView.NotifyPointer(this, isHover); // UX clarity batch: map spotlight (display only)
+    }
+
+    // UX clarity batch: keyboard / EventSystem focus on the region button looks like hover and spotlights the region.
+    public void SetFocus(bool isFocused)
+    {
+        if (isFocused == focus)
+        {
+            return;
+        }
+        focus = isFocused;
+        Refresh(false);
+        RegionSelectionView.NotifyFocus(this, isFocused);
     }
 
     private Look ComputeLook()
@@ -168,8 +182,9 @@ public class RegionCard : MonoBehaviour
         }
         else if (choosePhase && myTurn)
         {
-            look.ring = hover ? hoverRing : turnRing;
-            if (hover)
+            bool pointed = hover || focus;
+            look.ring = pointed ? hoverRing : turnRing;
+            if (pointed)
             {
                 look.fill = Color.Lerp(regionColor, Color.white, 0.14f);
             }
@@ -194,7 +209,7 @@ public class RegionCard : MonoBehaviour
             return;
         }
         Look from = shown;
-        lookTween = UiMotion.Play(gameObject, hover || !target.badgeOn ? UiMotion.Fast + 0.03f : UiMotion.Normal, t => Apply(from, target, t));
+        lookTween = UiMotion.Play(gameObject, hover || focus || !target.badgeOn ? UiMotion.Fast + 0.03f : UiMotion.Normal, t => Apply(from, target, t));
         if (badgeAppears)
         {
             UiMotion.Stop(ref badgeTween);
