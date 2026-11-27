@@ -85,6 +85,19 @@
 | EndGameFlow | The instruction keeps its four lines verbatim and gains a check badge. The amount sits in a teal hero card. **The round sentence (`סבב N נבחר לחישוב התגמול.`) moves out of the explanation block into its own highlighted chip directly under the amount; the explanation (`התגמול חושב לפי סבב אחד שנבחר באקראי.`) follows below it.** The two sentences are unchanged, but they now display in the opposite order (round first). The chip is shown under the same condition as before (`RandArrays` holds the drawn index). |
 | Dialogs | Same strings; Rubik typography, the safe choice ("ביטול") is the teal primary button, "יציאה" is secondary. |
 
+## Approved changes, 2026-11-27 (`feat/ux-help-tooltip-batch`)
+
+Research-supervisor approved (50 % tooltip) and owner-approved (labels, Help visuals, no auto-open). The rows above describe the earlier state; these strings replace or extend them.
+
+| Text | Where | Class | Change |
+|---|---|---|---|
+| `אנא חלקו את המפה לשני חלקים.` + `אפשר לשרטט מחדש עד שתלחצו על אישור החלוקה.` | `Player` / `PlayerAITutorial` start note | **A** | Guarantee clause `(אם תחלקו לשני חלקים שווים, מובטח שתקבלו לפחות 50%)` removed |
+| `המפה מחולקת ל־50%` + `(אם תרצו, …)` | `statusChange` (both copies) | **A** | Removed (no note at an exact 50 % split) |
+| Title `למה כדאי לחלק 50/50?`; body `אם תחלקו את המפה לשני חלקים שערכם עבורכם 50% כל אחד, תוכלו להבטיח לעצמכם לפחות 50% באמצעות בחירה מתאימה. בחלוקה אחרת תוכלו לקבל יותר מ־50%, אבל גם פחות.` | New tooltip `CutStatusPlate/CutInfoIcon/CutInfoTooltip` (both scenes; stored digit-reversed `05/05`, `%05` for TMP right-to-left) | **A** | New; hover (or tap) only, own cut phase only |
+| `הצג את ערכי השחקן השני` / `חזרה לערכים שלי` | `SeeOtherPlayerBT/TextRTL` via `Manager.UpdateValueOwnerLabel` (CutScene) | **A** (Info condition) | Replace `הצגת מפת החום של השחקן השני`; the label now names the next action in each view |
+| `שווי המשבצת עבורכם`, `נמוך` `בינוני` `גבוה` | Help page legend (copy of the map legend) | B | Replace the English `Low` / `High` on the Help page |
+| Help page bullets, practice Step 0 | — | **A** | Unchanged (incl. their 50 % sentences) |
+
 ## Deferred wording proposals (owner approval needed — not implemented)
 
 | # | Before | Proposed | Reason |
