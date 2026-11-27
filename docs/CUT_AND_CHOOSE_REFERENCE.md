@@ -261,7 +261,7 @@ Within S3 the sub-states are `chooseNum` = 0 (P1's turn), 1 and 2 (P2's turns), 
 ### 8.3 Practice scene differences
 
 `CutSceneAITutorial` uses forks (`PlayerAITutorial`, `PointOfStateAITutorial`, `LineDrawingManagerAITutoria`, `SquareLineCalculatorAITutoria`, `SumSquaresAITutorial`) plus:
-- `TutorialFplanManager`: starts when the auto-opened help page is first closed (`ShowAndHideOnClickAITutoria`); three configured steps (`Step0_GameIntro`, `Step1_CutIntroP1`, `Step1_CutIntroP2`; the step suffixed with the other role is skipped). While a step is shown, drawing and choosing are locked (`IsGameplayLocked`).
+- `TutorialFplanManager`: since 2026-11-27 (approved batch, `feat/ux-help-tooltip-batch`) started by `HelpPageCountdownAITutoria` 1 s after the scene starts — the moment the Help page used to auto-open; the Help page no longer opens by itself, and a later manual close only re-calls the guarded `StartTutorial` (no-op). Before: it started when the auto-opened help page was first closed (`ShowAndHideOnClickAITutoria`). Three configured steps (`Step0_GameIntro`, `Step1_CutIntroP1`, `Step1_CutIntroP2`; the step suffixed with the other role is skipped). While a step is shown, drawing and choosing are locked (`IsGameplayLocked`).
 - `PCPlayerAITutorial`: after the human's cut, injects one of four hard-coded lines (uniform random) as the opponent's cut (`GenerateAndInjectLocalCut`), then makes uniform-random picks after 1 s (`MakePCChoices`).
 - No allocation RPCs: choices run through `ExecuteLocalChoose`; when three regions are taken, `ExecuteLocalGetValues` gives the remainder to Player 1 after 0.5 s.
 - Result shown with `setEndGameLayer(sum, false)` → not added to payment; no record saved.
@@ -452,7 +452,7 @@ Eight cells instead of 474; the arithmetic is identical. Assume the lines produc
 | Multiplayer allocation consistency | Both clients must derive identical regions and allocation from identical scene data and keys; master = Player 1 |
 | Data collection | Record fields (meanings unchanged; schema 2 adds identity fields only); key format — owner-approved change 2026-11-12 from `CutAChoose_{round}_{condition}` / `PlayerData` to run-scoped keys, made readable 2026-11-13: `CutAChoose_{round}_{ScenarioType}_{runId}_P{role}` / `PlayerData_{runId}_P{role}` (first test builds: `CC_…`) ([RESEARCH_DATA.md](RESEARCH_DATA.md)); region key names `RedX, GreenO, RedO, GreenX`; save on Next; practice unsaved |
 | Reward | Uniform draw over the 6 real rounds, same index for both; `30 + max(0, (x − 45)·1.5)`; practice excluded |
-| Participant texts | Bilingual instructions incl. the 50% hint |
+| Participant texts | Bilingual instructions incl. the 50% hint. *2026-11-27, supervisor-approved:* the 50% hint left the per-round cut note (and the exact-50% note was removed); it is now an optional hover tooltip during the own cut phase. The Help page bullets and practice Step 0 keep their 50% sentences (PROJECT_CONTEXT §17, MICROCOPY_INVENTORY) |
 
 ### 14.3 Open questions requiring owner decision
 

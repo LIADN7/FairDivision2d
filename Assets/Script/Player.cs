@@ -96,7 +96,9 @@ public class Player : MonoBehaviourPunCallbacks
         }
 
         this.InitDatabaseAsync();
-        Manager.inst.setNote(-1, "Please divide the map into 2 parts (if you divide into 2 equal parts you are guaranteed to get at least 50%)\n\nYou can redraw it until you click the confirm button.", false, "אנא חלקו את המפה לשני חלקים (אם תחלקו לשני חלקים שווים, מובטח שתקבלו לפחות 50%)\n\nאפשר לשרטט מחדש עד שתלחצו על אישור החלוקה.");
+        // Supervisor-approved 2026-11-27: the 50% explanation moved from this note to the optional info tooltip next to
+        // the cut instruction (CutInfoIcon under CutStatusPlate). The action instructions stay.
+        Manager.inst.setNote(-1, "Please divide the map into 2 parts.\n\nYou can redraw it until you click the confirm button.", false, "אנא חלקו את המפה לשני חלקים.\n\nאפשר לשרטט מחדש עד שתלחצו על אישור החלוקה.");
 
 
     }
@@ -869,11 +871,8 @@ public class Player : MonoBehaviourPunCallbacks
             {
                 SetCutReadoutRTL(greenVal, showingOtherPlayer);
             }
-            if ((greenVal * 100) == 50)
-            {
-                Manager.inst.setNote(-1, "The map is divided into 50%\n(if you wish, you can change the division or choose not to divide equally)", false, "המפה מחולקת ל־50%\n(אם תרצו, תוכלו לשנות את החלוקה או לבחור שלא לחלק באופן שווה)");
-
-            }
+            // Supervisor-approved 2026-11-27: no note when the split is exactly 50% (the 50% explanation is now the
+            // optional info tooltip). Only this display was removed; the returned value and readouts are unchanged.
             return (greenVal * 100);
         }
     }

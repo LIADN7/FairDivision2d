@@ -33,7 +33,13 @@ public class HelpPageCountdownAITutoria : MonoBehaviour
     private IEnumerator withBeforeStart(float sec)
     {
         yield return new WaitForSeconds(sec);
-        objectToShowAfter.GetComponent<ShowAndHideOnClickAITutoria>().ShowAndHide();
+        // Approved 2026-11-27: practice starts on the game screen without the Help page. Closing the auto-opened Help
+        // page used to be what started the tutorial (ShowAndHideOnClickAITutoria), so Step 0 is started here instead,
+        // at the moment the Help page used to open. StartTutorial ignores later calls (a manual Help close included).
+        if (TutorialFplanManager.Instance != null)
+        {
+            TutorialFplanManager.Instance.StartTutorial();
+        }
         objectToShowAfter.SetActive(false);
         StartCoroutine(startCountdown());
     }

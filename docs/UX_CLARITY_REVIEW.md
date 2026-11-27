@@ -45,9 +45,9 @@ All new runtime objects are display-only: untagged, no `PointOfState`, not under
 ## 5. Pre-existing findings (not changed)
 
 1. **Click without drag keeps an old end point** (`LineDrawingManager`, both copies): `StartDrawing` resets the shown line to one point but not `endPoint`; if the button is released before the first `UpdateDrawing`, `FinishDrawing` colours the cells by the line through the click point and the previous `endPoint` (or `(0,0,0)` in a fresh round), and `SubmitLine` sends those points, so the other player sees a line the drawer never saw. Rare with a real drag. Not extended by this batch; a fix (set `endPoint = startPoint` in `StartDrawing`) would change which cut such a click produces, so it needs an owner decision (it is related to the UX-004 no-line rule).
-2. **See-other toggle label** keeps the text "הצגת מפת החום של השחקן השני" while the other map is shown. A second label (e.g. "חזרה למפה שלכם") would be clearer but is new participant text — proposal only, needs research approval.
+2. **See-other toggle label** keeps the text "הצגת מפת החום של השחקן השני" while the other map is shown. A second label (e.g. "חזרה למפה שלכם") would be clearer but is new participant text — proposal only, needs research approval. *Resolved 2026-11-27 (approved wording, `feat/ux-help-tooltip-batch`): "הצג את ערכי השחקן השני" / "חזרה לערכים שלי" (PROJECT_CONTEXT §17).*
 3. County labels near the top map edge ("Antrim =", "Derry =") are crossed by cut lines that reach the edge (also before this batch for long drags).
-4. **Help-page illustrations:** both Help pages show two legacy PNGs labelled "Low" / "High" (old cell colours: dark teal vs. tan). After the heatmap change they no longer match the map's colours, although the direction (lighter = higher) is the same. They are Help content (class A), so they were not changed; redrawing them in the new colours (same labels, or Hebrew labels) needs research approval.
+4. **Help-page illustrations:** both Help pages show two legacy PNGs labelled "Low" / "High" (old cell colours: dark teal vs. tan). After the heatmap change they no longer match the map's colours, although the direction (lighter = higher) is the same. They are Help content (class A), so they were not changed; redrawing them in the new colours (same labels, or Hebrew labels) needs research approval. *Resolved 2026-11-27 (approved): the Help legend is a copy of the live map legend (Hebrew labels, three levels, drawn by `HeatLegendView`) and the old "Belfast Map" picture is replaced by a neutral render of the current map (PROJECT_CONTEXT §17).*
 
 ## 7. Verification summary and evidence
 
@@ -111,3 +111,14 @@ It explains the protocol's safety (proportionality) guarantee — the standard r
 **C, applied consistently** — state the guarantee once, accurately ("by your own values", with the choice condition), in the Help page and practice, and remove it from the note that stays on screen in every round and from the exact-50 % confirmation. This keeps the protocol understandable while removing the repeated recommendation. If data has already been collected with the current wording and pooling across sessions matters more than reducing the nudge, **A** (with the session/build recorded) is the conservative alternative. B is not recommended without a pilot, because it removes information the participants may need.
 
 **Decision record:** ☐ A ☐ B ☐ C — *PENDING RESEARCH APPROVAL (Rika / lecturers). No change may be made before an explicit written decision; any approved change must be applied to all four places in both scenes and both C# copies, then re-verified (texts identical across screens, rules unchanged).*
+
+**Decision (2026-11-27, research supervisors, relayed by the project owner):** replace the prominent 50 % explanation with an **optional information tooltip** — a variant of C. Implemented on `feat/ux-help-tooltip-batch` in both scenes and both C# copies:
+
+| Place (§6.1) | Now |
+|---|---|
+| a — per-round cut note | Guarantee clause removed; the note keeps "אנא חלקו את המפה לשני חלקים." + "אפשר לשרטט מחדש עד שתלחצו על אישור החלוקה." The explanation is in an "i" icon next to the cut instruction (`CutStatusPlate`), shown on hover only during the player's own cut phase: **"למה כדאי לחלק 50/50?"** / **"אם תחלקו את המפה לשני חלקים שערכם עבורכם 50% כל אחד, תוכלו להבטיח לעצמכם לפחות 50% באמצעות בחירה מתאימה. בחלוקה אחרת תוכלו לקבל יותר מ־50%, אבל גם פחות."** (states "by your values" and the matching-choice condition — the two gaps noted in §6.2) |
+| b — exact-50 % note | Removed (`statusChange`; the returned value and readouts are unchanged) |
+| c — Help page bullets | Unchanged (the Help page now opens only from "?") |
+| d — practice Step 0 | Unchanged |
+
+Data recorded with this version is not directly comparable with earlier sessions on cut behaviour (and on start-to-cut time, since the Help page no longer opens at each round start); record the build/commit per session (PROJECT_CONTEXT §13.3).
