@@ -33,7 +33,8 @@ public class HelpPageCountdown : MonoBehaviour
     private IEnumerator withBeforeStart(float sec)
     {
         yield return new WaitForSeconds(sec);
-        objectToShowAfter.GetComponent<ShowAndHideOnClick>().ShowAndHide();
+        // Approved 2026-11-27: the round starts on the game screen; the Help page opens only from its "?" button.
+        // (Before, this line opened it here: objectToShowAfter.GetComponent<ShowAndHideOnClick>().ShowAndHide();)
         objectToShowAfter.SetActive(false);
         StartCoroutine(startCountdown());
     }

@@ -39,6 +39,10 @@ public class Manager : MonoBehaviour
     [SerializeField] protected GameObject otherMapFrame;
     [SerializeField] protected TextMeshProUGUI seeOtherLabelRTL;
     [SerializeField] protected Color seeOtherActiveLabelColor = Color.white;
+    // Display only (supervisor-approved wording, 2026-11-27): the toggle names what one click does next. Text only;
+    // when the toggle exists, what it shows and CountPlayerSeeOther are unchanged. Practice leaves seeOtherLabelRTL empty.
+    private const string seeOtherShowLabelRTL = "הצג את ערכי השחקן השני";
+    private const string seeOtherBackLabelRTL = "חזרה לערכים שלי";
     // Visual polish: the dark-red opponent-map mode (frame glow, board dim, toggle, plate, titles) built on the fields above.
     private OpponentMapMode opponentMapMode;
     //[SerializeField] protected Text textChatAlert;
@@ -266,6 +270,10 @@ public class Manager : MonoBehaviour
         if (this.legendTitleRTL != null)
         {
             this.legendTitleRTL.text = this.isShowView ? otherLegendTitleRTL : ownLegendTitleRTL;
+        }
+        if (this.seeOtherLabelRTL != null)
+        {
+            this.seeOtherLabelRTL.text = this.isShowView ? seeOtherBackLabelRTL : seeOtherShowLabelRTL;
         }
         if (this.valueOwnerPlate != null)
         {
